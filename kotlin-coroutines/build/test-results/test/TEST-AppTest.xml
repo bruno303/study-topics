@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="AppTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2023-05-02T23:22:30" hostname="bruno-X450LCP" time="9.275">
+  <properties/>
+  <testcase name="test with coroutineScope()" classname="AppTest" time="2.212"/>
+  <testcase name="test with custom Dispatcher (threadpool)()" classname="AppTest" time="2.022"/>
+  <testcase name="test with withContext()" classname="AppTest" time="3.024"/>
+  <testcase name="test with runBlocking()" classname="AppTest" time="2.005"/>
+  <system-out><![CDATA[Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+WithContext executed in 2073 millis
+Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+WithContext executed in 2010 millis
+Starting query 2
+Returning query 2
+Starting query 1
+Returning query 1
+WithContext executed in 3014 millis
+Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+RunBlocking executed in 2003 millis
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

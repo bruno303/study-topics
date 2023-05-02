@@ -1,0 +1,20 @@
+Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+$WithContext executed in 2073 millis
+Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+$WithContext executed in 2010 millis
+Starting query 2
+Returning query 2
+Starting query 1
+Returning query 1
+$WithContext executed in 3014 millis
+Starting query 2
+Starting query 1
+Returning query 1
+Returning query 2
+$RunBlocking executed in 2003 millis
