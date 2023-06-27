@@ -1,0 +1,225 @@
+version: '3.8'
+
+services:
+  setup:
+    container_name: elastic-setup
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+    user: "0"
+    command: >
+      bash -c '
+        if [ x${ELASTIC_PASSWORD} == x ]; then
+          echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+          exit 1;
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+          exit 1;
+        fi;
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "Creating CA";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "Creating certs";
+          echo -ne \
+          "instances:\n"\
+          "  - name: es01\n"\
+          "    dns:\n"\
+          "      - es01\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          > config/certs/instances.yml;
+          bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        echo "Setting file permissions"
+        chown -R root:root config/certs;
+        find . -type d -exec chmod 750 \{\} \;;
+        find . -type f -exec chmod 640 \{\} \;;
+        echo "Waiting for Elasticsearch availability";
+        until curl -s --cacert config/certs/ca/ca.crt https://es01:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "Setting kibana_system password";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://es01:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "All done!";
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+    networks:
+      - elastic
+
+  es01:
+    container_name: es01
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.1
+    depends_on:
+      setup:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata01:/usr/share/elasticsearch/data
+    environment:
+      - node.name=es01
+      - cluster.name=${CLUSTER_NAME}
+      - cluster.initial_master_nodes=es01
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/es01/es01.key
+      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.http.ssl.verification_mode=certificate
+
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/es01/es01.key
+      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elastic
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    ##################################################################################################################
+    # To generate a new password for user elastic:
+    #
+    # $ docker exec -it elasticsearch /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic
+    ###
+    # current password: k7orUaLlrHc6GuEBGauK
+
+    ##################################################################################################################
+    # To generate a new enrollment token:
+    #
+    # $ docker exec -it elasticsearch /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
+    ###
+    # current token: eyJ2ZXIiOiI4LjUuMSIsImFkciI6WyIxNzIuMjAuMC40OjkyMDAiXSwiZmdyIjoiNTkwMzM0MDI1ODA5YjE4YmZjOTE1YzhhYzkwZWIzMmE1MmNhYTViMzM0NjlmMGViM2I5NWQxZDJmYWJhODQxMSIsImtleSI6Im80UXpqWVFCd0FCN0g2V1o4cGxIOkhfcTByOVhGUU1HemUwX1dGS3BJZkEifQ==
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:8.5.1
+    depends_on:
+      es01:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: '["https://es01:9200"]'
+      SERVERNAME: kibana
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: config/certs/ca/ca.crt
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    networks:
+      - elastic
+
+  # fleet:
+  #   image: docker.elastic.co/beats/elastic-agent:8.5.1 
+  #   container_name: fleet
+  #   depends_on:
+  #     kibana:
+  #       condition: service_healthy
+  #   volumes:
+  #     - certs:/usr/share/fleet/config/certs
+  #   environment:
+  #     - FLEET_SERVER_ENABLE=true
+  #     - FLEET_SERVER_ELASTICSEARCH_HOST=https://es01:9200
+  #     - FLEET_SERVER_SERVICE_TOKEN=${FLEET_SERVICE_TOKEN}
+  #     - FLEET_SERVER_POLICY_ID=fleet-server-policy
+  #     - FLEET_SERVER_ELASTICSEARCH_CA=/usr/share/fleet/config/certs/ca/ca.crt
+  #     #- FLEET_SERVER_INSECURE_HTTP=1
+  #   ports:
+  #     - "8200:8200"
+  #   networks:
+  #     - elastic
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.5.1
+    container_name: logstash
+    user: "0"
+    depends_on:
+      kibana:
+        condition: service_healthy
+    volumes:
+      - ./logstash/settings/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - certs:/usr/share/logstash/config/certs
+      - ./logs/:/app/logs/
+    ports:
+      - "9600-9700:9600-9700"
+    networks:
+      - elastic
+
+networks:
+  elastic:
+    driver: bridge
+
+volumes:
+  esdata01:
+    driver: local
+  certs:
+    driver: local
+
+
+  # app-machine:
+  #   image: docker.elastic.co/beats/elastic-agent:8.5.1 
+  #   container_name: app-machine
+  #   volumes:
+  #     - certs:/usr/share/apm-server/config/certs
+  #     - ./logs/:/app/
+  #   environment:
+  #     - FLEET_URL=https://fleet:8220
+  #     - FLEET_ENROLL=1
+  #     - FLEET_ENROLLMENT_TOKEN=eFEtUW1vWUJMdV9xRlAtemphOXE6aHNhMEpQUkNRbkdvMWpxbklkUHRsUQ==
+  #     - FLEET_CA=/usr/share/apm-server/config/certs/ca/ca.crt
+  #     - FLEET_INSECURE=1
+  #   networks:
+  #     - elastic
+
+  # apm-server:
+  #   image: docker.elastic.co/beats/elastic-agent:8.5.1 
+  #   container_name: apm-server
+  #   depends_on:
+  #     fleet:
+  #       condition: service_started
+  #   volumes:
+  #     - certs:/usr/share/apm-server/config/certs
+  #   environment:
+  #     - FLEET_URL=https://fleet:8220
+  #     - FLEET_ENROLL=1
+  #     - FLEET_ENROLLMENT_TOKEN=${FLEET_ENROLLMENT_TOKEN}
+  #     - FLEET_CA=/usr/share/apm-server/config/certs/ca/ca.crt
+  #     - FLEET_INSECURE=1
+  #   ports:
+  #     - "8200:8220"
+  #   networks:
+  #     - elastic

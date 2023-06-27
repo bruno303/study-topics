@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: opentelemetry_localstack
+    build: "./localstack"
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - AWS_ACCESS_KEY_ID=x
+      - AWS_SECRET_ACCESS_KEY=x
+      - AWS_DEFAULT_REGION=us-east-1
+    networks:
+      - opentelemetry
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: opentelemetry_zipkin
+    ports: 
+      - "9411:9411"
+    networks:
+      - opentelemetry
+
+networks:
+  opentelemetry:

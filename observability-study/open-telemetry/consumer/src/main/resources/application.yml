@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: "open-telemetry-consumer"
+aws:
+  sqs:
+    queues:
+      demand: demand
+      demand-response: demand-response

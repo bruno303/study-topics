@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: sleuth-localstack
+    build: "./localstack"
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs,sns
+      - AWS_ACCESS_KEY_ID=x
+      - AWS_SECRET_ACCESS_KEY=x
+      - AWS_DEFAULT_REGION=us-east-1
+    networks:
+      - sleuth
+
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    container_name: datadog-agent
+    hostname: datadog-agent
+    environment:
+      - DD_LOGS_ENABLED=${DD_LOGS_ENABLED}
+      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=us5.datadoghq.com
+    ports:
+      - "8126:8126"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      - ${PRODUCER_LOGS_PATH}:/logs/java/producer:ro
+      - ${DD_AGENT_CONFIG_PATH}:/etc/datadog-agent/conf.d/java.d:rw
+
+networks:
+  sleuth:

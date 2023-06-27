@@ -1,0 +1,46 @@
+plugins {
+	id 'org.springframework.boot' version '2.7.3'
+	id 'io.spring.dependency-management' version '1.0.13.RELEASE'
+	id 'java'
+}
+
+group = 'com.bso'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2021.0.3")
+	set('springCloudAwsVersion', '2.4.2')
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation platform('software.amazon.awssdk:bom:2.15.0')
+	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	implementation "io.awspring.cloud:spring-cloud-aws-autoconfigure:${springCloudAwsVersion}"
+	implementation "io.awspring.cloud:spring-cloud-aws-messaging:${springCloudAwsVersion}"
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	runtimeOnly 'com.h2database:h2'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.2'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+bootJar {
+   archiveFileName = "${archiveBaseName.get()}.jar"
+}

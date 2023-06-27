@@ -1,0 +1,40 @@
+2023-01-28 19:58:12.704  INFO [producer,,] 43695 --- [main] com.bso.producer.ProducerApplication     : Starting ProducerApplication using Java 17.0.4.1 on bruno-X450LCP with PID 43695 (/home/bruno/dev/projects/sleuth/producer/build/classes/java/main started by bruno in /home/bruno/dev/projects/sleuth/producer)
+2023-01-28 19:58:12.717  INFO [producer,,] 43695 --- [main] com.bso.producer.ProducerApplication     : No active profile set, falling back to 1 default profile: "default"
+2023-01-28 19:58:13.816  INFO [producer,,] 43695 --- [main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=9c602afa-df7e-3891-ba08-a1a1c285b008
+2023-01-28 19:58:14.455  INFO [producer,,] 43695 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2023-01-28 19:58:14.461  INFO [producer,,] 43695 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2023-01-28 19:58:14.462  INFO [producer,,] 43695 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.65]
+2023-01-28 19:58:14.556  INFO [producer,,] 43695 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2023-01-28 19:58:14.557  INFO [producer,,] 43695 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1773 ms
+2023-01-28 19:58:16.323  INFO [producer,,] 43695 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2023-01-28 19:58:16.375  INFO [producer,,] 43695 --- [main] com.bso.producer.ProducerApplication     : Started ProducerApplication in 4.239 seconds (JVM running for 4.866)
+2023-01-28 20:03:41.275  INFO [producer,,] 47111 --- [main] com.bso.producer.ProducerApplication     : Starting ProducerApplication using Java 17.0.4.1 on bruno-X450LCP with PID 47111 (/home/bruno/dev/projects/sleuth/producer/build/classes/java/main started by bruno in /home/bruno/dev/projects/sleuth/producer)
+2023-01-28 20:03:41.292  INFO [producer,,] 47111 --- [main] com.bso.producer.ProducerApplication     : No active profile set, falling back to 1 default profile: "default"
+2023-01-28 20:03:42.100  INFO [producer,,] 47111 --- [main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=9c602afa-df7e-3891-ba08-a1a1c285b008
+2023-01-28 20:03:42.605  INFO [producer,,] 47111 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2023-01-28 20:03:42.612  INFO [producer,,] 47111 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2023-01-28 20:03:42.612  INFO [producer,,] 47111 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.65]
+2023-01-28 20:03:42.710  INFO [producer,,] 47111 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2023-01-28 20:03:42.711  INFO [producer,,] 47111 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1375 ms
+2023-01-28 20:03:44.801  INFO [producer,,] 47111 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2023-01-28 20:03:44.844  INFO [producer,,] 47111 --- [main] com.bso.producer.ProducerApplication     : Started ProducerApplication in 4.084 seconds (JVM running for 4.743)
+2023-01-28 20:07:02.986  INFO [producer,66e8896211768941,66e8896211768941] 47111 --- [http-nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2023-01-28 20:07:02.987  INFO [producer,66e8896211768941,66e8896211768941] 47111 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2023-01-28 20:07:02.988  INFO [producer,66e8896211768941,66e8896211768941] 47111 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2023-01-28 20:07:03.025  INFO [producer,66e8896211768941,66e8896211768941] 47111 --- [http-nio-8080-exec-2] c.b.p.controller.ObjectController        : [a491fad7-e6f2-4b79-a59b-ec0eb320f4e7] Requesting
+2023-01-28 20:13:57.362  INFO [producer,0bd550c62f0ace16,0bd550c62f0ace16] 47111 --- [http-nio-8080-exec-5] c.b.p.controller.ObjectController        : [14cb87ba-47c3-4d54-99f0-7c1fd1bf3204] Requesting
+2023-01-28 20:17:36.788  INFO [producer,cf8f248b360a8736,cf8f248b360a8736] 47111 --- [http-nio-8080-exec-8] c.b.p.controller.ObjectController        : [6cc82a09-1730-4f0f-abe8-a6b013caf027] Requesting
+2023-01-28 20:19:51.434  INFO [producer,,] 53151 --- [main] com.bso.producer.ProducerApplication     : Starting ProducerApplication using Java 17.0.4.1 on bruno-X450LCP with PID 53151 (/home/bruno/dev/projects/sleuth/producer/build/libs/producer.jar started by bruno in /home/bruno/dev/projects/sleuth/producer)
+2023-01-28 20:19:51.456  INFO [producer,,] 53151 --- [main] com.bso.producer.ProducerApplication     : No active profile set, falling back to 1 default profile: "default"
+2023-01-28 20:19:53.567  INFO [producer,,] 53151 --- [main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=c46ffd42-d1fb-37dc-a0f9-3698b1da59da
+2023-01-28 20:19:54.813  INFO [producer,,] 53151 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2023-01-28 20:19:54.910  INFO [producer,,] 53151 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2023-01-28 20:19:54.911  INFO [producer,,] 53151 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.65]
+2023-01-28 20:19:55.004  INFO [producer,,] 53151 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2023-01-28 20:19:55.005  INFO [producer,,] 53151 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3462 ms
+2023-01-28 20:19:59.518  INFO [producer,,] 53151 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2023-01-28 20:19:59.575  INFO [producer,,] 53151 --- [main] com.bso.producer.ProducerApplication     : Started ProducerApplication in 10.105 seconds (JVM running for 12.73)
+2023-01-28 20:21:24.528  INFO [producer,04a7231ac70171cb,04a7231ac70171cb] 53151 --- [http-nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2023-01-28 20:21:24.529  INFO [producer,04a7231ac70171cb,04a7231ac70171cb] 53151 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2023-01-28 20:21:24.530  INFO [producer,04a7231ac70171cb,04a7231ac70171cb] 53151 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2023-01-28 20:21:24.639  INFO [producer,04a7231ac70171cb,04a7231ac70171cb] 53151 --- [http-nio-8080-exec-2] c.b.p.controller.ObjectController        : [62248e8f-4d02-40a3-9fdb-d83ca2dbdcd3] Requesting

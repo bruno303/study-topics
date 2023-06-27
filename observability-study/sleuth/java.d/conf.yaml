@@ -1,0 +1,6 @@
+#Log section
+logs:
+  - type: file
+    path: "/logs/java/producer/producer.log"
+    service: producer
+    source: producer
