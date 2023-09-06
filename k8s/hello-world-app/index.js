@@ -3,7 +3,8 @@ const http = require('http');
 const port = 3333;
  
 const server = http.createServer((req, res) => {
-  console.log("Sending response")
+  const foo = process.env.FOO;
+  console.log(`Sending response. FOO=${foo}`);
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain');
   res.end('Hello World');

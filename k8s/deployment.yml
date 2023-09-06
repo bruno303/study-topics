@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: k8s-test-app-deployment
-  namespace: k8s-test-app
   labels:
     app: k8s-test-app
 spec:
@@ -17,10 +16,13 @@ spec:
     spec:
       containers:
       - name: k8s-test-app
-        image: bruno303/k8s-test-app:0.0.2
+        image: bruno303/k8s-test-app:0.0.4
         resources:
           limits:
             cpu: 250m
             memory: 200M
         ports:
         - containerPort: 3333
+        envFrom:
+        - secretRef:
+            name: k8s-test-app-secret
