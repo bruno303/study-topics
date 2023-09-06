@@ -1,0 +1,13 @@
+ _format_version: "3.0"
+ _transform: true
+
+ services:
+ - host: 172.18.0.2 # use your node ip. If running locally, try run `kubectl get nodes -o yaml` to get node IP 
+   name: k8s-test-app
+   port: 32401
+   protocol: http
+   routes:
+   - name: k8s-test-app
+     paths:
+     - /k8s-test-app
+     strip_path: true
