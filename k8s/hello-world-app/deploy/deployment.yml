@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: k8s-test-app
-        image: bruno303/k8s-test-app:0.0.4
+        image: bruno303/k8s-test-app:latest
+        imagePullPolicy: Always
         resources:
           limits:
             cpu: 250m

@@ -1,6 +1,7 @@
-node_modules
+node_modules/
 build-image.sh
 Dockerfile
+deploy/
 
 # for this test, .env will only be used to generate a secret file in k8s
 # and it's values will be injected as environment variables on pods

@@ -3,7 +3,7 @@ namespace: k8s-test-app
 secretGenerator:
 - name: k8s-test-app-secret
   envs:
-  - ./hello-world-app/.env
+  - .env
 
 resources:
   - namespace.yml
