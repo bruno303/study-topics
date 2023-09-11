@@ -1,0 +1,13 @@
+logging:
+  level:
+    com.bso.k8stest: INFO
+    org.springframework.web.client: INFO
+
+management:
+    endpoints:
+      web:
+        exposure:
+          include: loggers
+    endpoint:
+      loggers:
+        enabled: true
