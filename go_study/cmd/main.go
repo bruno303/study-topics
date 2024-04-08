@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"main/internal/hello"
 	"net/http"
 )
@@ -15,9 +16,12 @@ func initialize(ctx context.Context) {
 	// channel = make(chan struct{})
 	container := NewContainer(ctx)
 	server := http.NewServeMux()
-	hello.SetupApi(server, container.Hello)
+	hello.SetupApi(server, container.Services.HelloService, container.Repositories.HelloRepository)
 
-	http.ListenAndServe(":8080", server)
+	fmt.Println("Application started")
+	if err := http.ListenAndServe(":8080", server); err != nil {
+		fmt.Printf("Got error: %v", err)
+	}
 }
 
 // func main() {

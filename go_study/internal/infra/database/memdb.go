@@ -1,4 +1,4 @@
-package memdb
+package database
 
 import (
 	"context"
@@ -6,14 +6,14 @@ import (
 	"sync"
 )
 
-type transactionKey struct{ key string }
+type transactionKeyMemDb struct{ key string }
 
 type transaction struct {
 	tx       any
 	commited bool
 }
 
-var txKey = transactionKey{key: "my-app.repository.tx"}
+var txKeyMemDb = transactionKeyMemDb{key: "my-app.repository.tx"}
 
 type Keyer interface {
 	Key() string
@@ -57,7 +57,7 @@ func (repo MemDbRepository[E]) ListAll(ctx context.Context) []E {
 }
 
 func (repo MemDbRepository[E]) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
-	return context.WithValue(ctx, txKey, &transaction{tx: struct{}{}, commited: false}), nil
+	return context.WithValue(ctx, txKeyMemDb, &transaction{tx: struct{}{}, commited: false}), nil
 }
 
 func (repo MemDbRepository[E]) Commit(ctx context.Context) {
@@ -86,7 +86,7 @@ func (repo MemDbRepository[E]) Rollback(ctx context.Context) {
 }
 
 func (repo MemDbRepository[E]) getTransactionFromContext(ctx context.Context) (*transaction, bool) {
-	txValue := ctx.Value(txKey)
+	txValue := ctx.Value(txKeyMemDb)
 	if txValue == nil {
 		return new(transaction), false
 	}

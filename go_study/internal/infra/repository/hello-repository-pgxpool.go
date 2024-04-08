@@ -1,16 +1,15 @@
-package hello
+package repository
 
 import (
 	"context"
-	"main/internal/infra"
+	"main/internal/hello"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type PgxRepository struct {
+type HelloRepository struct {
 	pool *pgxpool.Pool
-	Repository
 }
 
 type transactionKey struct {
@@ -19,24 +18,13 @@ type transactionKey struct {
 
 var txKey = transactionKey{name: "db-transaction"}
 
-// Here we can replace the repository implementation just creating the one desired
-//
-// func NewRepository(ctx context.Context, container infra.Container) Repository {
-// 	type Rp struct {
-// 		Repository
-// 	}
-// 	return Rp{
-// 		memdb.NewMemDbRepository[HelloData](),
-// 	}
-// }
-
-func NewRepository(ctx context.Context, container infra.Container) Repository {
-	return PgxRepository{
-		pool: container.Pgxpool,
+func NewHelloRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
+	return HelloRepository{
+		pool: pool,
 	}
 }
 
-func (r PgxRepository) Save(ctx context.Context, entity *HelloData) (*HelloData, error) {
+func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
 	ent := *entity
 	tx := r.getTransactionOrNil(ctx)
 	var err error = nil
@@ -52,20 +40,20 @@ func (r PgxRepository) Save(ctx context.Context, entity *HelloData) (*HelloData,
 	return entity, nil
 }
 
-func (r PgxRepository) FindById(ctx context.Context, id any) (*HelloData, error) {
+func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
 	strId := id.(string)
 	tx := r.getTransactionOrNil(ctx)
 
 	if tx == nil {
 		row := r.pool.QueryRow(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1", strId)
-		return r.mapRow(row)
+		return r.mapRow(&row)
 	} else {
 		row := (*tx).QueryRow(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1", strId)
-		return r.mapRow(row)
+		return r.mapRow(&row)
 	}
 }
 
-func (r PgxRepository) ListAll(ctx context.Context) []HelloData {
+func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
 	var rows pgx.Rows = nil
 	var err error = nil
 	tx := r.getTransactionOrNil(ctx)
@@ -79,19 +67,19 @@ func (r PgxRepository) ListAll(ctx context.Context) []HelloData {
 		return nil
 	}
 
-	result := make([]HelloData, 0)
+	result := make([]hello.HelloData, 0)
 
 	for rows.Next() {
-		data, err := r.mapRow(rows)
+		data, err := r.mapRowsNextValue(&rows)
 		if err != nil {
-			return make([]HelloData, 0)
+			return make([]hello.HelloData, 0)
 		}
 		result = append(result, *data)
 	}
 	return result
 }
 
-func (r PgxRepository) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
+func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
@@ -99,21 +87,21 @@ func (r PgxRepository) BeginTransactionWithContext(ctx context.Context) (context
 	return context.WithValue(ctx, txKey, &tx), nil
 }
 
-func (r PgxRepository) Rollback(ctx context.Context) {
+func (r HelloRepository) Rollback(ctx context.Context) {
 	tx := r.getTransactionOrNil(ctx)
 	if tx != nil {
 		(*tx).Rollback(ctx)
 	}
 }
 
-func (r PgxRepository) Commit(ctx context.Context) {
+func (r HelloRepository) Commit(ctx context.Context) {
 	tx := r.getTransactionOrNil(ctx)
 	if tx != nil {
 		(*tx).Commit(ctx)
 	}
 }
 
-func (r PgxRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
+func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
 	tx := ctx.Value(txKey)
 	if tx == nil {
 		return nil
@@ -121,7 +109,7 @@ func (r PgxRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
 	return tx.(*pgx.Tx)
 }
 
-func (r PgxRepository) RunWithTransaction(ctx context.Context, callback func(context.Context) (*HelloData, error)) (*HelloData, error) {
+func (r HelloRepository) RunWithTransaction(ctx context.Context, callback func(context.Context) (*hello.HelloData, error)) (*hello.HelloData, error) {
 	ctxTx, err := r.BeginTransactionWithContext(ctx)
 	if err != nil {
 		return nil, err
@@ -136,19 +124,14 @@ func (r PgxRepository) RunWithTransaction(ctx context.Context, callback func(con
 	return result, err
 }
 
-func (r PgxRepository) mapRow(row pgx.Row) (*HelloData, error) {
-	result := new(HelloData)
-	id := new(string)
-	name := new(string)
-	age := new(int)
+func (r HelloRepository) mapRow(row *pgx.Row) (*hello.HelloData, error) {
+	result := new(hello.HelloData)
+	err := (*row).Scan(&result.Id, &result.Name, &result.Age)
+	return result, err
+}
 
-	err := row.Scan(id, name, age)
-	if err != nil {
-		return nil, err
-	}
-
-	result.Id = *id
-	result.Name = *name
-	result.Age = *age
-	return result, nil
+func (r HelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hello.HelloData, error) {
+	result := new(hello.HelloData)
+	err := (*rows).Scan(&result.Id, &result.Name, &result.Age)
+	return result, err
 }

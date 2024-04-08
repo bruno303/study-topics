@@ -4,23 +4,48 @@ import (
 	"context"
 	"main/internal/config"
 	"main/internal/hello"
-	"main/internal/infra"
+	"main/internal/infra/database"
+	"main/internal/infra/repository"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Container struct {
-	Config *config.Config
-	Hello  hello.Container
-	Infra  infra.Container
+	Config       *config.Config
+	Services     ServiceContainer
+	Repositories RepositoryContainer
+}
+
+type ServiceContainer struct {
+	HelloService hello.HelloService
+}
+
+type RepositoryContainer struct {
+	HelloRepository hello.Repository
+}
+
+func newServiceContainer(repository hello.Repository) ServiceContainer {
+	return ServiceContainer{
+		HelloService: hello.NewService(repository),
+	}
+}
+
+func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryContainer {
+	return RepositoryContainer{
+		HelloRepository: repository.NewHelloRepository(ctx, pool),
+	}
 }
 
 func NewContainer(ctx context.Context) *Container {
-	config := config.LoadConfig()
-	infraContainer := infra.NewContainer(config)
-	helloContainer := hello.NewContainer(ctx, infraContainer)
+	cfg := config.LoadConfig()
+	pool := database.Connect(cfg)
+
+	repositories := newRepositoryContainer(ctx, pool)
+	services := newServiceContainer(repositories.HelloRepository)
 
 	return &Container{
-		Config: config,
-		Hello:  helloContainer,
-		Infra:  infraContainer,
+		Config:       cfg,
+		Services:     services,
+		Repositories: repositories,
 	}
 }

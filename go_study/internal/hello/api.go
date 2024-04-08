@@ -22,30 +22,30 @@ func HelloHandler() http.Handler {
 	})
 }
 
-func SetupApi(server *http.ServeMux, container Container) {
+func SetupApi(server *http.ServeMux, helloService HelloService, helloRepository Repository) {
 	server.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
 		switch strings.ToUpper(r.Method) {
 		case "GET":
-			listUsers(container)(w, r)
+			listUsers(helloRepository)(w, r)
 		case "POST":
-			postUsers(container)(w, r)
+			postUsers(helloService)(w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	})
 }
 
-func postUsers(container Container) func(w http.ResponseWriter, r *http.Request) {
+func postUsers(helloService HelloService) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		result := container.Service.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+		result := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(result))
-		w.WriteHeader(200)
 	}
 }
 
-func listUsers(container Container) func(w http.ResponseWriter, r *http.Request) {
+func listUsers(helloRepository Repository) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		result := container.Repository.ListAll(r.Context())
+		result := helloRepository.ListAll(r.Context())
 		response := ""
 		for i, value := range result {
 			response += value.ToString()
@@ -53,7 +53,7 @@ func listUsers(container Container) func(w http.ResponseWriter, r *http.Request)
 				response += ", "
 			}
 		}
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(response))
-		w.WriteHeader(200)
 	}
 }
