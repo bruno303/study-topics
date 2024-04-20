@@ -25,13 +25,15 @@ func NewHelloRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository
 }
 
 func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
-	ent := *entity
-	tx := r.getTransactionOrNil(ctx)
+	const sql = "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)"
 	var err error = nil
+	var params = []any{entity.Id, entity.Name, entity.Age}
+
+	tx := r.getTransactionOrNil(ctx)
 	if tx == nil {
-		_, err = r.pool.Exec(ctx, "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)", ent.Id, ent.Name, ent.Age)
+		_, err = r.pool.Exec(ctx, sql, params...)
 	} else {
-		_, err = (*tx).Exec(ctx, "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)", ent.Id, ent.Name, ent.Age)
+		_, err = (*tx).Exec(ctx, sql, params...)
 	}
 
 	if err != nil {
@@ -41,26 +43,28 @@ func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*he
 }
 
 func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
+	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1"
 	strId := id.(string)
 	tx := r.getTransactionOrNil(ctx)
 
 	if tx == nil {
-		row := r.pool.QueryRow(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1", strId)
+		row := r.pool.QueryRow(ctx, sql, strId)
 		return r.mapRow(&row)
 	} else {
-		row := (*tx).QueryRow(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1", strId)
+		row := (*tx).QueryRow(ctx, sql, strId)
 		return r.mapRow(&row)
 	}
 }
 
 func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
+	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA"
 	var rows pgx.Rows = nil
 	var err error = nil
 	tx := r.getTransactionOrNil(ctx)
 	if tx == nil {
-		rows, err = r.pool.Query(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA")
+		rows, err = r.pool.Query(ctx, sql)
 	} else {
-		rows, err = (*tx).Query(ctx, "SELECT ID, NAME, AGE FROM HELLO_DATA")
+		rows, err = (*tx).Query(ctx, sql)
 	}
 
 	if err != nil {

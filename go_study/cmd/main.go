@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"main/internal/config"
 	"main/internal/hello"
 	"net/http"
 )
@@ -13,8 +14,11 @@ func main() {
 }
 
 func initialize(ctx context.Context) {
-	// channel = make(chan struct{})
-	container := NewContainer(ctx)
+	cfg := config.LoadConfig()
+	container := NewContainer(ctx, cfg)
+	go startKafkaConsumers(container)
+	startProducer(container)
+
 	server := http.NewServeMux()
 	hello.SetupApi(server, container.Services.HelloService, container.Repositories.HelloRepository)
 
@@ -22,6 +26,18 @@ func initialize(ctx context.Context) {
 	if err := http.ListenAndServe(":8080", server); err != nil {
 		fmt.Printf("Got error: %v", err)
 	}
+}
+
+func startKafkaConsumers(container *Container) {
+	for _, cons := range container.Kafka.Consumers {
+		if err := cons.Start(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func startProducer(container *Container) {
+	container.Workers.HelloProducerWorker.Start()
 }
 
 // func main() {
