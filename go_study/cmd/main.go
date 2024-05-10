@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"main/internal/config"
 	"main/internal/hello"
+	"main/internal/infra/utils/shutdown"
 	"net/http"
 )
 
@@ -16,16 +17,32 @@ func main() {
 func initialize(ctx context.Context) {
 	cfg := config.LoadConfig()
 	container := NewContainer(ctx, cfg)
-	go startKafkaConsumers(container)
+	startKafkaConsumers(container)
 	startProducer(container)
+	startApi(container)
+}
 
-	server := http.NewServeMux()
-	hello.SetupApi(server, container.Services.HelloService, container.Repositories.HelloRepository)
+func startApi(container *Container) {
+	router := http.NewServeMux()
+	hello.SetupApi(router, container.Services.HelloService, container.Repositories.HelloRepository)
+	srv := &http.Server{Addr: ":8080", Handler: router}
 
-	fmt.Println("Application started")
-	if err := http.ListenAndServe(":8080", server); err != nil {
-		fmt.Printf("Got error: %v", err)
-	}
+	shutdown.CreateListener(func() {
+		fmt.Println("Stopping API")
+		if err := srv.Shutdown(context.Background()); err != nil {
+			panic(err)
+		}
+	})
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				fmt.Printf("Got error: %v", err)
+			}
+		}
+	}()
+
+	shutdown.AwaitAll()
 }
 
 func startKafkaConsumers(container *Container) {

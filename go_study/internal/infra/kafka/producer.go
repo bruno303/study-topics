@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fmt"
+	"main/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -19,21 +20,39 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 		return Producer{}, err
 	}
 
+	stop := false
+	shutdown.CreateListener(func() {
+		fmt.Println("Stopping producer delivery report")
+		stop = true
+	})
+
 	// Delivery report handler for produced messages
 	go func() {
-		for e := range producer.Events() {
-			switch ev := e.(type) {
-			case *libkafka.Message:
-				if ev.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
-				} else {
-					fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+		for {
+			select {
+			case e := <-producer.Events():
+				switch ev := e.(type) {
+				case *libkafka.Message:
+					if ev.TopicPartition.Error != nil {
+						fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+					} else {
+						fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+					}
+				}
+			default:
+				if stop {
+					producer.Close()
+					return
 				}
 			}
 		}
 	}()
 
 	return Producer{producer: producer}, nil
+}
+
+func (p Producer) Close() {
+	p.producer.Close()
 }
 
 func (p Producer) Produce(msg string, topic string) error {

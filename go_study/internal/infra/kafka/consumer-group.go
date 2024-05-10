@@ -1,14 +1,16 @@
 package kafka
 
+import "main/internal/config"
+
 type ConsumerGroup struct {
 	Consumers []consumer
 	topic     string
 }
 
-func NewConsumerGroup(cfg *Config) (ConsumerGroup, error) {
+func NewConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler MessageHandler) (ConsumerGroup, error) {
 	consumers := make([]consumer, 0, cfg.QntConsumers)
 	for i := 0; i < cfg.QntConsumers; i++ {
-		c, err := newConsumer(cfg)
+		c, err := newConsumer(cfg, handler)
 		if err != nil {
 			return ConsumerGroup{}, err
 		}

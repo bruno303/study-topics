@@ -1,0 +1,14 @@
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  database-name: hello
+kafka:
+  host: localhost:9092
+  consumers:
+    go-study:
+      host: localhost:9092
+      topic: go-study.hello
+      group-id: my-group-1
+      qnt-consumers: 5

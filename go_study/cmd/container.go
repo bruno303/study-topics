@@ -57,13 +57,7 @@ func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryC
 
 func newKafkaContainer(cfg *config.Config, handlers MessageHandlersContainer) KafkaContainer {
 	consumers := []kafka.ConsumerGroup{}
-	consumers = append(consumers, createKafkaConsumerGroup(&kafka.Config{
-		Host:         cfg.Kafka.Host,
-		Topic:        cfg.Kafka.Consumers.GoStudy.Topic,
-		GroupId:      cfg.Kafka.Consumers.GoStudy.GroupId,
-		QntConsumers: cfg.Kafka.Consumers.GoStudy.QntConsumers,
-		Handler:      handlers.Hello,
-	}))
+	consumers = append(consumers, createKafkaConsumerGroup(cfg.Kafka.Consumers.GoStudy, handlers.Hello))
 
 	kafkaProducer, err := kafka.NewProducer(cfg.Kafka.Host)
 	if err != nil {
@@ -76,8 +70,8 @@ func newKafkaContainer(cfg *config.Config, handlers MessageHandlersContainer) Ka
 	}
 }
 
-func createKafkaConsumerGroup(cfg *kafka.Config) kafka.ConsumerGroup {
-	consumer, err := kafka.NewConsumerGroup(cfg)
+func createKafkaConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler kafka.MessageHandler) kafka.ConsumerGroup {
+	consumer, err := kafka.NewConsumerGroup(cfg, handler)
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +84,7 @@ func newMessageHandlersContainer(services ServiceContainer) MessageHandlersConta
 	}
 }
 
-func newWorkerContainer(kafka KafkaContainer, cfg *config.KafkaConfig) WorkerContainer {
+func newWorkerContainer(kafka KafkaContainer, cfg config.KafkaConfig) WorkerContainer {
 	helloProducerWorker := worker.NewHelloProducerWorker(kafka.Producer, cfg.Consumers.GoStudy.Topic)
 	return WorkerContainer{
 		HelloProducerWorker: helloProducerWorker,

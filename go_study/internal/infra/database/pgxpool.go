@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"main/internal/config"
+	"main/internal/infra/utils/shutdown"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -25,14 +24,10 @@ func Connect(config *config.Config) *pgxpool.Pool {
 		os.Exit(1)
 	}
 
-	go func() {
-		exitChan := make(chan os.Signal, 1)
-		signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
-		<-exitChan
+	shutdown.CreateListener(func() {
 		fmt.Println("Closing database pool")
-		// TODO: this close is waiting forever
-		// pool.Close()
-	}()
+		pool.Close()
+	})
 
 	return pool
 }

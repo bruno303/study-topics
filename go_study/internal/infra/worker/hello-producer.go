@@ -3,10 +3,8 @@ package worker
 import (
 	"encoding/json"
 	"fmt"
+	"main/internal/infra/utils/shutdown"
 	"math/rand"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +12,7 @@ import (
 
 type Producer interface {
 	Produce(msg string, topic string) error
+	Close()
 }
 
 type HelloProducerWorker struct {
@@ -31,23 +30,25 @@ type helloKafkaMsg struct {
 }
 
 func (w HelloProducerWorker) Start() {
-	stopChan := make(chan os.Signal, 1)
-	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
+	run := true
+	nextTick := time.NewTicker(5 * time.Millisecond)
+
+	shutdown.CreateListener(func() {
+		fmt.Println("Stopping producer")
+		nextTick.Stop()
+		run = false
+	})
 
 	go func() {
-		nextTick := time.After(1 * time.Second)
-		for {
-			select {
-			case <-stopChan:
-				fmt.Println("Stopping producer")
+		for range nextTick.C {
+			if !run {
 				return
-			case <-nextTick:
-				fmt.Println("Producing message")
-				_ = w.produceMessage()
-				nextTick = time.After(1 * time.Second)
 			}
+			_ = w.produceMessage()
 		}
 	}()
+
+	fmt.Println("HelloProducerWorker started")
 }
 
 func (w HelloProducerWorker) produceMessage() error {
