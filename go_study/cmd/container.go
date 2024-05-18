@@ -84,8 +84,11 @@ func newMessageHandlersContainer(services ServiceContainer) MessageHandlersConta
 	}
 }
 
-func newWorkerContainer(kafka KafkaContainer, cfg config.KafkaConfig) WorkerContainer {
-	helloProducerWorker := worker.NewHelloProducerWorker(kafka.Producer, cfg.Consumers.GoStudy.Topic)
+func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContainer {
+	helloProducerWorker := worker.NewHelloProducerWorker(
+		kafka.Producer,
+		cfg.Workers.HelloProducer,
+	)
 	return WorkerContainer{
 		HelloProducerWorker: helloProducerWorker,
 	}
@@ -98,7 +101,7 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	services := newServiceContainer(repositories)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)
-	worker := newWorkerContainer(kafka, cfg.Kafka)
+	worker := newWorkerContainer(kafka, cfg)
 
 	return &Container{
 		Config:          cfg,

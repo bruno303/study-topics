@@ -3,6 +3,7 @@ package worker
 import (
 	"encoding/json"
 	"fmt"
+	"main/internal/config"
 	"main/internal/infra/utils/shutdown"
 	"math/rand"
 	"time"
@@ -17,11 +18,14 @@ type Producer interface {
 
 type HelloProducerWorker struct {
 	producer Producer
-	topic    string
+	cfg      config.HelloProducerConfig
 }
 
-func NewHelloProducerWorker(producer Producer, topic string) HelloProducerWorker {
-	return HelloProducerWorker{producer: producer, topic: topic}
+func NewHelloProducerWorker(producer Producer, cfg config.HelloProducerConfig) HelloProducerWorker {
+	return HelloProducerWorker{
+		producer: producer,
+		cfg:      cfg,
+	}
 }
 
 type helloKafkaMsg struct {
@@ -31,7 +35,7 @@ type helloKafkaMsg struct {
 
 func (w HelloProducerWorker) Start() {
 	run := true
-	nextTick := time.NewTicker(5 * time.Millisecond)
+	nextTick := time.NewTicker(time.Duration(w.cfg.IntervalMillis) * time.Millisecond)
 
 	shutdown.CreateListener(func() {
 		fmt.Println("Stopping producer")
@@ -60,5 +64,5 @@ func (w HelloProducerWorker) produceMessage() error {
 	if err != nil {
 		return err
 	}
-	return w.producer.Produce(string(bytes), w.topic)
+	return w.producer.Produce(string(bytes), w.cfg.Topic)
 }

@@ -11,4 +11,8 @@ kafka:
       host: localhost:9092
       topic: go-study.hello
       group-id: my-group-1
-      qnt-consumers: 5
+      qnt-consumers: 10
+workers:
+  hello-producer:
+    topic: go-study.hello
+    interval-millis: 5

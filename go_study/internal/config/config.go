@@ -14,7 +14,10 @@ type Config struct {
 		Port         int    `yaml:"port"`
 		DatabaseName string `yaml:"database-name"`
 	} `yaml:"database"`
-	Kafka KafkaConfig
+	Kafka   KafkaConfig `yaml:"kafka"`
+	Workers struct {
+		HelloProducer HelloProducerConfig `yaml:"hello-producer"`
+	} `yaml:"workers"`
 }
 
 type KafkaConfig struct {
@@ -31,6 +34,11 @@ type KafkaConsumerConfigDetail struct {
 	Topic        string `yaml:"topic"`
 	GroupId      string `yaml:"group-id"`
 	QntConsumers int    `yaml:"qnt-consumers"`
+}
+
+type HelloProducerConfig struct {
+	IntervalMillis int64  `yaml:"interval-millis"`
+	Topic          string `yaml:"topic"`
 }
 
 func LoadConfig() *Config {
