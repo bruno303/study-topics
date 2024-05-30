@@ -3,8 +3,10 @@ package hello
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"main/internal/infra/observability/trace"
 )
+
+var tracer = trace.GetTracer("HelloService")
 
 type Repository interface {
 	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
@@ -24,41 +26,30 @@ func NewService(repo Repository) HelloService {
 	return HelloService{repository: repo}
 }
 
-func (s HelloService) HelloV1(ctx context.Context, id int) string {
-	// fmt.Println("Executing service")
-
-	ctxWithTransaction, err := s.repository.BeginTransactionWithContext(ctx)
-	if err != nil {
-		panic(1)
-	}
-	defer s.repository.Rollback(ctxWithTransaction)
-
-	s.repository.Save(ctxWithTransaction, &HelloData{Id: strconv.Itoa(id), Name: fmt.Sprintf("Bruno %v", id)})
-
-	// go s.listAll(ctxWithTransaction)
-	found, err := s.repository.FindById(ctxWithTransaction, strconv.Itoa(id))
-	if err != nil {
-		return err.Error()
-	}
-	fmt.Printf("Data: %v\n", found)
-	s.repository.Commit(ctxWithTransaction)
-	return found.Name
-}
-
 func (s HelloService) Hello(ctx context.Context, id string, age int) string {
+	ctx, spanOut := tracer.StartSpan(ctx, "Hello")
+	spanOut.SetAttributes(trace.Attribute("id", id))
+	defer spanOut.End()
+
 	data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
+		ctxTx, span := tracer.StartSpan(ctxTx, "HelloInTransaction")
+		span.SetAttributes(trace.Attribute("id", id))
+		defer span.End()
 		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
 		helloAdded, err := s.repository.Save(ctxTx, &newHello)
 		if err != nil {
+			span.SetError(err)
 			return nil, err
 		}
 		helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
 		if err != nil {
+			span.SetError(err)
 			return nil, err
 		}
 		return helloFound, nil
 	})
 	if err != nil {
+		spanOut.SetError(err)
 		return err.Error()
 	}
 	return data.ToString()

@@ -1,16 +1,20 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"main/internal/config"
+	"main/internal/infra/observability/trace"
 	"main/internal/infra/utils/shutdown"
 	"time"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
+var tracerConsumer = trace.GetTracer("KafkaConsumer")
+
 type MessageHandler interface {
-	Process(msg string) error
+	Process(ctx context.Context, msg string) error
 }
 
 type consumer struct {
@@ -53,17 +57,23 @@ func (c consumer) Start() error {
 	go func() {
 		defer c.c.Close()
 		for run {
+			ctx := context.Background()
+
+			ctx, span := tracerConsumer.StartSpan(ctx, "ReadMessage")
+			defer span.End()
+
 			msg, err := c.c.ReadMessage(time.Second)
 			if err == nil {
 				fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 				go func() {
-					c.handler.Process(string(msg.Value))
+					c.handler.Process(ctx, string(msg.Value))
 					fmt.Printf("Message processed: %s\n", msg.TopicPartition)
 					go func() {
 						c.c.CommitMessage(msg)
 					}()
 				}()
 			} else if !err.(libkafka.Error).IsTimeout() {
+				span.SetError(err)
 				fmt.Printf("Consumer error: %v (%v)\n", err, msg)
 			}
 		}

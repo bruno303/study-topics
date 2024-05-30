@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"main/internal/infra/observability/trace"
 	"sync"
 )
 
@@ -13,7 +14,10 @@ type transaction struct {
 	commited bool
 }
 
-var txKeyMemDb = transactionKeyMemDb{key: "my-app.repository.tx"}
+var (
+	txKeyMemDb  = transactionKeyMemDb{key: "my-app.repository.tx"}
+	memdbTracer = trace.GetTracer("MemDbRepository")
+)
 
 type Keyer interface {
 	Key() string
@@ -34,20 +38,31 @@ func NewMemDbRepository[E Entity]() *MemDbRepository[E] {
 }
 
 func (repo MemDbRepository[E]) FindById(ctx context.Context, id any) (*E, error) {
+	_, span := memdbTracer.StartSpan(ctx, "FindById")
+	span.SetAttributes(trace.Attribute("id", id.(string)))
+	defer span.End()
 	value, ok := repo.data.Load(id)
 	if !ok {
-		return new(E), fmt.Errorf("entity with id %v not found", id)
+		err := fmt.Errorf("entity with id %v not found", id)
+		span.SetError(err)
+		return new(E), err
 	}
 	valuePtr := value.(E)
 	return &valuePtr, nil
 }
 
 func (repo MemDbRepository[E]) Save(ctx context.Context, entity *E) (*E, error) {
-	repo.data.Store((*entity).Key(), entity)
+	_, span := memdbTracer.StartSpan(ctx, "FindById")
+	key := (*entity).Key()
+	span.SetAttributes(trace.Attribute("id", key))
+	defer span.End()
+	repo.data.Store(key, entity)
 	return entity, nil
 }
 
 func (repo MemDbRepository[E]) ListAll(ctx context.Context) []E {
+	_, span := memdbTracer.StartSpan(ctx, "ListAll")
+	defer span.End()
 	list := []E{}
 	repo.data.Range(func(key any, value any) bool {
 		list = append(list, value.(E))
@@ -57,10 +72,14 @@ func (repo MemDbRepository[E]) ListAll(ctx context.Context) []E {
 }
 
 func (repo MemDbRepository[E]) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
+	ctx, span := memdbTracer.StartSpan(ctx, "BeginTransactionWithContext")
+	defer span.End()
 	return context.WithValue(ctx, txKeyMemDb, &transaction{tx: struct{}{}, commited: false}), nil
 }
 
 func (repo MemDbRepository[E]) Commit(ctx context.Context) {
+	ctx, span := memdbTracer.StartSpan(ctx, "Commit")
+	defer span.End()
 	tx, ok := repo.getTransactionFromContext(ctx)
 	if !ok {
 		return
@@ -74,6 +93,8 @@ func (repo MemDbRepository[E]) Commit(ctx context.Context) {
 }
 
 func (repo MemDbRepository[E]) Rollback(ctx context.Context) {
+	ctx, span := memdbTracer.StartSpan(ctx, "Rollback")
+	defer span.End()
 	tx, ok := repo.getTransactionFromContext(ctx)
 	if !ok {
 		return
@@ -86,6 +107,8 @@ func (repo MemDbRepository[E]) Rollback(ctx context.Context) {
 }
 
 func (repo MemDbRepository[E]) getTransactionFromContext(ctx context.Context) (*transaction, bool) {
+	ctx, span := memdbTracer.StartSpan(ctx, "getTransactionFromContext")
+	defer span.End()
 	txValue := ctx.Value(txKeyMemDb)
 	if txValue == nil {
 		return new(transaction), false
@@ -94,12 +117,15 @@ func (repo MemDbRepository[E]) getTransactionFromContext(ctx context.Context) (*
 }
 
 func (repo MemDbRepository[E]) RunWithTransaction(ctx context.Context, callback func(context.Context) (*E, error)) (*E, error) {
-	ctxTx, _ := repo.BeginTransactionWithContext(ctx)
-	defer repo.Rollback(ctxTx)
-	result, err := callback(ctxTx)
+	ctx, span := memdbTracer.StartSpan(ctx, "RunWithTransaction")
+	defer span.End()
+	ctx, _ = repo.BeginTransactionWithContext(ctx)
+	defer repo.Rollback(ctx)
+	result, err := callback(ctx)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
-	repo.Commit(ctxTx)
+	repo.Commit(ctx)
 	return result, nil
 }

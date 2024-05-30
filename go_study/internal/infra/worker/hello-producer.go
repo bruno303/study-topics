@@ -1,9 +1,11 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"main/internal/config"
+	"main/internal/infra/observability/trace"
 	"main/internal/infra/utils/shutdown"
 	"math/rand"
 	"time"
@@ -11,8 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
+var tracer = trace.GetTracer("HelloProducerWorker")
+
 type Producer interface {
-	Produce(msg string, topic string) error
+	Produce(ctx context.Context, msg string, topic string) error
 	Close()
 }
 
@@ -48,21 +52,24 @@ func (w HelloProducerWorker) Start() {
 			if !run {
 				return
 			}
-			_ = w.produceMessage()
+			_ = w.produceMessage(context.Background())
 		}
 	}()
 
 	fmt.Println("HelloProducerWorker started")
 }
 
-func (w HelloProducerWorker) produceMessage() error {
+func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
+	ctx, span := tracer.StartSpan(ctx, "produceMessage")
+	defer span.End()
 	msg := helloKafkaMsg{
 		Id:  uuid.NewString(),
 		Age: rand.Intn(150),
 	}
+	span.SetAttributes(trace.Attribute("id", msg.Id))
 	bytes, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	return w.producer.Produce(string(bytes), w.cfg.Topic)
+	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
 }

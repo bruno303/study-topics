@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"main/internal/config"
 	"main/internal/hello"
 	"main/internal/infra/utils/shutdown"
 	"net/http"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
@@ -17,6 +20,15 @@ func main() {
 func initialize(ctx context.Context) {
 	cfg := config.LoadConfig()
 	container := NewContainer(ctx, cfg)
+
+	otelShutdown, err := SetupOTelSDK(ctx, cfg)
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
+
 	startKafkaConsumers(container)
 	startProducer(container)
 	startApi(container)
@@ -25,7 +37,7 @@ func initialize(ctx context.Context) {
 func startApi(container *Container) {
 	router := http.NewServeMux()
 	hello.SetupApi(router, container.Services.HelloService, container.Repositories.HelloRepository)
-	srv := &http.Server{Addr: ":8080", Handler: router}
+	srv := &http.Server{Addr: ":8080", Handler: otelhttp.NewHandler(router, "/")}
 
 	shutdown.CreateListener(func() {
 		fmt.Println("Stopping API")
@@ -56,19 +68,3 @@ func startKafkaConsumers(container *Container) {
 func startProducer(container *Container) {
 	container.Workers.HelloProducerWorker.Start()
 }
-
-// func main() {
-// 	initialize()
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(100)
-// 	defer wg.Wait()
-
-// 	for i := 0; i < 100; i++ {
-// 		age := i
-// 		go func() {
-// 			result := Container.Hello.Service.Hello(context.Background(), uuid.NewString(), age)
-// 			fmt.Println(result)
-// 			wg.Done()
-// 		}()
-// 	}
-// }

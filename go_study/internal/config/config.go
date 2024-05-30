@@ -7,6 +7,13 @@ import (
 )
 
 type Config struct {
+	Application struct {
+		Name       string `yaml:"name"`
+		Version    string `yaml:"version"`
+		Monitoring struct {
+			TraceUrl string `yaml:"trace-url"`
+		} `yaml:"monitoring"`
+	} `yaml:"app"`
 	Database struct {
 		Host         string `yaml:"host"`
 		User         string `yaml:"user"`
