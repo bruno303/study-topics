@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"main/internal/config"
 	"main/internal/hello"
@@ -19,19 +18,24 @@ func main() {
 
 func initialize(ctx context.Context) {
 	cfg := config.LoadConfig()
-	container := NewContainer(ctx, cfg)
-
-	otelShutdown, err := SetupOTelSDK(ctx, cfg)
-	if err != nil {
-		return
-	}
+	otelShutdown := configureObservability(ctx, cfg)
 	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
+		otelShutdown(context.Background())
 	}()
+
+	container := NewContainer(ctx, cfg)
 
 	startKafkaConsumers(container)
 	startProducer(container)
 	startApi(container)
+}
+
+func configureObservability(ctx context.Context, cfg *config.Config) func(context.Context) error {
+	otelShutdown, err := SetupOTelSDK(ctx, cfg)
+	if err != nil {
+		panic(err)
+	}
+	return otelShutdown
 }
 
 func startApi(container *Container) {

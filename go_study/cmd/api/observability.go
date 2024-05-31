@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"main/internal/config"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
 
 func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(context.Context) error, err error) {
@@ -50,13 +53,28 @@ func newPropagator() propagation.TextMapPropagator {
 }
 
 func newTraceProvider(cfg *config.Config) (*trace.TracerProvider, error) {
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName(cfg.Application.Name),
+			semconv.ServiceVersion(cfg.Application.Version),
+		),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
 	traceExporter, err := zipkin.New(cfg.Application.Monitoring.TraceUrl)
+	fmt.Println(cfg.Application.Monitoring.TraceUrl)
 	if err != nil {
 		return nil, err
 	}
 
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(5*time.Second)),
+		trace.WithResource(res),
 	)
 	return traceProvider, nil
 }

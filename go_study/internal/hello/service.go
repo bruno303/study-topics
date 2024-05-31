@@ -3,10 +3,8 @@ package hello
 import (
 	"context"
 	"fmt"
-	"main/internal/infra/observability/trace"
+	"main/internal/crosscutting/observability"
 )
-
-var tracer = trace.GetTracer("HelloService")
 
 type Repository interface {
 	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
@@ -27,38 +25,32 @@ func NewService(repo Repository) HelloService {
 }
 
 func (s HelloService) Hello(ctx context.Context, id string, age int) string {
-	ctx, spanOut := tracer.StartSpan(ctx, "Hello")
-	spanOut.SetAttributes(trace.Attribute("id", id))
-	defer spanOut.End()
 
-	data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
-		ctxTx, span := tracer.StartSpan(ctxTx, "HelloInTransaction")
-		span.SetAttributes(trace.Attribute("id", id))
-		defer span.End()
-		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-		helloAdded, err := s.repository.Save(ctxTx, &newHello)
-		if err != nil {
-			span.SetError(err)
-			return nil, err
-		}
-		helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
-		if err != nil {
-			span.SetError(err)
-			return nil, err
-		}
-		return helloFound, nil
-	})
-	if err != nil {
-		spanOut.SetError(err)
-		return err.Error()
-	}
-	return data.ToString()
+	return observability.TraceWithResultAndAttr(
+		ctx,
+		"HelloService",
+		"Hello",
+		func(ctx context.Context, sm observability.SpanModifier) string {
+
+			data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
+				newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
+				helloAdded, err := s.repository.Save(ctxTx, &newHello)
+				if err != nil {
+					sm.HandleError(err)
+					return nil, err
+				}
+				helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
+				if err != nil {
+					sm.HandleError(err)
+					return nil, err
+				}
+				return helloFound, nil
+			})
+			if err != nil {
+				sm.HandleError(err)
+				return err.Error()
+			}
+			return data.ToString()
+		},
+	)
 }
-
-// func (s HelloService) listAll(ctx context.Context) {
-// 	list := s.repository.ListAll(ctx)
-// 	fmt.Printf("Printing %v rows\n", len(list))
-// 	for i := range list {
-// 		fmt.Printf("Data: %v\n", list[i])
-// 	}
-// }

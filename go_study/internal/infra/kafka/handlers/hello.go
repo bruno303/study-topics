@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"main/internal/crosscutting/observability"
 	"main/internal/hello"
-	"main/internal/infra/observability/trace"
 )
-
-var tracer = trace.GetTracer("HelloMessageHandler")
 
 type HelloMessageHandler struct {
 	helloService hello.HelloService
@@ -24,16 +22,14 @@ type helloKafkaMsg struct {
 }
 
 func (mh HelloMessageHandler) Process(ctx context.Context, msg string) error {
-	ctx, span := tracer.StartSpan(ctx, "Process")
-	defer span.End()
-
-	hello := new(helloKafkaMsg)
-	if err := json.Unmarshal([]byte(msg), hello); err != nil {
-		fmt.Printf("Error during message serialization: %v", err)
-		span.SetError(err)
-		return err
-	}
-	result := mh.helloService.Hello(ctx, hello.Id, hello.Age)
-	fmt.Printf("Result: %s\n", result)
-	return nil
+	return observability.WithTracingResult(ctx, "HelloMessageHandler", "Process", func(ctx context.Context) error {
+		hello := new(helloKafkaMsg)
+		if err := json.Unmarshal([]byte(msg), hello); err != nil {
+			fmt.Printf("Error during message serialization: %v", err)
+			return err
+		}
+		result := mh.helloService.Hello(ctx, hello.Id, hello.Age)
+		fmt.Printf("Result: %s\n", result)
+		return nil
+	})
 }

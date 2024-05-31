@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"main/internal/config"
-	"main/internal/infra/observability/trace"
+	"main/internal/crosscutting/observability"
 	"main/internal/infra/utils/shutdown"
 	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-var tracer = trace.GetTracer("HelloProducerWorker")
 
 type Producer interface {
 	Produce(ctx context.Context, msg string, topic string) error
@@ -60,16 +58,20 @@ func (w HelloProducerWorker) Start() {
 }
 
 func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
-	ctx, span := tracer.StartSpan(ctx, "produceMessage")
-	defer span.End()
-	msg := helloKafkaMsg{
-		Id:  uuid.NewString(),
-		Age: rand.Intn(150),
-	}
-	span.SetAttributes(trace.Attribute("id", msg.Id))
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
+	return observability.WithTracingResult(
+		ctx,
+		"HelloProducerWorker",
+		"produceMessage",
+		func(ctx context.Context) error {
+			msg := helloKafkaMsg{
+				Id:  uuid.NewString(),
+				Age: rand.Intn(150),
+			}
+			bytes, err := json.Marshal(msg)
+			if err != nil {
+				return err
+			}
+			return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
+		},
+	)
 }

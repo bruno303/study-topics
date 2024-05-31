@@ -41,6 +41,7 @@ type KafkaConsumerConfigDetail struct {
 	Topic        string `yaml:"topic"`
 	GroupId      string `yaml:"group-id"`
 	QntConsumers int    `yaml:"qnt-consumers"`
+	TraceEnabled bool   `yaml:"trace-enabled"`
 }
 
 type HelloProducerConfig struct {

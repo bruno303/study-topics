@@ -3,13 +3,11 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"main/internal/infra/observability/trace"
+	"main/internal/crosscutting/observability"
 	"main/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
-
-var tracerProducer = trace.GetTracer("Producer")
 
 type Producer struct {
 	producer *libkafka.Producer
@@ -60,10 +58,13 @@ func (p Producer) Close() {
 }
 
 func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
-	_, span := tracerProducer.StartSpan(ctx, "Produce")
-	defer span.End()
-	return p.producer.Produce(&libkafka.Message{
-		TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
-		Value:          []byte(msg),
-	}, nil)
+	return observability.WithTracingResult(ctx, "KafkaProducer", "Produce", func(ctx context.Context) error {
+		return p.producer.Produce(
+			&libkafka.Message{
+				TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
+				Value:          []byte(msg),
+			},
+			nil,
+		)
+	})
 }

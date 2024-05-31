@@ -1,4 +1,4 @@
-export OTEL_RESOURCE_ATTRIBUTES=service.name=go-study,service.version=0.1.0
+# export OTEL_RESOURCE_ATTRIBUTES=service.name=go-study,service.version=0.1.0
 
 run-cli:
 	go run cmd/cli/*.go

@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"main/internal/config"
-	"main/internal/infra/observability/trace"
+	"main/internal/crosscutting/observability"
 	"main/internal/infra/utils/shutdown"
 	"time"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
-
-var tracerConsumer = trace.GetTracer("KafkaConsumer")
 
 type MessageHandler interface {
 	Process(ctx context.Context, msg string) error
@@ -21,6 +19,7 @@ type consumer struct {
 	c       *libkafka.Consumer
 	topic   string
 	handler MessageHandler
+	cfg     config.KafkaConsumerConfigDetail
 }
 
 func newConsumer(cfg config.KafkaConsumerConfigDetail, handler MessageHandler) (consumer, error) {
@@ -39,6 +38,7 @@ func newConsumer(cfg config.KafkaConsumerConfigDetail, handler MessageHandler) (
 		c:       kc,
 		topic:   cfg.Topic,
 		handler: handler,
+		cfg:     cfg,
 	}, nil
 }
 
@@ -58,27 +58,48 @@ func (c consumer) Start() error {
 		defer c.c.Close()
 		for run {
 			ctx := context.Background()
-
-			ctx, span := tracerConsumer.StartSpan(ctx, "ReadMessage")
-			defer span.End()
-
-			msg, err := c.c.ReadMessage(time.Second)
-			if err == nil {
-				fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
-				go func() {
-					c.handler.Process(ctx, string(msg.Value))
-					fmt.Printf("Message processed: %s\n", msg.TopicPartition)
-					go func() {
-						c.c.CommitMessage(msg)
-					}()
-				}()
-			} else if !err.(libkafka.Error).IsTimeout() {
-				span.SetError(err)
-				fmt.Printf("Consumer error: %v (%v)\n", err, msg)
+			if c.cfg.TraceEnabled {
+				observability.TraceWithAttr(ctx, "KafkaConsumer", "ReadMessage", func(ctx context.Context, sm observability.SpanModifier) {
+					c.readMessage(ctx, sm)
+				})
+			} else {
+				c.readMessage(ctx, observability.NoOpSpanModifier{})
 			}
 		}
 	}()
 
 	fmt.Printf("Consumer for topic %s started\n", c.topic)
 	return nil
+}
+
+func (c consumer) readMessage(ctx context.Context, sm observability.SpanModifier) {
+	msg, err := c.c.ReadMessage(time.Second)
+	if err == nil {
+		fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
+		go func() {
+			observability.WithTracing(ctx, "KafkaConsumer", "ProcessMessage", func(ctx context.Context) {
+				c.handler.Process(ctx, string(msg.Value))
+				fmt.Printf("Message processed: %s\n", msg.TopicPartition)
+				c.commitMessage(ctx, msg)
+			})
+		}()
+	} else {
+		sm.HandleError(err)
+		if !err.(libkafka.Error).IsTimeout() {
+			fmt.Printf("Consumer error: %v (%v)\n", err, msg)
+		}
+	}
+}
+
+func (c consumer) commitMessage(ctx context.Context, msg *libkafka.Message) {
+	go func() {
+		observability.WithTracing(
+			ctx,
+			"KafkaConsumer",
+			"CommitMessage",
+			func(ctx context.Context) {
+				c.c.CommitMessage(msg)
+			},
+		)
+	}()
 }

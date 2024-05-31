@@ -17,6 +17,7 @@ kafka:
       topic: go-study.hello
       group-id: my-group-1
       qnt-consumers: 10
+      trace-enabled: false
 workers:
   hello-producer:
     topic: go-study.hello
