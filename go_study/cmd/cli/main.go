@@ -4,37 +4,59 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"log/slog"
-	"main/pkg/log"
+	"main/internal/config"
+	"main/internal/crosscutting/observability/log"
+	"main/internal/crosscutting/observability/log/slog"
+	"main/internal/crosscutting/observability/trace"
+	"main/internal/crosscutting/observability/trace/otel"
+	"main/internal/infra/observability"
+	"strings"
 )
 
 func main() {
 	ctx := context.Background()
-	configureLog()
-	ctx = log.AddToCtx(log.AddToCtx(ctx, "traceId", "1234567789"), "spanId", "987654321")
+	cfg := config.LoadConfig()
+	shutdown, err := observability.SetupOTelSDK(ctx, cfg)
+	panicIfErr(err)
+	defer shutdown(ctx)
+
+	configureLog(cfg)
+	trace.SetTracer(otel.NewOtelTracerAdapter())
+
+	ctx, end := trace.Trace(ctx, trace.NameConfig("Main", "Execution"))
+	defer end()
 
 	name := flag.String("name", "world", "Inform your name")
 	flag.Parse()
 
-	log.Debug(ctx, "Hello, debug")
-	log.Info(ctx, "Hello, %s", *name)
-	log.Warn(ctx, "Warning")
-	log.Error(ctx, "Error while trying this", errors.New("test"))
+	log.Log().Debug(ctx, "Hello, debug")
+	log.Log().Info(ctx, "Hello, %s", *name)
+	log.Log().Warn(ctx, "Warning")
+	log.Log().Error(ctx, "Error while trying this", errors.New("test"))
 
-	log.Info(context.Background(), "*****************************************************")
+	log.Log().Error(context.Background(), "*****************************************************", errors.New(""))
 
-	log.SetLevel(slog.LevelWarn)
-	log.Debug(ctx, "Hello, debug")
-	log.Info(ctx, "Hello, %s", *name)
-	log.Warn(ctx, "Warning")
-	log.Error(ctx, "Error while trying this", errors.New("test"))
+	if err := log.Log().SetLevel(log.LevelDebug); err != nil {
+		panic(err)
+	}
+
+	log.Log().Debug(ctx, "Hello, debug")
+	log.Log().Info(ctx, "Hello, %s", *name)
+	log.Log().Warn(ctx, "Warning")
+	log.Log().Error(ctx, "Error while trying this", errors.New("test"))
 }
 
-func configureLog() {
-	cfg := log.LogConfig{
-		Level:  slog.LevelDebug,
-		Output: log.OUTPUT_TEXT,
-		CtxKey: log.CtxKey,
+func configureLog(cfg *config.Config) {
+	l := slog.NewSlogAdapter(slog.SlogAdapterOpts{
+		Level:      log.LevelWarn,
+		FormatJson: strings.ToUpper(cfg.Application.Log.Format) == "JSON",
+	})
+	log.SetLogger(l)
+	// log.SetLogger(log.NewDefaultLogger(log.LevelWarn))
+}
+
+func panicIfErr(err error) {
+	if err != nil {
+		panic(err)
 	}
-	log.SetDefaultLogger(log.NewSlogLogger(&cfg))
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"main/internal/config"
+	"main/internal/crosscutting/observability/log"
 	"main/internal/infra/utils/shutdown"
 	"os"
 
@@ -16,16 +17,16 @@ func Connect(config *config.Config) *pgxpool.Pool {
 	connectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DatabaseName)
 	pool, err := pgxpool.New(ctx, connectionString)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		log.Log().Error(ctx, "Unable to create connection pool", err)
 		os.Exit(1)
 	}
 	if err = pool.Ping(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to %s:%d: %v\n", cfg.Host, cfg.Port, err)
+		log.Log().Error(ctx, fmt.Sprintf("Unable to connect to %s:%d", cfg.Host, cfg.Port), err)
 		os.Exit(1)
 	}
 
 	shutdown.CreateListener(func() {
-		fmt.Println("Closing database pool")
+		log.Log().Info(ctx, "Closing database pool")
 		pool.Close()
 	})
 

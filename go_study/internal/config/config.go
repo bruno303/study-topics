@@ -8,11 +8,20 @@ import (
 
 type Config struct {
 	Application struct {
-		Name       string `yaml:"name"`
-		Version    string `yaml:"version"`
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
+		Hello   struct {
+			Api struct {
+				Enabled bool `yaml:"enabled"`
+			} `yaml:"api"`
+		} `yaml:"hello"`
 		Monitoring struct {
 			TraceUrl string `yaml:"trace-url"`
 		} `yaml:"monitoring"`
+		Log struct {
+			Level  string `yaml:"level"`
+			Format string `yaml:"format"`
+		} `yaml:"log"`
 	} `yaml:"app"`
 	Database struct {
 		Host         string `yaml:"host"`
@@ -42,11 +51,13 @@ type KafkaConsumerConfigDetail struct {
 	GroupId      string `yaml:"group-id"`
 	QntConsumers int    `yaml:"qnt-consumers"`
 	TraceEnabled bool   `yaml:"trace-enabled"`
+	Enabled      bool   `yaml:"enabled"`
 }
 
 type HelloProducerConfig struct {
 	IntervalMillis int64  `yaml:"interval-millis"`
 	Topic          string `yaml:"topic"`
+	Enabled        bool   `yaml:"enabled"`
 }
 
 func LoadConfig() *Config {

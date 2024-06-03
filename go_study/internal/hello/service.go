@@ -3,8 +3,10 @@ package hello
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability"
+	"main/internal/crosscutting/observability/trace"
 )
+
+const traceName = "HelloService"
 
 type Repository interface {
 	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
@@ -25,32 +27,30 @@ func NewService(repo Repository) HelloService {
 }
 
 func (s HelloService) Hello(ctx context.Context, id string, age int) string {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello"))
+	defer end()
 
-	return observability.TraceWithResultAndAttr(
-		ctx,
-		"HelloService",
-		"Hello",
-		func(ctx context.Context, sm observability.SpanModifier) string {
+	data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
 
-			data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
-				newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-				helloAdded, err := s.repository.Save(ctxTx, &newHello)
-				if err != nil {
-					sm.HandleError(err)
-					return nil, err
-				}
-				helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
-				if err != nil {
-					sm.HandleError(err)
-					return nil, err
-				}
-				return helloFound, nil
-			})
-			if err != nil {
-				sm.HandleError(err)
-				return err.Error()
-			}
-			return data.ToString()
-		},
-	)
+		ctxTx, end := trace.Trace(ctxTx, trace.NameConfig(traceName, "HelloTransactional"))
+		defer end()
+
+		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
+		helloAdded, err := s.repository.Save(ctxTx, &newHello)
+		if err != nil {
+			trace.InjectError(ctxTx, err)
+			return nil, err
+		}
+		helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
+		if err != nil {
+			trace.InjectError(ctxTx, err)
+			return nil, err
+		}
+		return helloFound, nil
+	})
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err.Error()
+	}
+	return data.ToString()
 }

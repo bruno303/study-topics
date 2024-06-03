@@ -2,6 +2,7 @@ package hello
 
 import (
 	"fmt"
+	"main/internal/config"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -23,7 +24,10 @@ func HelloHandler() http.Handler {
 	})
 }
 
-func SetupApi(server *http.ServeMux, helloService HelloService, helloRepository Repository) {
+func SetupApi(cfg *config.Config, server *http.ServeMux, helloService HelloService, helloRepository Repository) {
+	if !cfg.Application.Hello.Api.Enabled {
+		return
+	}
 	pattern := "/hello"
 	handler := handleHello(helloService, helloRepository)
 	server.Handle(pattern, withTrace(pattern, handler))

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"main/internal/crosscutting/observability/log"
 	"sync"
 )
 
@@ -68,7 +69,7 @@ func (repo MemDbRepository[E]) Commit(ctx context.Context) {
 	if !ok {
 		return
 	}
-	fmt.Println("Commiting")
+	log.Log().Info(ctx, "Commiting")
 	if tx.commited {
 		return
 	}
@@ -81,7 +82,7 @@ func (repo MemDbRepository[E]) Rollback(ctx context.Context) {
 	if !ok {
 		return
 	}
-	fmt.Printf("Rolling back. Commited: %v\n", tx.commited)
+	log.Log().Info(ctx, "Rolling back. Commited: %v", tx.commited)
 	if tx.commited {
 		return
 	}

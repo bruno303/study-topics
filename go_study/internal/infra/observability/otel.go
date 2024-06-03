@@ -1,9 +1,8 @@
-package main
+package observability
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"main/internal/config"
 	"time"
 
@@ -67,7 +66,6 @@ func newTraceProvider(cfg *config.Config) (*trace.TracerProvider, error) {
 	}
 
 	traceExporter, err := zipkin.New(cfg.Application.Monitoring.TraceUrl)
-	fmt.Println(cfg.Application.Monitoring.TraceUrl)
 	if err != nil {
 		return nil, err
 	}

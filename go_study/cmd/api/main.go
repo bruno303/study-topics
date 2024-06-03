@@ -4,9 +4,15 @@ import (
 	"context"
 	"fmt"
 	"main/internal/config"
+	"main/internal/crosscutting/observability/log"
+	"main/internal/crosscutting/observability/log/slog"
+	"main/internal/crosscutting/observability/trace"
+	"main/internal/crosscutting/observability/trace/otel"
 	"main/internal/hello"
+	"main/internal/infra/observability"
 	"main/internal/infra/utils/shutdown"
 	"net/http"
+	"strings"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -27,24 +33,53 @@ func initialize(ctx context.Context) {
 
 	startKafkaConsumers(container)
 	startProducer(container)
-	startApi(container)
+	startApi(ctx, cfg, container)
+
+	log.Log().Info(ctx, "Application started")
+
+	shutdown.AwaitAll()
 }
 
 func configureObservability(ctx context.Context, cfg *config.Config) func(context.Context) error {
-	otelShutdown, err := SetupOTelSDK(ctx, cfg)
-	if err != nil {
-		panic(err)
+	translateLogLevel := func(source string) (log.Level, error) {
+		switch strings.ToUpper(source) {
+		case "INFO":
+			return log.LevelInfo, nil
+		case "DEBUG":
+			return log.LevelDebug, nil
+		case "WARN":
+			return log.LevelWarn, nil
+		case "ERROR":
+			return log.LevelError, nil
+		default:
+			return log.LevelInfo, fmt.Errorf("LogLevel %s is invalid", source)
+		}
 	}
+
+	logLevel, err := translateLogLevel(cfg.Application.Log.Level)
+	panicIfErr(err)
+	log.SetLogger(
+		slog.NewSlogAdapter(
+			slog.SlogAdapterOpts{
+				Level:      logLevel,
+				FormatJson: strings.ToUpper(cfg.Application.Log.Format) == "JSON",
+			},
+		),
+	)
+	trace.SetTracer(otel.NewOtelTracerAdapter())
+
+	otelShutdown, err := observability.SetupOTelSDK(ctx, cfg)
+	panicIfErr(err)
 	return otelShutdown
 }
 
-func startApi(container *Container) {
+func startApi(ctx context.Context, cfg *config.Config, container *Container) {
 	router := http.NewServeMux()
-	hello.SetupApi(router, container.Services.HelloService, container.Repositories.HelloRepository)
+	hello.SetupApi(cfg, router, container.Services.HelloService, container.Repositories.HelloRepository)
 	srv := &http.Server{Addr: ":8080", Handler: otelhttp.NewHandler(router, "/")}
 
 	shutdown.CreateListener(func() {
-		fmt.Println("Stopping API")
+		log.Log().Info(ctx, "Stopping API")
 		if err := srv.Shutdown(context.Background()); err != nil {
 			panic(err)
 		}
@@ -53,12 +88,10 @@ func startApi(container *Container) {
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				fmt.Printf("Got error: %v", err)
+				log.Log().Error(ctx, "Got error", err)
 			}
 		}
 	}()
-
-	shutdown.AwaitAll()
 }
 
 func startKafkaConsumers(container *Container) {
@@ -71,4 +104,10 @@ func startKafkaConsumers(container *Container) {
 
 func startProducer(container *Container) {
 	container.Workers.HelloProducerWorker.Start()
+}
+
+func panicIfErr(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
