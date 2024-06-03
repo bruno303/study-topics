@@ -2,11 +2,13 @@ package hello
 
 import (
 	"fmt"
+	"main/internal/config"
 	"math/rand"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func HelloHandler() http.Handler {
@@ -22,17 +24,30 @@ func HelloHandler() http.Handler {
 	})
 }
 
-func SetupApi(server *http.ServeMux, helloService HelloService, helloRepository Repository) {
-	server.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+func SetupApi(cfg *config.Config, server *http.ServeMux, helloService HelloService, helloRepository Repository) {
+	if !cfg.Application.Hello.Api.Enabled {
+		return
+	}
+	pattern := "/hello"
+	handler := handleHello(helloService, helloRepository)
+	server.Handle(pattern, withTrace(pattern, handler))
+}
+
+func handleHello(helloService HelloService, helloRepository Repository) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		switch strings.ToUpper(r.Method) {
 		case "GET":
 			listUsers(helloRepository)(w, r)
 		case "POST":
 			postUsers(helloService)(w, r)
 		default:
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	})
+	}
+}
+
+func withTrace(pattern string, h func(w http.ResponseWriter, r *http.Request)) http.Handler {
+	return otelhttp.WithRouteTag(pattern, http.HandlerFunc(h))
 }
 
 func postUsers(helloService HelloService) func(w http.ResponseWriter, r *http.Request) {

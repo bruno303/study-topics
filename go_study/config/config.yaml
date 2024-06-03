@@ -1,3 +1,14 @@
+app:
+  name: go-study
+  version: "0.0.1"
+  log:
+    level: INFO
+    format: TEXT
+  hello:
+    api:
+      enabled: true
+  monitoring:
+    trace-url: http://localhost:9411/api/v2/spans
 database:
   host: localhost
   port: 5432
@@ -12,7 +23,10 @@ kafka:
       topic: go-study.hello
       group-id: my-group-1
       qnt-consumers: 10
+      trace-enabled: false
+      enabled: true
 workers:
   hello-producer:
     topic: go-study.hello
-    interval-millis: 5
+    interval-millis: 1000
+    enabled: true

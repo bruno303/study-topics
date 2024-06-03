@@ -3,7 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"main/internal/crosscutting/observability/log"
+	"main/internal/crosscutting/observability/trace"
 	"main/internal/hello"
 )
 
@@ -20,14 +21,17 @@ type helloKafkaMsg struct {
 	Age int    `json:"age"`
 }
 
-func (mh HelloMessageHandler) Process(msg string) error {
+func (mh HelloMessageHandler) Process(ctx context.Context, msg string) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("HelloMessageHandler", "Process"))
+	defer end()
+
 	hello := new(helloKafkaMsg)
 	if err := json.Unmarshal([]byte(msg), hello); err != nil {
-		fmt.Printf("Error during message serialization: %v", err)
+		log.Log().Error(ctx, "Error during message serialization", err)
+		trace.InjectError(ctx, err)
 		return err
 	}
-	ctx := context.Background()
 	result := mh.helloService.Hello(ctx, hello.Id, hello.Age)
-	fmt.Printf("Result: %s\n", result)
+	log.Log().Info(ctx, "Result: %s", result)
 	return nil
 }

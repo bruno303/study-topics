@@ -16,8 +16,8 @@ func CreateListener(f func()) {
 		signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 		<-exitChan
 		f()
-		wg.Done()
 		close(exitChan)
+		wg.Done()
 	}()
 }
 

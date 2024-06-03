@@ -1,18 +1,22 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"main/internal/config"
+	"main/internal/crosscutting/observability/log"
+	"main/internal/crosscutting/observability/trace"
+	"main/internal/crosscutting/observability/trace/attr"
 	"main/internal/infra/utils/shutdown"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type Producer interface {
-	Produce(msg string, topic string) error
+	Produce(ctx context.Context, msg string, topic string) error
 	Close()
 }
 
@@ -34,11 +38,15 @@ type helloKafkaMsg struct {
 }
 
 func (w HelloProducerWorker) Start() {
+	if !w.cfg.Enabled {
+		log.Log().Info(context.Background(), "HelloProducerWorker disabled")
+		return
+	}
 	run := true
 	nextTick := time.NewTicker(time.Duration(w.cfg.IntervalMillis) * time.Millisecond)
 
 	shutdown.CreateListener(func() {
-		fmt.Println("Stopping producer")
+		log.Log().Info(context.Background(), "Stopping producer")
 		nextTick.Stop()
 		run = false
 	})
@@ -48,21 +56,28 @@ func (w HelloProducerWorker) Start() {
 			if !run {
 				return
 			}
-			_ = w.produceMessage()
+			_ = w.produceMessage(context.Background())
 		}
 	}()
 
-	fmt.Println("HelloProducerWorker started")
+	log.Log().Info(context.Background(), "HelloProducerWorker started")
 }
 
-func (w HelloProducerWorker) produceMessage() error {
+func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("HelloProducerWorker", "produceMessage"))
+	defer end()
+
 	msg := helloKafkaMsg{
 		Id:  uuid.NewString(),
 		Age: rand.Intn(150),
 	}
+
+	trace.InjectAttributes(ctx, attr.New("msg.id", msg.Id), attr.New("msg.age", strconv.Itoa(msg.Age)))
+
 	bytes, err := json.Marshal(msg)
 	if err != nil {
+		trace.InjectError(ctx, err)
 		return err
 	}
-	return w.producer.Produce(string(bytes), w.cfg.Topic)
+	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
 }

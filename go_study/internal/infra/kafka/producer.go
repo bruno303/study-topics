@@ -1,7 +1,9 @@
 package kafka
 
 import (
-	"fmt"
+	"context"
+	"main/internal/crosscutting/observability/log"
+	"main/internal/crosscutting/observability/trace"
 	"main/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -22,7 +24,7 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 
 	stop := false
 	shutdown.CreateListener(func() {
-		fmt.Println("Stopping producer delivery report")
+		log.Log().Info(context.Background(), "Stopping producer delivery report")
 		stop = true
 	})
 
@@ -34,9 +36,9 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 				switch ev := e.(type) {
 				case *libkafka.Message:
 					if ev.TopicPartition.Error != nil {
-						fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+						log.Log().Info(context.Background(), "Delivery failed: %v", ev.TopicPartition)
 					} else {
-						fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+						log.Log().Info(context.Background(), "Delivered message to %v", ev.TopicPartition)
 					}
 				}
 			default:
@@ -55,9 +57,22 @@ func (p Producer) Close() {
 	p.producer.Close()
 }
 
-func (p Producer) Produce(msg string, topic string) error {
-	return p.producer.Produce(&libkafka.Message{
-		TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
-		Value:          []byte(msg),
-	}, nil)
+func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
+	_, end := trace.Trace(ctx, producerTrace("Produce"))
+	defer end()
+	return p.producer.Produce(
+		&libkafka.Message{
+			TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
+			Value:          []byte(msg),
+		},
+		nil,
+	)
+}
+
+func producerTrace(spanName string) *trace.TraceConfig {
+	return &trace.TraceConfig{
+		TraceName: "KafkaProducer",
+		SpanName:  spanName,
+		Kind:      trace.TraceKindProducer,
+	}
 }

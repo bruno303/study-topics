@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"main/internal/crosscutting/observability/log"
 	"sync"
 )
 
@@ -13,7 +14,9 @@ type transaction struct {
 	commited bool
 }
 
-var txKeyMemDb = transactionKeyMemDb{key: "my-app.repository.tx"}
+var (
+	txKeyMemDb = transactionKeyMemDb{key: "my-app.repository.tx"}
+)
 
 type Keyer interface {
 	Key() string
@@ -43,7 +46,8 @@ func (repo MemDbRepository[E]) FindById(ctx context.Context, id any) (*E, error)
 }
 
 func (repo MemDbRepository[E]) Save(ctx context.Context, entity *E) (*E, error) {
-	repo.data.Store((*entity).Key(), entity)
+	key := (*entity).Key()
+	repo.data.Store(key, entity)
 	return entity, nil
 }
 
@@ -65,7 +69,7 @@ func (repo MemDbRepository[E]) Commit(ctx context.Context) {
 	if !ok {
 		return
 	}
-	fmt.Println("Commiting")
+	log.Log().Info(ctx, "Commiting")
 	if tx.commited {
 		return
 	}
@@ -78,7 +82,7 @@ func (repo MemDbRepository[E]) Rollback(ctx context.Context) {
 	if !ok {
 		return
 	}
-	fmt.Printf("Rolling back. Commited: %v\n", tx.commited)
+	log.Log().Info(ctx, "Rolling back. Commited: %v", tx.commited)
 	if tx.commited {
 		return
 	}
@@ -94,12 +98,12 @@ func (repo MemDbRepository[E]) getTransactionFromContext(ctx context.Context) (*
 }
 
 func (repo MemDbRepository[E]) RunWithTransaction(ctx context.Context, callback func(context.Context) (*E, error)) (*E, error) {
-	ctxTx, _ := repo.BeginTransactionWithContext(ctx)
-	defer repo.Rollback(ctxTx)
-	result, err := callback(ctxTx)
+	ctx, _ = repo.BeginTransactionWithContext(ctx)
+	defer repo.Rollback(ctx)
+	result, err := callback(ctx)
 	if err != nil {
 		return nil, err
 	}
-	repo.Commit(ctxTx)
+	repo.Commit(ctx)
 	return result, nil
 }

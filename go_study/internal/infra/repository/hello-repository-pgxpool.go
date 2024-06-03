@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"main/internal/crosscutting/observability/trace"
+	"main/internal/crosscutting/observability/trace/attr"
 	"main/internal/hello"
 
 	"github.com/jackc/pgx/v5"
@@ -18,6 +20,8 @@ type transactionKey struct {
 
 var txKey = transactionKey{name: "db-transaction"}
 
+const traceName = "HelloRepository"
+
 func NewHelloRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
 	return HelloRepository{
 		pool: pool,
@@ -25,6 +29,11 @@ func NewHelloRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository
 }
 
 func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Save"))
+	defer end()
+
+	trace.InjectAttributes(ctx, attr.New("id", entity.Id))
+
 	const sql = "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)"
 	var err error = nil
 	var params = []any{entity.Id, entity.Name, entity.Age}
@@ -37,14 +46,19 @@ func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*he
 	}
 
 	if err != nil {
+		trace.InjectError(ctx, err)
 		return nil, err
 	}
 	return entity, nil
 }
 
 func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
-	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1"
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "FindById"))
+	defer end()
+
 	strId := id.(string)
+	trace.InjectAttributes(ctx, attr.New("id", strId))
+	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1"
 	tx := r.getTransactionOrNil(ctx)
 
 	if tx == nil {
@@ -57,9 +71,13 @@ func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData
 }
 
 func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
+	defer end()
+
 	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA"
 	var rows pgx.Rows = nil
 	var err error = nil
+
 	tx := r.getTransactionOrNil(ctx)
 	if tx == nil {
 		rows, err = r.pool.Query(ctx, sql)
@@ -68,6 +86,7 @@ func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
 	}
 
 	if err != nil {
+		trace.InjectError(ctx, err)
 		return nil
 	}
 
@@ -84,14 +103,22 @@ func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
 }
 
 func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
-	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	// save context in a new variable to avoid returning this span up in the chain
+	sCtx, end := trace.Trace(ctx, trace.NameConfig(traceName, "BeginTransactionWithContext"))
+	defer end()
+
+	tx, err := r.pool.BeginTx(sCtx, pgx.TxOptions{})
 	if err != nil {
+		trace.InjectError(sCtx, err)
 		return nil, err
 	}
 	return context.WithValue(ctx, txKey, &tx), nil
 }
 
 func (r HelloRepository) Rollback(ctx context.Context) {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Rollback"))
+	defer end()
+
 	tx := r.getTransactionOrNil(ctx)
 	if tx != nil {
 		(*tx).Rollback(ctx)
@@ -99,6 +126,8 @@ func (r HelloRepository) Rollback(ctx context.Context) {
 }
 
 func (r HelloRepository) Commit(ctx context.Context) {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Commit"))
+	defer end()
 	tx := r.getTransactionOrNil(ctx)
 	if tx != nil {
 		(*tx).Commit(ctx)
@@ -114,16 +143,20 @@ func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
 }
 
 func (r HelloRepository) RunWithTransaction(ctx context.Context, callback func(context.Context) (*hello.HelloData, error)) (*hello.HelloData, error) {
-	ctxTx, err := r.BeginTransactionWithContext(ctx)
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "RunWithTransaction"))
+	defer end()
+
+	ctx, err := r.BeginTransactionWithContext(ctx)
 	if err != nil {
+		trace.InjectError(ctx, err)
 		return nil, err
 	}
-	tx := r.getTransactionOrNil(ctxTx)
-	result, err := callback(ctxTx)
+	result, err := callback(ctx)
 	if err != nil {
-		(*tx).Rollback(ctxTx)
+		trace.InjectError(ctx, err)
+		r.Rollback(ctx)
 	} else {
-		(*tx).Commit(ctxTx)
+		r.Commit(ctx)
 	}
 	return result, err
 }
