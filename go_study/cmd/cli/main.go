@@ -6,17 +6,16 @@ import (
 	"flag"
 	"main/internal/config"
 	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/log/slog"
 	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/otel"
-	"main/internal/infra/observability"
+	"main/internal/infra/observability/otel"
+	"main/internal/infra/observability/slog"
 	"strings"
 )
 
 func main() {
 	ctx := context.Background()
 	cfg := config.LoadConfig()
-	shutdown, err := observability.SetupOTelSDK(ctx, cfg)
+	shutdown, err := otel.SetupOTelSDK(ctx, cfg)
 	panicIfErr(err)
 	defer shutdown(ctx)
 

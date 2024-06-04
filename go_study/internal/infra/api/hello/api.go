@@ -3,6 +3,8 @@ package hello
 import (
 	"fmt"
 	"main/internal/config"
+	"main/internal/hello"
+	"main/internal/infra/api"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -24,17 +26,24 @@ func HelloHandler() http.Handler {
 	})
 }
 
-func SetupApi(cfg *config.Config, server *http.ServeMux, helloService HelloService, helloRepository Repository) {
+func SetupApi(cfg *config.Config, server *http.ServeMux, helloService hello.HelloService, helloRepository hello.Repository) {
 	if !cfg.Application.Hello.Api.Enabled {
 		return
 	}
 	pattern := "/hello"
-	handler := handleHello(helloService, helloRepository)
-	server.Handle(pattern, withTrace(pattern, handler))
+
+	helloHandler := api.ToMiddlewareFunc(handleHello(helloService, helloRepository))
+	helloHandler = api.LogMiddleware(helloHandler)
+	helloHandler = api.RequestIdMiddleware(helloHandler)
+	chain, err := api.NewChain(helloHandler)
+	if err != nil {
+		panic(err)
+	}
+	server.Handle(pattern, withTrace(pattern, chain))
 }
 
-func handleHello(helloService HelloService, helloRepository Repository) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func handleHello(helloService hello.HelloService, helloRepository hello.Repository) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch strings.ToUpper(r.Method) {
 		case "GET":
 			listUsers(helloRepository)(w, r)
@@ -43,14 +52,14 @@ func handleHello(helloService HelloService, helloRepository Repository) func(w h
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	}
+	})
 }
 
-func withTrace(pattern string, h func(w http.ResponseWriter, r *http.Request)) http.Handler {
-	return otelhttp.WithRouteTag(pattern, http.HandlerFunc(h))
+func withTrace(pattern string, h http.Handler) http.Handler {
+	return otelhttp.WithRouteTag(pattern, h)
 }
 
-func postUsers(helloService HelloService) func(w http.ResponseWriter, r *http.Request) {
+func postUsers(helloService hello.HelloService) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		result := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
 		w.WriteHeader(http.StatusOK)
@@ -58,7 +67,7 @@ func postUsers(helloService HelloService) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func listUsers(helloRepository Repository) func(w http.ResponseWriter, r *http.Request) {
+func listUsers(helloRepository hello.Repository) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		result := helloRepository.ListAll(r.Context())
 		response := ""

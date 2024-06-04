@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"main/internal/config"
 	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/log/slog"
 	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/otel"
-	"main/internal/hello"
-	"main/internal/infra/observability"
+	"main/internal/infra/api/hello"
+	"main/internal/infra/observability/otel"
+	"main/internal/infra/observability/slog"
 	"main/internal/infra/utils/shutdown"
 	"net/http"
 	"strings"
@@ -68,7 +67,7 @@ func configureObservability(ctx context.Context, cfg *config.Config) func(contex
 	)
 	trace.SetTracer(otel.NewOtelTracerAdapter())
 
-	otelShutdown, err := observability.SetupOTelSDK(ctx, cfg)
+	otelShutdown, err := otel.SetupOTelSDK(ctx, cfg)
 	panicIfErr(err)
 	return otelShutdown
 }
