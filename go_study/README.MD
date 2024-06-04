@@ -24,7 +24,7 @@ Project to learn and practice go concepts.
 - [x] Graceful shutdown with signals
 - [x] Api with Go http
 - [ ] Dockerize application
-- [ ] CLI application to make local tests easier
+- [x] CLI application to make local tests easier
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Api with chain of middlewares
