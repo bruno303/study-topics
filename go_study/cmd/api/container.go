@@ -70,7 +70,7 @@ func newKafkaContainer(cfg *config.Config, handlers MessageHandlersContainer) Ka
 	}
 }
 
-func createKafkaConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler kafka.MessageHandler) kafka.ConsumerGroup {
+func createKafkaConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler handlers.MessageHandler) kafka.ConsumerGroup {
 	consumer, err := kafka.NewConsumerGroup(cfg, handler)
 	if err != nil {
 		panic(err)

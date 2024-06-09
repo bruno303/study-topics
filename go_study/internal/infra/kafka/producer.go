@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/crosscutting/observability/log"
 	"main/internal/crosscutting/observability/trace"
+	kafkatrace "main/internal/infra/kafka/kafka-trace"
 	"main/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -58,15 +59,17 @@ func (p Producer) Close() {
 }
 
 func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
-	_, end := trace.Trace(ctx, producerTrace("Produce"))
+	ctx, end := trace.Trace(ctx, producerTrace("Produce"))
 	defer end()
-	return p.producer.Produce(
-		&libkafka.Message{
-			TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
-			Value:          []byte(msg),
-		},
-		nil,
-	)
+
+	kafkaMsg := &libkafka.Message{
+		TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
+		Value:          []byte(msg),
+	}
+
+	kafkatrace.Inject(ctx, kafkaMsg)
+
+	return p.producer.Produce(kafkaMsg, nil)
 }
 
 func producerTrace(spanName string) *trace.TraceConfig {

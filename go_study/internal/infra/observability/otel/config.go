@@ -29,8 +29,8 @@ func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(contex
 	}
 
 	// Set up propagator.
-	prop := newPropagator()
-	otel.SetTextMapPropagator(prop)
+	// prop := newPropagator()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	// Set up trace provider.
 	tracerProvider, err := newTraceProvider(cfg)

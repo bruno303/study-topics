@@ -6,6 +6,8 @@ import (
 	"main/internal/crosscutting/observability/log"
 	"main/internal/crosscutting/observability/trace"
 	"main/internal/crosscutting/observability/trace/attr"
+	"main/internal/infra/kafka/handlers"
+	"main/internal/infra/kafka/middleware"
 	"main/internal/infra/utils/shutdown"
 	"strconv"
 	"time"
@@ -13,17 +15,14 @@ import (
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-type MessageHandler interface {
-	Process(ctx context.Context, msg string) error
-}
-
 type consumer struct {
 	c       *libkafka.Consumer
-	handler MessageHandler
+	handler handlers.MessageHandler
 	cfg     config.KafkaConsumerConfigDetail
+	chain   middleware.Chain
 }
 
-func newConsumer(cfg config.KafkaConsumerConfigDetail, handler MessageHandler) (consumer, error) {
+func newConsumer(cfg config.KafkaConsumerConfigDetail, handler handlers.MessageHandler) (consumer, error) {
 	kc, err := libkafka.NewConsumer(&libkafka.ConfigMap{
 		"bootstrap.servers":     cfg.Host,
 		"group.id":              cfg.GroupId,
@@ -39,6 +38,7 @@ func newConsumer(cfg config.KafkaConsumerConfigDetail, handler MessageHandler) (
 		c:       kc,
 		handler: handler,
 		cfg:     cfg,
+		chain:   middleware.NewChain(middleware.NewLoggingMiddleware(), middleware.NewTracingMiddleware(), middleware.NewMiddleware(handler)),
 	}, nil
 }
 
@@ -71,24 +71,25 @@ func (c consumer) Start() error {
 }
 
 func (c consumer) readMessage(ctx context.Context) {
-	// TODO: handle c.cfg.TraceEnabled
-	ctx, end := trace.Trace(ctx, consumerTrace("ReadMessage"))
-	defer end()
+	if c.cfg.TraceEnabled {
+		_, end := trace.Trace(ctx, consumerTrace("ReadMessage"))
+		defer end()
 
-	trace.InjectAttributes(
-		ctx,
-		attr.New("kafka.bootstrapServer", c.cfg.Host),
-		attr.New("kafka.topic", c.cfg.Topic),
-		attr.New("kafka.consumerGroup", c.cfg.GroupId),
-		attr.New("kafka.traceEnabled", strconv.FormatBool(c.cfg.TraceEnabled)),
-	)
+		trace.InjectAttributes(
+			ctx,
+			attr.New("kafka.bootstrapServer", c.cfg.Host),
+			attr.New("kafka.topic", c.cfg.Topic),
+			attr.New("kafka.consumerGroup", c.cfg.GroupId),
+			attr.New("kafka.traceEnabled", strconv.FormatBool(c.cfg.TraceEnabled)),
+		)
+	}
 
 	msg, err := c.c.ReadMessage(time.Second)
 	if err == nil {
 		log.Log().Info(ctx, "Message on %s: %s", msg.TopicPartition, string(msg.Value))
 		go c.processMessage(ctx, msg)
 	} else {
-		trace.InjectError(ctx, err)
+		// trace.InjectError(ctx, err)
 		if !err.(libkafka.Error).IsTimeout() {
 			log.Log().Error(ctx, "Consumer error", err)
 		}
@@ -96,12 +97,7 @@ func (c consumer) readMessage(ctx context.Context) {
 }
 
 func (c consumer) processMessage(ctx context.Context, msg *libkafka.Message) {
-	ctx, end := trace.Trace(ctx, consumerTrace("ProcessMessage"))
-	defer end()
-
-	trace.InjectAttributes(ctx, attr.New("kafka.message.key", string(msg.Key)))
-
-	c.handler.Process(ctx, string(msg.Value))
+	c.chain.ProcessMessage(ctx, msg)
 	log.Log().Info(ctx, "Message processed: %s", msg.TopicPartition)
 	c.commitMessage(ctx, msg)
 }

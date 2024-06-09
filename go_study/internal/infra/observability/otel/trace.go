@@ -26,7 +26,7 @@ func (t OtelTracerAdapter) Trace(ctx context.Context, cfg *trace.TraceConfig) (c
 	cfg.Validate()
 
 	ctx, _ = startSpan(ctx, cfg.TraceName, cfg.SpanName)
-	return ctx, func() { endTrace(ctx) }
+	return ctx, func() { EndTrace(ctx) }
 }
 
 func (t OtelTracerAdapter) ExtractTraceIds(ctx context.Context) trace.TraceIds {
@@ -65,7 +65,7 @@ func startSpan(ctx context.Context, tracerName string, spanName string) (context
 	)
 }
 
-func endTrace(ctx context.Context) {
+func EndTrace(ctx context.Context) {
 	span := tracelib.SpanFromContext(ctx)
 	if span == nil {
 		return

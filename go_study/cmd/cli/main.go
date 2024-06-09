@@ -7,6 +7,7 @@ import (
 	"main/internal/config"
 	"main/internal/crosscutting/observability/log"
 	"main/internal/crosscutting/observability/trace"
+	correlationid "main/internal/infra/observability/correlation-id"
 	"main/internal/infra/observability/otel"
 	"main/internal/infra/observability/slog"
 	"strings"
@@ -47,8 +48,9 @@ func main() {
 
 func configureLog(cfg *config.Config) {
 	l := slog.NewSlogAdapter(slog.SlogAdapterOpts{
-		Level:      log.LevelWarn,
-		FormatJson: strings.ToUpper(cfg.Application.Log.Format) == "JSON",
+		Level:                 log.LevelWarn,
+		FormatJson:            strings.ToUpper(cfg.Application.Log.Format) == "JSON",
+		ExtractAdditionalInfo: logExtractor(),
 	})
 	log.SetLogger(l)
 	// log.SetLogger(log.NewDefaultLogger(log.LevelWarn))
@@ -57,5 +59,19 @@ func configureLog(cfg *config.Config) {
 func panicIfErr(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+func logExtractor() func(context.Context) []any {
+	return func(ctx context.Context) []any {
+		additionalLogData := make([]any, 0, 6)
+		traceData := trace.ExtractTraceIds(ctx)
+		if traceData.IsValid {
+			additionalLogData = append(additionalLogData, "traceId", traceData.TraceId, "spanId", traceData.SpanId)
+		}
+		if correlationId, ok := correlationid.Get(ctx); ok {
+			additionalLogData = append(additionalLogData, "correlationId", correlationId)
+		}
+		return additionalLogData
 	}
 }
