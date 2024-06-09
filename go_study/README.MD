@@ -27,6 +27,7 @@ Project to learn and practice go concepts.
 - [x] CLI application to make local tests easier
 - [ ] Unit tests
 - [ ] Integration tests
-- [ ] Api with chain of middlewares
+- [x] Api with chain of middlewares
+- [x] Kafka with chain of middlewares
 - [ ] Authentication
 - [ ] Authorization
