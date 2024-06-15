@@ -25,9 +25,9 @@ func main() {
 func initialize(ctx context.Context) {
 	cfg := config.LoadConfig()
 	otelShutdown := configureObservability(ctx, cfg)
-	defer func() {
+	shutdown.CreateListener(func() {
 		otelShutdown(context.Background())
-	}()
+	})
 
 	container := NewContainer(ctx, cfg)
 

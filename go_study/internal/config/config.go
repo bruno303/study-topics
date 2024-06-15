@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -46,12 +47,15 @@ type KafkaConsumerConfig struct {
 }
 
 type KafkaConsumerConfigDetail struct {
-	Host         string `yaml:"host"`
-	Topic        string `yaml:"topic"`
-	GroupId      string `yaml:"group-id"`
-	QntConsumers int    `yaml:"qnt-consumers"`
-	TraceEnabled bool   `yaml:"trace-enabled"`
-	Enabled      bool   `yaml:"enabled"`
+	Host               string        `yaml:"host"`
+	Topic              string        `yaml:"topic"`
+	GroupId            string        `yaml:"group-id"`
+	QntConsumers       int           `yaml:"qnt-consumers"`
+	TraceEnabled       bool          `yaml:"trace-enabled"`
+	Enabled            bool          `yaml:"enabled"`
+	AutoCommit         bool          `yaml:"auto-commit"`
+	AutoCommitInterval time.Duration `yaml:"auto-commit-interval"`
+	OffsetReset        string        `yaml:"offset-reset"`
 }
 
 type HelloProducerConfig struct {
