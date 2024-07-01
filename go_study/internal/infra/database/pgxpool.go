@@ -3,10 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/infra/utils/shutdown"
 	"os"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

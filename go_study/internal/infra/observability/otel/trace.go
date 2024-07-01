@@ -3,10 +3,12 @@ package otel
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	"main/pkg/utils/array"
 	"time"
+
+	"github.com/bruno303/study-topics/go-study/pkg/utils/array"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -26,7 +28,7 @@ func (t OtelTracerAdapter) Trace(ctx context.Context, cfg *trace.TraceConfig) (c
 	cfg.Validate()
 
 	ctx, _ = startSpan(ctx, cfg.TraceName, cfg.SpanName)
-	return ctx, func() { endTrace(ctx) }
+	return ctx, func() { EndTrace(ctx) }
 }
 
 func (t OtelTracerAdapter) ExtractTraceIds(ctx context.Context) trace.TraceIds {
@@ -65,7 +67,7 @@ func startSpan(ctx context.Context, tracerName string, spanName string) (context
 	)
 }
 
-func endTrace(ctx context.Context) {
+func EndTrace(ctx context.Context) {
 	span := tracelib.SpanFromContext(ctx)
 	if span == nil {
 		return

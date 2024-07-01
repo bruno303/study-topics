@@ -1,7 +1,23 @@
 version: '3.8'
 services:
+  api:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_HOST: "postgres"
+      DATABASE_PORT: 5432
+      APPLICATION_MONITORING_TRACE_URL: "http://zipkin:9411/api/v2/spans"
+      KAFKA_HOST: "kafka:9092"
+      KAFKA_CONSUMER_GO_STUDY_HOST: "kafka:9092"
+    ports:
+      - "8080:8080"
+    profiles:
+      - app
+
   postgres:
     image: postgres:14.11
+    hostname: postgres
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
@@ -10,23 +26,29 @@ services:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+    profiles:
+      - local
 
   zookeeper:
     image: confluentinc/cp-zookeeper:5.2.4
     environment:
-        ZOOKEEPER_CLIENT_PORT: 2181
-        ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-        - '2181:2181'
+      - '2181:2181'
+    profiles:
+      - local
 
   kafka:
     image: &kafka-image confluentinc/cp-kafka:7.2.1
+    hostname: kafka
     ports:
-    - "9092:9092"
-    - "29092:29092"
+      - "9092:9092"
+      - "29092:29092"
     environment:
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,REDE:PLAINTEXT
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      # TODO: check how configure multiple ADVERTISED_LISTENERS
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,REDE://kafka:29092
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
     depends_on:
@@ -36,6 +58,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+    profiles:
+      - local
 
   init-kafka:
     image: *kafka-image
@@ -45,6 +69,8 @@ services:
     volumes:
       - ./docker/kafka/init.sh:/app/init.sh
     entrypoint: [ '/bin/sh', '-c', '/app/init.sh' ]
+    profiles:
+      - local
 
   kafka-ui:
     image: provectuslabs/kafka-ui
@@ -56,9 +82,12 @@ services:
       - SERVER_PORT=9001
     depends_on:
       - kafka
+    profiles:
+      - local
 
   grafana:
     image: grafana/grafana:latest
+    hostname: grafana
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -67,8 +96,13 @@ services:
       - ./docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/ds.yaml
     ports:
       - "3000:3000"
+    profiles:
+      - local
 
   zipkin:
     image: openzipkin/zipkin:2.24.3
+    hostname: zipkin
     ports:
       - "9411:9411"
+    profiles:
+      - local

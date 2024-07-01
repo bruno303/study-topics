@@ -3,8 +3,9 @@ package trace
 import (
 	"context"
 	"errors"
-	"main/internal/crosscutting/observability/trace/attr"
 	"sync"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
 )
 
 type (

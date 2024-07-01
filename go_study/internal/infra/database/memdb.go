@@ -3,8 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability/log"
 	"sync"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 )
 
 type transactionKeyMemDb struct{ key string }

@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"main/internal/config"
-	"main/internal/hello"
-	"main/internal/infra/database"
-	"main/internal/infra/kafka"
-	"main/internal/infra/kafka/handlers"
-	"main/internal/infra/repository"
-	"main/internal/infra/worker"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/hello"
+	"github.com/bruno303/study-topics/go-study/internal/infra/database"
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka"
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
+	"github.com/bruno303/study-topics/go-study/internal/infra/repository"
+	"github.com/bruno303/study-topics/go-study/internal/infra/worker"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -70,7 +71,7 @@ func newKafkaContainer(cfg *config.Config, handlers MessageHandlersContainer) Ka
 	}
 }
 
-func createKafkaConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler kafka.MessageHandler) kafka.ConsumerGroup {
+func createKafkaConsumerGroup(cfg config.KafkaConsumerConfigDetail, handler handlers.MessageHandler) kafka.ConsumerGroup {
 	consumer, err := kafka.NewConsumerGroup(cfg, handler)
 	if err != nil {
 		panic(err)

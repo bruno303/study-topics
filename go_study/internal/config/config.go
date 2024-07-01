@@ -1,34 +1,42 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"os"
+	"time"
 
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+
+	envconfig "github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	Application struct {
-		Name    string `yaml:"name"`
-		Version string `yaml:"version"`
+		Name    string `env:"NAME" yaml:"name"`
+		Version string `env:"VERSION" yaml:"version"`
 		Hello   struct {
 			Api struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"api"`
-		} `yaml:"hello"`
+				Enabled bool `env:"ENABLED" yaml:"enabled"`
+			} `env:", prefix=API_" yaml:"api"`
+		} `env:", prefix=HELLO_" yaml:"hello"`
 		Monitoring struct {
-			TraceUrl string `yaml:"trace-url"`
-		} `yaml:"monitoring"`
+			TraceUrl string `env:"TRACE_URL" yaml:"trace-url"`
+		} `env:", prefix=MONITORING_" yaml:"monitoring"`
 		Log struct {
-			Level  string `yaml:"level"`
-			Format string `yaml:"format"`
+			Level  string `env:"LOG_LEVEL" yaml:"level"`
+			Format string `env:"LOG_FORMAT" yaml:"format"`
 		} `yaml:"log"`
-	} `yaml:"app"`
+	} `env:", prefix=APPLICATION_" yaml:"app"`
 	Database struct {
-		Host         string `yaml:"host"`
-		User         string `yaml:"user"`
-		Password     string `yaml:"password"`
-		Port         int    `yaml:"port"`
-		DatabaseName string `yaml:"database-name"`
+		Host         string `env:"DATABASE_HOST" yaml:"host"`
+		User         string `env:"DATABASE_USER" yaml:"user"`
+		Password     string `env:"DATABASE_PASSWORD" yaml:"password"`
+		Port         int    `env:"DATABASE_PORT" yaml:"port"`
+		DatabaseName string `env:"DATABASE_NAME" yaml:"database-name"`
 	} `yaml:"database"`
 	Kafka   KafkaConfig `yaml:"kafka"`
 	Workers struct {
@@ -37,27 +45,31 @@ type Config struct {
 }
 
 type KafkaConfig struct {
-	Host      string              `yaml:"host"`
-	Consumers KafkaConsumerConfig `yaml:"consumers"`
+	Host      string              `env:"KAFKA_HOST" yaml:"host"`
+	Consumers KafkaConsumerConfig `env:", prefix=KAFKA_CONSUMER_" yaml:"consumers"`
 }
 
 type KafkaConsumerConfig struct {
-	GoStudy KafkaConsumerConfigDetail `yaml:"go-study"`
+	GoStudy KafkaConsumerConfigDetail `env:", prefix=GO_STUDY_" yaml:"go-study"`
 }
 
 type KafkaConsumerConfigDetail struct {
-	Host         string `yaml:"host"`
-	Topic        string `yaml:"topic"`
-	GroupId      string `yaml:"group-id"`
-	QntConsumers int    `yaml:"qnt-consumers"`
-	TraceEnabled bool   `yaml:"trace-enabled"`
-	Enabled      bool   `yaml:"enabled"`
+	Host               string        `env:"HOST" yaml:"host"`
+	Topic              string        `env:"TOPIC" yaml:"topic"`
+	GroupId            string        `env:"GROUP_ID" yaml:"group-id"`
+	QntConsumers       int           `env:"QNT_CONSUMERS" yaml:"qnt-consumers"`
+	TraceEnabled       bool          `env:"TRACE_ENABLED" yaml:"trace-enabled"`
+	Enabled            bool          `env:"ENABLED" yaml:"enabled"`
+	AutoCommit         bool          `env:"AUTO_COMMIT" yaml:"auto-commit"`
+	AutoCommitInterval time.Duration `env:"AUTO_COMMIT_INTERVAL" yaml:"auto-commit-interval"`
+	OffsetReset        string        `env:"OFFSET_RESET" yaml:"offset-reset"`
+	AsyncCommit        bool          `env:"ASYNC_COMMIT	" yaml:"async-commit"`
 }
 
 type HelloProducerConfig struct {
-	IntervalMillis int64  `yaml:"interval-millis"`
-	Topic          string `yaml:"topic"`
-	Enabled        bool   `yaml:"enabled"`
+	IntervalMillis int64  `env:"WORKERS_HELLO_PRODUCER_INTERVAL_MILLIS" yaml:"interval-millis"`
+	Topic          string `env:"WORKERS_HELLO_PRODUCER_TOPIC" yaml:"topic"`
+	Enabled        bool   `env:"WORKERS_HELLO_PRODUCER_ENABLED" yaml:"enabled"`
 }
 
 func LoadConfig() *Config {
@@ -67,8 +79,36 @@ func LoadConfig() *Config {
 		panic(err)
 	}
 	decoder := yaml.NewDecoder(file)
-	if err = decoder.Decode(&cfg); err != nil {
+	if err = decoder.Decode(cfg); err != nil {
 		panic(err)
 	}
+
+	log.Log().Info(context.TODO(), "config with yaml: %+v", cfg)
+
+	if fileExists(".env") {
+		err = godotenv.Load()
+		if err != nil {
+			panic("Error loading .env file")
+		}
+	}
+
+	if err = envconfig.ProcessWith(
+		context.Background(),
+		&envconfig.Config{
+			Target:           cfg,
+			DefaultOverwrite: true,
+		},
+	); err != nil {
+		panic(err)
+	}
+
+	log.Log().Info(context.TODO(), "config with envs: %+v", cfg)
 	return cfg
+}
+
+func fileExists(filename string) bool {
+	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	return true
 }

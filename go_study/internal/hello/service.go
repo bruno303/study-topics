@@ -3,7 +3,8 @@ package hello
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability/trace"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 )
 
 const traceName = "HelloService"
@@ -24,6 +25,33 @@ type HelloService struct {
 
 func NewService(repo Repository) HelloService {
 	return HelloService{repository: repo}
+}
+
+func (s HelloService) Hello2(ctx context.Context, id string, age int) string {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello2"))
+	defer end()
+
+	ctx, err := s.repository.BeginTransactionWithContext(ctx)
+	defer s.repository.Rollback(ctx)
+
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err.Error()
+	}
+
+	newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
+	helloAdded, err := s.repository.Save(ctx, &newHello)
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err.Error()
+	}
+	helloFound, err := s.repository.FindById(ctx, helloAdded.Id)
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err.Error()
+	}
+	s.repository.Commit(ctx)
+	return helloFound.ToString()
 }
 
 func (s HelloService) Hello(ctx context.Context, id string, age int) string {
