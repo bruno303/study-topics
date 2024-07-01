@@ -3,10 +3,12 @@ package otel
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	"main/pkg/utils/array"
 	"time"
+
+	"github.com/bruno303/study-topics/go-study/pkg/utils/array"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"

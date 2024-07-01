@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	"main/internal/hello"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
+	"github.com/bruno303/study-topics/go-study/internal/hello"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

@@ -3,14 +3,15 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	"main/internal/infra/utils/shutdown"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 
 	"github.com/google/uuid"
 )

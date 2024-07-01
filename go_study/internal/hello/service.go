@@ -3,7 +3,8 @@ package hello
 import (
 	"context"
 	"fmt"
-	"main/internal/crosscutting/observability/trace"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 )
 
 const traceName = "HelloService"

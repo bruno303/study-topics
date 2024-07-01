@@ -2,7 +2,8 @@ package trace
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/trace/attr"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
 )
 
 type NoOpTracer struct{}

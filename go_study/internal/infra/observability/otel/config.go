@@ -3,8 +3,9 @@ package otel
 import (
 	"context"
 	"errors"
-	"main/internal/config"
 	"time"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/zipkin"
@@ -29,8 +30,7 @@ func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(contex
 	}
 
 	// Set up propagator.
-	// prop := newPropagator()
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(newPropagator())
 
 	// Set up trace provider.
 	tracerProvider, err := newTraceProvider(cfg)

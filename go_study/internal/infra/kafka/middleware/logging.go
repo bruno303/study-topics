@@ -2,7 +2,8 @@ package middleware
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/log"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )

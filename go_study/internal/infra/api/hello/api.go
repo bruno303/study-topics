@@ -3,13 +3,14 @@ package hello
 import (
 	"context"
 	"encoding/json"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/hello"
-	"main/internal/infra/api"
-	"main/internal/infra/api/middleware"
 	"math/rand"
 	"net/http"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/hello"
+	"github.com/bruno303/study-topics/go-study/internal/infra/api"
+	"github.com/bruno303/study-topics/go-study/internal/infra/api/middleware"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -28,7 +29,7 @@ func SetupApi(cfg *config.Config, server *http.ServeMux, helloService hello.Hell
 }
 
 func withTrace(pattern string, h http.Handler) http.Handler {
-	return otelhttp.WithRouteTag(pattern, h)
+	return otelhttp.WithRouteTag(pattern, otelhttp.NewHandler(h, pattern))
 }
 
 func create(helloService hello.HelloService) http.Handler {

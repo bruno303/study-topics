@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"main/internal/crosscutting/observability/log"
 	"os"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 )
 
 type (

@@ -2,10 +2,11 @@ package kafka
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/trace"
-	kafkatrace "main/internal/infra/kafka/kafka-trace"
-	"main/internal/infra/utils/shutdown"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	kafkatrace "github.com/bruno303/study-topics/go-study/internal/infra/kafka/kafka-trace"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )

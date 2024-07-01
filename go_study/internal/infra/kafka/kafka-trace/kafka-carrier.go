@@ -2,8 +2,10 @@ package kafkatrace
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/trace"
-	"main/pkg/utils/array"
+
+	"github.com/bruno303/study-topics/go-study/pkg/utils/array"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"

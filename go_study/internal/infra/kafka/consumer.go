@@ -3,15 +3,16 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	"main/internal/infra/kafka/handlers"
-	"main/internal/infra/kafka/middleware"
-	"main/internal/infra/utils/shutdown"
 	"strconv"
 	"time"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/middleware"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -25,7 +26,6 @@ type consumer struct {
 }
 
 func newConsumer(cfg config.KafkaConsumerConfigDetail, handler handlers.MessageHandler, identifier int) (consumer, error) {
-	log.Log().Info(context.TODO(), "%v", cfg.AutoCommitInterval)
 	kc, err := libkafka.NewConsumer(&libkafka.ConfigMap{
 		"bootstrap.servers":       cfg.Host,
 		"group.id":                cfg.GroupId,
@@ -97,7 +97,7 @@ func (c consumer) readMessage(ctx context.Context) {
 	msg, err := c.c.ReadMessage(time.Second)
 	if err == nil {
 		log.Log().Info(ctx, "[%v] Message on %s: %s", c.identifier, msg.TopicPartition, string(msg.Value))
-		go c.processMessage(ctx, msg)
+		c.processMessage(ctx, msg)
 	} else {
 		trace.InjectError(ctx, err)
 		if !err.(libkafka.Error).IsTimeout() {
@@ -117,15 +117,27 @@ func (c consumer) commitMessage(ctx context.Context, msg *libkafka.Message) {
 		log.Log().Debug(ctx, "[%v] Auto commit enabled, skipping manual commit", c.identifier)
 		return
 	}
-	go func() {
-		ctx, end := trace.Trace(ctx, consumerTrace("CommitMessage"))
-		defer end()
-		trace.InjectAttributes(ctx, attr.New("kafka.message.key", string(msg.Key)))
-		_, err := c.c.CommitMessage(msg)
-		if err != nil {
-			trace.InjectError(ctx, err)
-		}
-	}()
+	if c.cfg.AsyncCommit {
+		log.Log().Debug(ctx, "[%v] Committing message async", c.identifier)
+		go c.doCommit(ctx, msg)
+	} else {
+		log.Log().Debug(ctx, "[%v] Committing message sync", c.identifier)
+		c.doCommit(ctx, msg)
+	}
+}
+
+func (c consumer) doCommit(ctx context.Context, msg *libkafka.Message) {
+	ctx, end := trace.Trace(ctx, consumerTrace("CommitMessage"))
+	defer end()
+	trace.InjectAttributes(
+		ctx,
+		attr.New("kafka.message.key", string(msg.Key)),
+		attr.New("kafka.consumer.identifier", strconv.Itoa(c.identifier)),
+	)
+	_, err := c.c.CommitMessage(msg)
+	if err != nil {
+		trace.InjectError(ctx, err)
+	}
 }
 
 func consumerTrace(spanName string) *trace.TraceConfig {

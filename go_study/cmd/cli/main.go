@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/trace"
-	correlationid "main/internal/infra/observability/correlation-id"
-	"main/internal/infra/observability/otel"
-	"main/internal/infra/observability/slog"
 	"strings"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	correlationid "github.com/bruno303/study-topics/go-study/internal/infra/observability/correlation-id"
+	"github.com/bruno303/study-topics/go-study/internal/infra/observability/otel"
+	"github.com/bruno303/study-topics/go-study/internal/infra/observability/slog"
 )
 
 func main() {

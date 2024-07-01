@@ -28,6 +28,7 @@ kafka:
       auto-commit: true
       auto-commit-interval: 2s
       offset-reset: earliest
+      async-commit: true
 workers:
   hello-producer:
     topic: go-study.hello

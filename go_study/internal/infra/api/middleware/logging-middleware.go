@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"main/internal/crosscutting/observability/log"
 	"net/http"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 )
 
 type LoggingMiddleware struct {

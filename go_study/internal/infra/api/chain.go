@@ -2,8 +2,9 @@ package api
 
 import (
 	"errors"
-	"main/internal/infra/api/middleware"
 	"net/http"
+
+	"github.com/bruno303/study-topics/go-study/internal/infra/api/middleware"
 )
 
 type Chain struct {

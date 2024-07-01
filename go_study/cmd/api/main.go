@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"main/internal/config"
-	"main/internal/crosscutting/observability/log"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/infra/api/hello"
-	correlationid "main/internal/infra/observability/correlation-id"
-	"main/internal/infra/observability/otel"
-	"main/internal/infra/observability/slog"
-	"main/internal/infra/utils/shutdown"
 	"net/http"
 	"strings"
+
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/infra/api/hello"
+	correlationid "github.com/bruno303/study-topics/go-study/internal/infra/observability/correlation-id"
+	"github.com/bruno303/study-topics/go-study/internal/infra/observability/otel"
+	"github.com/bruno303/study-topics/go-study/internal/infra/observability/slog"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )

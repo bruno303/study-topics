@@ -2,7 +2,8 @@ package middleware
 
 import (
 	"context"
-	"main/internal/infra/kafka/handlers"
+
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )

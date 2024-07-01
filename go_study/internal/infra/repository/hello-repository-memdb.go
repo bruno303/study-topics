@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"main/internal/hello"
-	"main/internal/infra/database"
+	"github.com/bruno303/study-topics/go-study/internal/hello"
+	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 )
 
 func NewHelloRepository2() *database.MemDbRepository[hello.HelloData] {

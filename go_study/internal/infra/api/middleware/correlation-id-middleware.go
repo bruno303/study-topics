@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"main/internal/crosscutting/observability/log"
-	correlationid "main/internal/infra/observability/correlation-id"
 	"net/http"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
+	correlationid "github.com/bruno303/study-topics/go-study/internal/infra/observability/correlation-id"
 )
 
 type CorrelationIdMiddleware struct {

@@ -1,8 +1,8 @@
 package kafka
 
 import (
-	"main/internal/config"
-	"main/internal/infra/kafka/handlers"
+	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
 )
 
 type ConsumerGroup struct {

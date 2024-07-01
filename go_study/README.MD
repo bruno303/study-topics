@@ -15,7 +15,7 @@ Project to learn and practice go concepts.
 - [x] Tracing with opentelemetry and zipkin
 - [x] Logging with Go slog
 - [x] Log trace information to allow correlation between them
-- [ ] Distributed trace (http and kafka)
+- [x] Distributed trace (http and kafka)
 - [x] Change log level dynamically
 - [ ] Export logs to Grafana Loki or similar
 - [x] Abstracting tracing and logging to allow multiple implementations
@@ -23,7 +23,7 @@ Project to learn and practice go concepts.
 - [x] Abstracting metrics to allow multiple implementations
 - [x] Graceful shutdown with signals
 - [x] Api with Go http
-- [ ] Dockerize application
+- [x] Dockerize application
 - [x] CLI application to make local tests easier
 - [ ] Unit tests
 - [ ] Integration tests
@@ -31,3 +31,4 @@ Project to learn and practice go concepts.
 - [x] Kafka with chain of middlewares
 - [ ] Authentication
 - [ ] Authorization
+- [x] Live reload for development

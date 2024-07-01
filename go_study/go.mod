@@ -1,4 +1,4 @@
-module main
+module github.com/bruno303/study-topics/go-study
 
 go 1.22.3
 
@@ -6,12 +6,14 @@ require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.5
+	github.com/sethvargo/go-envconfig v1.0.3
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0
 	go.opentelemetry.io/otel v1.27.0
 	go.opentelemetry.io/otel/exporters/zipkin v1.27.0
 	go.opentelemetry.io/otel/sdk v1.27.0
 	go.opentelemetry.io/otel/trace v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
+	github.com/joho/godotenv v1.5.1
 )
 
 require (

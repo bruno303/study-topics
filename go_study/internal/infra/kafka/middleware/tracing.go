@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"context"
-	"main/internal/crosscutting/observability/trace"
-	"main/internal/crosscutting/observability/trace/attr"
-	kafkatrace "main/internal/infra/kafka/kafka-trace"
+
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
+	kafkatrace "github.com/bruno303/study-topics/go-study/internal/infra/kafka/kafka-trace"
 
 	libkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
