@@ -11,7 +11,7 @@ run-api:
 	go run cmd/api/*.go
 
 run-api-live:
-	air --build.cmd "go build -o bin/api cmd/api/*.go" --build.bin "./bin/api" --build.exclude_dir "vendor"
+	air -c .air.toml
 
 deps:
 	$(GO_TOOLS_INSTALL)
