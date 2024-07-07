@@ -7,8 +7,8 @@ Project to learn and practice go concepts.
 - [x] Go Context
 - [x] Inversion of Control and Dependency Injection
 - [x] Configuration with yaml
-- [ ] Configuration with environment variables
-- [ ] Use .env file
+- [x] Configuration with environment variables
+- [x] Use .env file
 - [x] Repository pattern with multiple implementations (in memory and postgres)
 - [x] Postgres transaction using propagation through context
 - [x] Kafka producer and consumer
