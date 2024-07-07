@@ -25,6 +25,7 @@ func main() {
 
 func initialize(ctx context.Context) {
 	cfg := config.LoadConfig()
+	shutdown.ConfigureGracefulShutdown()
 	otelShutdown := configureObservability(ctx, cfg)
 	shutdown.CreateListener(func() {
 		otelShutdown(context.Background())

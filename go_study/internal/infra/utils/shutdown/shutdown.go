@@ -7,18 +7,29 @@ import (
 	"syscall"
 )
 
-var wg = &sync.WaitGroup{}
+var (
+	wg                 = &sync.WaitGroup{}
+	callbacks []func() = make([]func(), 0)
+)
 
-func CreateListener(f func()) {
-	wg.Add(1)
+func ConfigureGracefulShutdown() {
 	go func() {
 		exitChan := make(chan os.Signal, 1)
 		signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 		<-exitChan
-		f()
 		close(exitChan)
-		wg.Done()
+		for _, f := range callbacks {
+			go f()
+		}
 	}()
+}
+
+func CreateListener(f func()) {
+	wg.Add(1)
+	callbacks = append(callbacks, func() {
+		f()
+		wg.Done()
+	})
 }
 
 func AwaitAll() {
