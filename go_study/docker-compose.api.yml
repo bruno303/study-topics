@@ -1,0 +1,12 @@
+api:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_HOST: "postgres"
+      DATABASE_PORT: 5432
+      APPLICATION_MONITORING_TRACE_URL: "http://zipkin:9411/api/v2/spans"
+      KAFKA_HOST: "kafka:9092"
+      KAFKA_CONSUMER_GO_STUDY_HOST: "kafka:9092"
+    ports:
+      - "8080:8080"

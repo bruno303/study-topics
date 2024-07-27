@@ -83,11 +83,10 @@ func LoadConfig() *Config {
 		panic(err)
 	}
 
-	log.Log().Info(context.TODO(), "config with yaml: %+v", cfg)
+	log.Log().Debug(context.TODO(), "config with yaml: %+v", cfg)
 
 	if fileExists(".env") {
-		err = godotenv.Load()
-		if err != nil {
+		if err = godotenv.Load(); err != nil {
 			panic("Error loading .env file")
 		}
 	}
@@ -102,7 +101,7 @@ func LoadConfig() *Config {
 		panic(err)
 	}
 
-	log.Log().Info(context.TODO(), "config with envs: %+v", cfg)
+	log.Log().Debug(context.TODO(), "config with envs: %+v", cfg)
 	return cfg
 }
 

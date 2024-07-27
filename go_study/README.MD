@@ -25,10 +25,12 @@ Project to learn and practice go concepts.
 - [x] Api with Go http
 - [x] Dockerize application
 - [x] CLI application to make local tests easier
-- [ ] Unit tests
+- [x] Unit tests
+- [ ] Unit tests with frameworks
 - [ ] Integration tests
 - [x] Api with chain of middlewares
 - [x] Kafka with chain of middlewares
 - [ ] Authentication
 - [ ] Authorization
 - [x] Live reload for development
+- [ ] Mocks

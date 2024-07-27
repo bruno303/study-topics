@@ -1,4 +1,6 @@
 GO_TOOLS_INSTALL=xargs -n1 -I {} go install {} < "tools/tools.txt"
+JS_TOOLS_INSTALL=xargs -n1 -I {} npm install -g {} < "tools/tools-js.txt"
+API_OUTPUT=./tmp/api
 
 init:
 	-rm .env 2> /dev/null
@@ -8,24 +10,34 @@ run-cli:
 	go run cmd/cli/*.go
 
 run-api:
-	go run cmd/api/*.go
+#	go run cmd/api/*.go
+	go build -o $(API_OUTPUT) cmd/api/*.go
+	$(API_OUTPUT)
+
+
+build-api-debug:
+	go build -gcflags="all=-N -l" -o $(API_OUTPUT) cmd/api/*.go
 
 run-api-live:
 	air -c .air.toml
 
 deps:
 	$(GO_TOOLS_INSTALL)
+	$(JS_TOOLS_INSTALL)
 	go mod vendor
 	go mod tidy -e -v
 
-docker-build:
-	docker build -t go-study:1.0.0 .
-
 docker-up-infra:
-	docker compose --profile local up -d
+	docker compose up -d
 
 docker-down:
-	docker compose --profile local down
+	docker compose down
 
-docker-up-app:
-	docker compose --profile app up --build --force-recreate
+docker-up-app: docker-up-infra
+	docker compose -f docker-compose.api.yaml up --build --force-recreate
+
+test:
+	go test -timeout 30s ./...
+
+test-watch:
+	nodemon --watch ./ -e go,yml,yaml,json --delay 2 --exec "make test"

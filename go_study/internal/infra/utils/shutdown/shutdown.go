@@ -10,12 +10,13 @@ import (
 var (
 	wg                 = &sync.WaitGroup{}
 	callbacks []func() = make([]func(), 0)
+	signals            = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT}
 )
 
 func ConfigureGracefulShutdown() {
 	go func() {
 		exitChan := make(chan os.Signal, 1)
-		signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+		signal.Notify(exitChan, signals...)
 		<-exitChan
 		close(exitChan)
 		for _, f := range callbacks {

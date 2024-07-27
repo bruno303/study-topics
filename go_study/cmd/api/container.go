@@ -52,7 +52,7 @@ func newServiceContainer(repositories RepositoryContainer) ServiceContainer {
 
 func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryContainer {
 	return RepositoryContainer{
-		HelloRepository: repository.NewHelloRepository(ctx, pool),
+		HelloRepository: repository.NewHelloPgxRepository(ctx, pool),
 	}
 }
 

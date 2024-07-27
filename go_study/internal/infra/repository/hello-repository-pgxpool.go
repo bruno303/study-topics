@@ -23,7 +23,7 @@ var txKey = transactionKey{name: "db-transaction"}
 
 const traceName = "HelloRepository"
 
-func NewHelloRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
+func NewHelloPgxRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
 	return HelloRepository{
 		pool: pool,
 	}
