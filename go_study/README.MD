@@ -31,6 +31,6 @@ Project to learn and practice go concepts.
 - [x] Api with chain of middlewares
 - [x] Kafka with chain of middlewares
 - [ ] Authentication
-- [ ] Authorization
+- [x] Authorization
 - [x] Live reload for development
 - [ ] Mocks

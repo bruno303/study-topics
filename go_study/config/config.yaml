@@ -9,6 +9,9 @@ app:
       enabled: true
   monitoring:
     trace-url: http://localhost:9411/api/v2/spans
+  auth:
+    enabled: true
+    secret-key: "dg@#$egf1df#$7"
 database:
   host: localhost
   port: 5432
@@ -32,5 +35,6 @@ kafka:
 workers:
   hello-producer:
     topic: go-study.hello
-    interval-millis: 1000
+    interval-millis: 5000
+    max-messages: 5
     enabled: true

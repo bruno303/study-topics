@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"errors"
 	"os"
 	"time"
 
@@ -10,8 +9,6 @@ import (
 
 	envconfig "github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -30,6 +27,10 @@ type Config struct {
 			Level  string `env:"LOG_LEVEL" yaml:"level"`
 			Format string `env:"LOG_FORMAT" yaml:"format"`
 		} `yaml:"log"`
+		Auth struct {
+			Enabled   bool   `env:"ENABLED" yaml:"enabled"`
+			SecretKey string `env:"SECRET_KEY" yaml:"secret-key"`
+		} `env:", prefix="AUTH_" yaml:"auth"`
 	} `env:", prefix=APPLICATION_" yaml:"app"`
 	Database struct {
 		Host         string `env:"DATABASE_HOST" yaml:"host"`
@@ -70,6 +71,7 @@ type HelloProducerConfig struct {
 	IntervalMillis int64  `env:"WORKERS_HELLO_PRODUCER_INTERVAL_MILLIS" yaml:"interval-millis"`
 	Topic          string `env:"WORKERS_HELLO_PRODUCER_TOPIC" yaml:"topic"`
 	Enabled        bool   `env:"WORKERS_HELLO_PRODUCER_ENABLED" yaml:"enabled"`
+	MaxMessages    int    `env:"WORKERS_HELLO_PRODUCER_MAX_MESSAGES" yaml:"max-messages"`
 }
 
 func LoadConfig() *Config {
@@ -85,12 +87,6 @@ func LoadConfig() *Config {
 
 	log.Log().Debug(context.TODO(), "config with yaml: %+v", cfg)
 
-	if fileExists(".env") {
-		if err = godotenv.Load(); err != nil {
-			panic("Error loading .env file")
-		}
-	}
-
 	if err = envconfig.ProcessWith(
 		context.Background(),
 		&envconfig.Config{
@@ -103,11 +99,4 @@ func LoadConfig() *Config {
 
 	log.Log().Debug(context.TODO(), "config with envs: %+v", cfg)
 	return cfg
-}
-
-func fileExists(filename string) bool {
-	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	return true
 }
