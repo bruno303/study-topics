@@ -7,7 +7,7 @@ import (
 
 func TestHello(t *testing.T) {
 	expected := "HelloData[id=id, name=name, age=30]"
-	subject := NewService(&fakeRepo{})
+	subject := NewService()
 
 	result := subject.Hello(context.Background(), "id", 18)
 	if result != expected {

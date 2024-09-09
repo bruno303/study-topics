@@ -5,30 +5,28 @@ import (
 
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/hello"
+	"github.com/bruno303/study-topics/go-study/internal/hello/hellomodel"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
 	"github.com/bruno303/study-topics/go-study/internal/infra/repository"
 	"github.com/bruno303/study-topics/go-study/internal/infra/worker"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Container struct {
 	Config          *config.Config
 	Services        ServiceContainer
-	Repositories    RepositoryContainer
 	MessageHandlers MessageHandlersContainer
 	Kafka           KafkaContainer
 	Workers         WorkerContainer
+	Uow             UowContainer
 }
 
 type ServiceContainer struct {
 	HelloService hello.HelloService
-}
-
-type RepositoryContainer struct {
-	HelloRepository hello.Repository
 }
 
 type KafkaContainer struct {
@@ -44,17 +42,21 @@ type MessageHandlersContainer struct {
 	Hello handlers.HelloMessageHandler
 }
 
-func newServiceContainer(repositories RepositoryContainer) ServiceContainer {
+type UowContainer struct {
+	UOW repository.UnitOfWork
+}
+
+func newServiceContainer(uow UowContainer) ServiceContainer {
 	return ServiceContainer{
-		HelloService: hello.NewService(repositories.HelloRepository),
+		HelloService: hello.NewService(uow.UOW),
 	}
 }
 
-func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryContainer {
-	return RepositoryContainer{
-		HelloRepository: repository.NewHelloPgxRepository(ctx, pool),
-	}
-}
+// func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryContainer {
+// 	return RepositoryContainer{
+// 		HelloRepository: repository.NewHelloPgxRepository(ctx, pool),
+// 	}
+// }
 
 func newKafkaContainer(cfg *config.Config, handlers MessageHandlersContainer) KafkaContainer {
 	consumers := []kafka.ConsumerGroup{}
@@ -95,11 +97,22 @@ func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContaine
 	}
 }
 
+func NewUowContainer(pool *pgxpool.Pool) UowContainer {
+	return UowContainer{
+		UOW: repository.NewUnitOfWork(&repository.UnitOfWorkConfig{
+			Pool: pool,
+			HelloRepositoryFactory: func(ctx context.Context, tx *pgx.Tx) hellomodel.HelloRepository {
+				return repository.NewHelloPgxRepository(ctx, pool, tx)
+			},
+		}),
+	}
+}
+
 func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	pool := database.Connect(cfg)
 
-	repositories := newRepositoryContainer(ctx, pool)
-	services := newServiceContainer(repositories)
+	uowContainer := NewUowContainer(pool)
+	services := newServiceContainer(uowContainer)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)
 	worker := newWorkerContainer(kafka, cfg)
@@ -107,9 +120,9 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	return &Container{
 		Config:          cfg,
 		Services:        services,
-		Repositories:    repositories,
 		MessageHandlers: messageHandlers,
 		Kafka:           kafka,
 		Workers:         worker,
+		Uow:             uowContainer,
 	}
 }

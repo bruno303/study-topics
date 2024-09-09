@@ -5,7 +5,7 @@ import (
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
-	"github.com/bruno303/study-topics/go-study/internal/hello"
+	"github.com/bruno303/study-topics/go-study/internal/hello/hellomodel"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,6 +13,7 @@ import (
 
 type HelloRepository struct {
 	pool *pgxpool.Pool
+	tx   *pgx.Tx
 }
 
 type transactionKey struct {
@@ -23,13 +24,14 @@ var txKey = transactionKey{name: "db-transaction"}
 
 const traceName = "HelloRepository"
 
-func NewHelloPgxRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
+func NewHelloPgxRepository(ctx context.Context, pool *pgxpool.Pool, tx *pgx.Tx) HelloRepository {
 	return HelloRepository{
 		pool: pool,
+		tx:   tx,
 	}
 }
 
-func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
+func (r HelloRepository) Save(ctx context.Context, entity *hellomodel.HelloData) (*hellomodel.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Save"))
 	defer end()
 
@@ -53,7 +55,7 @@ func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*he
 	return entity, nil
 }
 
-func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
+func (r HelloRepository) FindById(ctx context.Context, id any) (*hellomodel.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "FindById"))
 	defer end()
 
@@ -71,7 +73,7 @@ func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData
 	}
 }
 
-func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
+func (r HelloRepository) ListAll(ctx context.Context) []hellomodel.HelloData {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
 
@@ -91,12 +93,12 @@ func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
 		return nil
 	}
 
-	result := make([]hello.HelloData, 0)
+	result := make([]hellomodel.HelloData, 0)
 
 	for rows.Next() {
 		data, err := r.mapRowsNextValue(&rows)
 		if err != nil {
-			return make([]hello.HelloData, 0)
+			return make([]hellomodel.HelloData, 0)
 		}
 		result = append(result, *data)
 	}
@@ -116,60 +118,18 @@ func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (conte
 	return context.WithValue(ctx, txKey, &tx), nil
 }
 
-func (r HelloRepository) Rollback(ctx context.Context) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Rollback"))
-	defer end()
-
-	tx := r.getTransactionOrNil(ctx)
-	if tx != nil {
-		(*tx).Rollback(ctx)
-	}
+func (r HelloRepository) getTransactionOrNil(_ context.Context) *pgx.Tx {
+	return r.tx
 }
 
-func (r HelloRepository) Commit(ctx context.Context) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Commit"))
-	defer end()
-	tx := r.getTransactionOrNil(ctx)
-	if tx != nil {
-		(*tx).Commit(ctx)
-	}
-}
-
-func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
-	tx := ctx.Value(txKey)
-	if tx == nil {
-		return nil
-	}
-	return tx.(*pgx.Tx)
-}
-
-func (r HelloRepository) RunWithTransaction(ctx context.Context, callback func(context.Context) (*hello.HelloData, error)) (*hello.HelloData, error) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "RunWithTransaction"))
-	defer end()
-
-	ctx, err := r.BeginTransactionWithContext(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return nil, err
-	}
-	result, err := callback(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		r.Rollback(ctx)
-	} else {
-		r.Commit(ctx)
-	}
-	return result, err
-}
-
-func (r HelloRepository) mapRow(row *pgx.Row) (*hello.HelloData, error) {
-	result := new(hello.HelloData)
+func (r HelloRepository) mapRow(row *pgx.Row) (*hellomodel.HelloData, error) {
+	result := new(hellomodel.HelloData)
 	err := (*row).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }
 
-func (r HelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hello.HelloData, error) {
-	result := new(hello.HelloData)
+func (r HelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hellomodel.HelloData, error) {
+	result := new(hellomodel.HelloData)
 	err := (*rows).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }
