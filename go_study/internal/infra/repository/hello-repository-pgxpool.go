@@ -5,7 +5,7 @@ import (
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
-	"github.com/bruno303/study-topics/go-study/internal/hello/hellomodel"
+	"github.com/bruno303/study-topics/go-study/internal/hello"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +13,6 @@ import (
 
 type HelloRepository struct {
 	pool *pgxpool.Pool
-	tx   *pgx.Tx
 }
 
 type transactionKey struct {
@@ -24,14 +23,13 @@ var txKey = transactionKey{name: "db-transaction"}
 
 const traceName = "HelloRepository"
 
-func NewHelloPgxRepository(ctx context.Context, pool *pgxpool.Pool, tx *pgx.Tx) HelloRepository {
+func NewHelloPgxRepository(pool *pgxpool.Pool) HelloRepository {
 	return HelloRepository{
 		pool: pool,
-		tx:   tx,
 	}
 }
 
-func (r HelloRepository) Save(ctx context.Context, entity *hellomodel.HelloData) (*hellomodel.HelloData, error) {
+func (r HelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Save"))
 	defer end()
 
@@ -55,7 +53,7 @@ func (r HelloRepository) Save(ctx context.Context, entity *hellomodel.HelloData)
 	return entity, nil
 }
 
-func (r HelloRepository) FindById(ctx context.Context, id any) (*hellomodel.HelloData, error) {
+func (r HelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "FindById"))
 	defer end()
 
@@ -73,7 +71,7 @@ func (r HelloRepository) FindById(ctx context.Context, id any) (*hellomodel.Hell
 	}
 }
 
-func (r HelloRepository) ListAll(ctx context.Context) []hellomodel.HelloData {
+func (r HelloRepository) ListAll(ctx context.Context) []hello.HelloData {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
 
@@ -93,12 +91,12 @@ func (r HelloRepository) ListAll(ctx context.Context) []hellomodel.HelloData {
 		return nil
 	}
 
-	result := make([]hellomodel.HelloData, 0)
+	result := make([]hello.HelloData, 0)
 
 	for rows.Next() {
 		data, err := r.mapRowsNextValue(&rows)
 		if err != nil {
-			return make([]hellomodel.HelloData, 0)
+			return make([]hello.HelloData, 0)
 		}
 		result = append(result, *data)
 	}
@@ -118,18 +116,22 @@ func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (conte
 	return context.WithValue(ctx, txKey, &tx), nil
 }
 
-func (r HelloRepository) getTransactionOrNil(_ context.Context) *pgx.Tx {
-	return r.tx
+func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
+	appTx := GetTransactionOrNil(ctx)
+	if appTx != nil {
+		return appTx.postgreTransaction
+	}
+	return nil
 }
 
-func (r HelloRepository) mapRow(row *pgx.Row) (*hellomodel.HelloData, error) {
-	result := new(hellomodel.HelloData)
+func (r HelloRepository) mapRow(row *pgx.Row) (*hello.HelloData, error) {
+	result := new(hello.HelloData)
 	err := (*row).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }
 
-func (r HelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hellomodel.HelloData, error) {
-	result := new(hellomodel.HelloData)
+func (r HelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hello.HelloData, error) {
+	result := new(hello.HelloData)
 	err := (*rows).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }

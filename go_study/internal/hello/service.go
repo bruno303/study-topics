@@ -2,90 +2,65 @@ package hello
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
-	"github.com/bruno303/study-topics/go-study/internal/hello/hellomodel"
-	"github.com/bruno303/study-topics/go-study/internal/unitofwork"
+	"github.com/bruno303/study-topics/go-study/internal/transaction"
 )
+
+type HelloRepository interface {
+	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
+	FindById(ctx context.Context, id any) (*HelloData, error)
+	ListAll(ctx context.Context) []HelloData
+}
 
 const traceName = "HelloService"
 
 type HelloService struct {
-	uow unitofwork.UnitOfWork
+	transactionManager transaction.TransactionManager[any]
+	helloRepository    HelloRepository
 }
 
-func NewService(uow unitofwork.UnitOfWork) HelloService {
-	return HelloService{uow}
+func NewService(transactionManager transaction.TransactionManager[any], helloRepository HelloRepository) HelloService {
+	return HelloService{transactionManager, helloRepository}
 }
 
-func (s HelloService) Hello(ctx context.Context, id string, age int) string {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello2"))
-	defer end()
-
-	tx, err := s.uow.BeginTransaction(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-
-	defer tx.Rollback(ctx)
-	var repository hellomodel.HelloRepository = tx.HelloRepository()
-
-	newHello := hellomodel.HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-	helloAdded, err := repository.Save(ctx, &newHello)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-	helloFound, err := repository.FindById(ctx, helloAdded.Id)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-	tx.HelloFileService().WriteFile(ctx, helloFound.Name)
-	if err = tx.Commit(ctx); err != nil {
-		return err.Error()
-	}
-	return helloFound.ToString()
-}
-
-func (s HelloService) ListAll(ctx context.Context) ([]hellomodel.HelloData, error) {
+func (s HelloService) ListAll(ctx context.Context) ([]HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
-
-	uow, err := s.uow.BeginTransaction(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return uow.HelloRepository().ListAll(ctx), nil
+	return s.helloRepository.ListAll(ctx), nil
 }
 
-// func (s HelloService) Hello(ctx context.Context, id string, age int) string {
-// 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello"))
-// 	defer end()
+func (s HelloService) Hello(ctx context.Context, id string, age int) (HelloData, error) {
+	var result HelloData
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello"))
+	defer end()
 
-// 	data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
+	data, err := s.transactionManager.Execute(ctx, func(ctxTx context.Context) (any, error) {
 
-// 		ctxTx, end := trace.Trace(ctxTx, trace.NameConfig(traceName, "HelloTransactional"))
-// 		defer end()
+		ctxTx, end := trace.Trace(ctxTx, trace.NameConfig(traceName, "HelloTransactional"))
+		defer end()
 
-// 		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-// 		helloAdded, err := s.repository.Save(ctxTx, &newHello)
-// 		if err != nil {
-// 			trace.InjectError(ctxTx, err)
-// 			return nil, err
-// 		}
-// 		helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
-// 		if err != nil {
-// 			trace.InjectError(ctxTx, err)
-// 			return nil, err
-// 		}
-// 		return helloFound, nil
-// 	})
-// 	if err != nil {
-// 		trace.InjectError(ctx, err)
-// 		return err.Error()
-// 	}
-// 	return data.ToString()
-// }
+		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
+		helloAdded, err := s.helloRepository.Save(ctxTx, &newHello)
+		if err != nil {
+			trace.InjectError(ctxTx, err)
+			return nil, err
+		}
+		helloFound, err := s.helloRepository.FindById(ctxTx, helloAdded.Id)
+		if err != nil {
+			trace.InjectError(ctxTx, err)
+			return nil, err
+		}
+		return helloFound, nil
+	})
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return result, err
+	}
+	if value, ok := data.(*HelloData); ok {
+		return *value, nil
+	}
+	return result, errors.New("invalid type returned")
+}

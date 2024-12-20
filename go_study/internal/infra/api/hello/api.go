@@ -34,9 +34,20 @@ func withTrace(pattern string, h http.Handler) http.Handler {
 
 func create(helloService hello.HelloService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		result := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+		result, err := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		b, err := json.Marshal(result)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(result))
+		w.Write(b)
 	})
 }
 
