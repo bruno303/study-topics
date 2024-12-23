@@ -9,6 +9,6 @@ type Transaction interface {
 	Rollback(ctx context.Context) error
 }
 
-type TransactionManager[T any] interface {
-	Execute(context.Context, func(context.Context) (T, error)) (T, error)
+type TransactionManager interface {
+	Execute(context.Context, func(context.Context) (any, error)) (any, error)
 }

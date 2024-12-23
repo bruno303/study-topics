@@ -38,6 +38,6 @@ func (mh HelloMessageHandler) Process(ctx context.Context, msg string) error {
 		trace.InjectError(ctx, err)
 		return err
 	}
-	log.Log().Info(ctx, "Result: %s", result)
+	log.Log().Info(ctx, "Result: %+v", result)
 	return nil
 }

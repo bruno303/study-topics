@@ -42,18 +42,20 @@ type MessageHandlersContainer struct {
 
 type RepositoryContainer struct {
 	HelloRepository    repository.HelloRepository
+	FileRepository     repository.FileRepository
 	TransactionManager repository.TransactionManager
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	return ServiceContainer{
-		HelloService: hello.NewService(repoContainer.TransactionManager, repoContainer.HelloRepository),
+		HelloService: hello.NewService(repoContainer.TransactionManager, repoContainer.HelloRepository, repoContainer.FileRepository),
 	}
 }
 
 func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
 	return RepositoryContainer{
 		HelloRepository: repository.NewHelloPgxRepository(pool),
+		FileRepository:  repository.NewFileRepository(),
 		TransactionManager: repository.NewTransactionManager(
 			&repository.TransactionConfig{
 				Pool: pool,

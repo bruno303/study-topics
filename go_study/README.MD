@@ -30,7 +30,10 @@ Project to learn and practice go concepts.
 - [ ] Integration tests
 - [x] Api with chain of middlewares
 - [x] Kafka with chain of middlewares
+- [ ] Kafka DLT
+- [ ] Kafka retry
 - [ ] Authentication
 - [ ] Authorization
 - [x] Live reload for development
 - [ ] Mocks
+- [x] Unit of work pattern

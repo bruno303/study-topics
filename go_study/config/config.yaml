@@ -32,5 +32,5 @@ kafka:
 workers:
   hello-producer:
     topic: go-study.hello
-    interval-millis: 5000
+    interval-millis: 15000
     enabled: true
