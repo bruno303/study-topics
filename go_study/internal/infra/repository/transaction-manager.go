@@ -14,7 +14,6 @@ type (
 	}
 	ApplicationTransaction struct {
 		postgreTransaction *pgx.Tx
-		fileTransaction    *fileTransaction
 	}
 	TransactionConfig struct {
 		Pool *pgxpool.Pool
@@ -23,12 +22,6 @@ type (
 )
 
 var txCtxKey txCtxKeyType = txCtxKeyType("transaction-key")
-
-func newFileTransaction() *fileTransaction {
-	return &fileTransaction{
-		paths: make(map[string]string),
-	}
-}
 
 func NewTransactionManager(cfg *TransactionConfig) TransactionManager {
 	return TransactionManager{cfg}
@@ -71,7 +64,7 @@ func (tm TransactionManager) BeginTransaction(ctx context.Context) (context.Cont
 		trace.InjectError(ctx, err)
 		return ctx, err
 	}
-	return context.WithValue(ctx, txCtxKey, &ApplicationTransaction{&tx, newFileTransaction()}), nil
+	return context.WithValue(ctx, txCtxKey, &ApplicationTransaction{&tx}), nil
 }
 
 func GetTransactionOrNil(ctx context.Context) *ApplicationTransaction {
@@ -85,12 +78,6 @@ func GetTransactionOrNil(ctx context.Context) *ApplicationTransaction {
 func (t *ApplicationTransaction) Commit(ctx context.Context) error {
 	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "Commit"))
 	defer end()
-	if t.fileTransaction != nil {
-		if err := t.fileTransaction.Commit(ctx); err != nil {
-			trace.InjectError(ctx, err)
-			return err
-		}
-	}
 	if t.postgreTransaction != nil {
 		if err := (*t.postgreTransaction).Commit(ctx); err != nil {
 			trace.InjectError(ctx, err)
@@ -103,12 +90,6 @@ func (t *ApplicationTransaction) Commit(ctx context.Context) error {
 func (t *ApplicationTransaction) Rollback(ctx context.Context) error {
 	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "Rollback"))
 	defer end()
-	if t.fileTransaction != nil {
-		if err := t.fileTransaction.Rollback(ctx); err != nil {
-			trace.InjectError(ctx, err)
-			return err
-		}
-	}
 	if t.postgreTransaction != nil {
 		if err := (*t.postgreTransaction).Rollback(ctx); err != nil {
 			trace.InjectError(ctx, err)

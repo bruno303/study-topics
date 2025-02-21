@@ -41,26 +41,28 @@ type MessageHandlersContainer struct {
 }
 
 type RepositoryContainer struct {
-	HelloRepository    repository.HelloRepository
-	FileRepository     repository.FileRepository
-	TransactionManager repository.TransactionManager
+	HelloRepository             repository.HelloRepository
+	TransactionManager          repository.TransactionManager
+	OptimizedTransactionManager repository.OptimizedTransactionManager
+	OptimizedHelloRepository    repository.OptimizedHelloRepository
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	return ServiceContainer{
-		HelloService: hello.NewService(repoContainer.TransactionManager, repoContainer.HelloRepository, repoContainer.FileRepository),
+		HelloService: hello.NewService(repoContainer.OptimizedTransactionManager, repoContainer.OptimizedHelloRepository),
 	}
 }
 
 func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
 	return RepositoryContainer{
 		HelloRepository: repository.NewHelloPgxRepository(pool),
-		FileRepository:  repository.NewFileRepository(),
 		TransactionManager: repository.NewTransactionManager(
 			&repository.TransactionConfig{
 				Pool: pool,
 			},
 		),
+		OptimizedHelloRepository:    repository.NewOptimizedHelloRepository(pool),
+		OptimizedTransactionManager: repository.NewOptimizedTransactionManager(pool),
 	}
 }
 

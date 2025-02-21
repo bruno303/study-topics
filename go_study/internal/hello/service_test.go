@@ -8,13 +8,12 @@ import (
 
 var (
 	repo      fakeRepo                = fakeRepo{}
-	fileRepo  fakeFileRepo            = fakeFileRepo{}
 	txManager *fakeTransactionManager = &fakeTransactionManager{}
 )
 
 func TestHello(t *testing.T) {
 	expected := HelloData{Id: "id", Name: "name", Age: 30}
-	subject := NewService(txManager, repo, fileRepo)
+	subject := NewService(txManager, repo)
 
 	result, err := subject.Hello(context.Background(), "id", 18)
 	if err != nil {
@@ -26,22 +25,12 @@ func TestHello(t *testing.T) {
 	}
 }
 
-func TestHelloWritingToFile(t *testing.T) {
-	subject := NewService(txManager, repo, fileRepo)
-
-	err := subject.HelloWriting(context.Background(), "file.txt", "Hello")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-		return
-	}
-}
-
 func TestHelloWithError(t *testing.T) {
 	errorStr := "error xpto"
 	txManager.response = func(ctx context.Context) (any, error) {
 		return nil, errors.New(errorStr)
 	}
-	subject := NewService(txManager, repo, fileRepo)
+	subject := NewService(txManager, repo)
 
 	_, err := subject.Hello(context.Background(), "id", 18)
 	if err == nil {
@@ -75,10 +64,4 @@ func (r *fakeTransactionManager) Execute(ctx context.Context, callback func(cont
 		return r.response(ctx)
 	}
 	return callback(ctx)
-}
-
-type fakeFileRepo struct{}
-
-func (f fakeFileRepo) WriteFile(ctx context.Context, path string, content []byte) error {
-	return nil
 }
