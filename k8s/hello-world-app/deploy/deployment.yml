@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-test-app-deployment
+  labels:
+    app: k8s-test-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: k8s-test-app
+  template:
+    metadata:
+      labels:
+        app: k8s-test-app
+    spec:
+      containers:
+      - name: k8s-test-app
+        image: bruno303/k8s-test-app:latest
+        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: 250m
+            memory: 200M
+        ports:
+        - containerPort: 3333
+        envFrom:
+        - secretRef:
+            name: k8s-test-app-secret

@@ -1,0 +1,13 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - host: 172.18.0.2 # cluster node IP
+    name: k8s-test-app
+    port: 32402
+    protocol: http
+    routes:
+      - name: k8s-test-java
+        paths:
+          - /k8s-test-java
+        strip_path: true

@@ -1,0 +1,11 @@
+namespace: k8s-test-app
+
+secretGenerator:
+- name: k8s-test-app-secret
+  envs:
+  - .env
+
+resources:
+  - namespace.yml
+  - deployment.yml
+  - service.yml
