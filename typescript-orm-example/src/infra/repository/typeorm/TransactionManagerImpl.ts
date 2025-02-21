@@ -1,6 +1,6 @@
 import { EntityManager } from "typeorm";
-import { Opts, Transaction, TransactionCallback, TransactionManager, TransactionPropagation } from "../../repositories/TransactionManager";
-import { AppDataSource } from "../datasource/datasource";
+import { TransactionManager, TransactionCallback, Opts, TransactionPropagation, Transaction } from "../../../repositories/TransactionManager";
+import { AppDataSource } from "../../datasource/datasource";
 
 export class TypeOrmTransaction implements Transaction {
   constructor(private readonly transactionEntityManager: EntityManager) {}

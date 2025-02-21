@@ -1,6 +1,6 @@
-import { User } from '../../entities/User';
-import { AppDataSource } from '../datasource/datasource';
-import { Opts } from '../../repositories/TransactionManager';
+import { User } from '../../../entities/User';
+import { Opts } from '../../../repositories/TransactionManager';
+import { AppDataSource } from '../../datasource/datasource';
 import { TypeOrmTransaction } from './TransactionManagerImpl';
 
 export class UserRepository {
