@@ -23,7 +23,7 @@ var txKey = transactionKey{name: "db-transaction"}
 
 const traceName = "HelloRepository"
 
-func NewHelloPgxRepository(ctx context.Context, pool *pgxpool.Pool) HelloRepository {
+func NewHelloPgxRepository(pool *pgxpool.Pool) HelloRepository {
 	return HelloRepository{
 		pool: pool,
 	}
@@ -116,50 +116,12 @@ func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (conte
 	return context.WithValue(ctx, txKey, &tx), nil
 }
 
-func (r HelloRepository) Rollback(ctx context.Context) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Rollback"))
-	defer end()
-
-	tx := r.getTransactionOrNil(ctx)
-	if tx != nil {
-		(*tx).Rollback(ctx)
-	}
-}
-
-func (r HelloRepository) Commit(ctx context.Context) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Commit"))
-	defer end()
-	tx := r.getTransactionOrNil(ctx)
-	if tx != nil {
-		(*tx).Commit(ctx)
-	}
-}
-
 func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
-	tx := ctx.Value(txKey)
-	if tx == nil {
-		return nil
+	appTx := GetTransactionOrNil(ctx)
+	if appTx != nil {
+		return appTx.postgreTransaction
 	}
-	return tx.(*pgx.Tx)
-}
-
-func (r HelloRepository) RunWithTransaction(ctx context.Context, callback func(context.Context) (*hello.HelloData, error)) (*hello.HelloData, error) {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "RunWithTransaction"))
-	defer end()
-
-	ctx, err := r.BeginTransactionWithContext(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return nil, err
-	}
-	result, err := callback(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		r.Rollback(ctx)
-	} else {
-		r.Commit(ctx)
-	}
-	return result, err
+	return nil
 }
 
 func (r HelloRepository) mapRow(row *pgx.Row) (*hello.HelloData, error) {

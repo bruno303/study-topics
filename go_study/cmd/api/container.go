@@ -17,18 +17,14 @@ import (
 type Container struct {
 	Config          *config.Config
 	Services        ServiceContainer
-	Repositories    RepositoryContainer
 	MessageHandlers MessageHandlersContainer
 	Kafka           KafkaContainer
 	Workers         WorkerContainer
+	Repository      RepositoryContainer
 }
 
 type ServiceContainer struct {
 	HelloService hello.HelloService
-}
-
-type RepositoryContainer struct {
-	HelloRepository hello.Repository
 }
 
 type KafkaContainer struct {
@@ -44,15 +40,29 @@ type MessageHandlersContainer struct {
 	Hello handlers.HelloMessageHandler
 }
 
-func newServiceContainer(repositories RepositoryContainer) ServiceContainer {
+type RepositoryContainer struct {
+	HelloRepository             repository.HelloRepository
+	TransactionManager          repository.TransactionManager
+	OptimizedTransactionManager repository.OptimizedTransactionManager
+	OptimizedHelloRepository    repository.OptimizedHelloRepository
+}
+
+func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	return ServiceContainer{
-		HelloService: hello.NewService(repositories.HelloRepository),
+		HelloService: hello.NewService(repoContainer.OptimizedTransactionManager, repoContainer.OptimizedHelloRepository),
 	}
 }
 
-func newRepositoryContainer(ctx context.Context, pool *pgxpool.Pool) RepositoryContainer {
+func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
 	return RepositoryContainer{
-		HelloRepository: repository.NewHelloPgxRepository(ctx, pool),
+		HelloRepository: repository.NewHelloPgxRepository(pool),
+		TransactionManager: repository.NewTransactionManager(
+			&repository.TransactionConfig{
+				Pool: pool,
+			},
+		),
+		OptimizedHelloRepository:    repository.NewOptimizedHelloRepository(pool),
+		OptimizedTransactionManager: repository.NewOptimizedTransactionManager(pool),
 	}
 }
 
@@ -98,8 +108,8 @@ func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContaine
 func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	pool := database.Connect(cfg)
 
-	repositories := newRepositoryContainer(ctx, pool)
-	services := newServiceContainer(repositories)
+	repos := newRepositoryContainer(pool)
+	services := newServiceContainer(repos)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)
 	worker := newWorkerContainer(kafka, cfg)
@@ -107,9 +117,9 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	return &Container{
 		Config:          cfg,
 		Services:        services,
-		Repositories:    repositories,
 		MessageHandlers: messageHandlers,
 		Kafka:           kafka,
 		Workers:         worker,
+		Repository:      repos,
 	}
 }

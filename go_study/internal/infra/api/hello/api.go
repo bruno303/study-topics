@@ -16,12 +16,12 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func SetupApi(cfg *config.Config, server *http.ServeMux, helloService hello.HelloService, helloRepository hello.Repository) {
+func SetupApi(cfg *config.Config, server *http.ServeMux, helloService hello.HelloService) {
 	if !cfg.Application.Hello.Api.Enabled {
 		log.Log().Info(context.Background(), "Hello api disabled")
 		return
 	}
-	listAllHandler := listAll(helloRepository)
+	listAllHandler := listAll(helloService)
 	createHandler := create(helloService)
 
 	server.Handle("GET /hello", withTrace("GET /hello", buildChain(cfg, listAllHandler)))
@@ -34,22 +34,39 @@ func withTrace(pattern string, h http.Handler) http.Handler {
 
 func create(helloService hello.HelloService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result, err := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		b, err := json.Marshal(result)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
-		result := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(result))
+		w.Write(b)
 	})
 }
 
-func listAll(helloRepository hello.Repository) http.Handler {
+func listAll(helloService hello.HelloService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
-		result := helloRepository.ListAll(r.Context())
+		result, err := helloService.ListAll(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 		response, err := json.Marshal(result)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
+			return
 		}
+		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(response))
 	})

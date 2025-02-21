@@ -1,6 +1,8 @@
 package hello
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type HelloData struct {
 	Id   string

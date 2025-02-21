@@ -2,83 +2,67 @@ package hello
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
+	"github.com/bruno303/study-topics/go-study/internal/transaction"
+	"github.com/google/uuid"
 )
 
-const traceName = "HelloService"
-
-type Repository interface {
+type HelloRepository interface {
 	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
 	FindById(ctx context.Context, id any) (*HelloData, error)
 	ListAll(ctx context.Context) []HelloData
-	BeginTransactionWithContext(ctx context.Context) (context.Context, error)
-	Rollback(ctx context.Context)
-	Commit(ctx context.Context)
-	RunWithTransaction(ctx context.Context, callback func(context.Context) (*HelloData, error)) (*HelloData, error)
 }
+
+const traceName = "HelloService"
 
 type HelloService struct {
-	repository Repository
+	transactionManager transaction.TransactionManager
+	helloRepository    HelloRepository
 }
 
-func NewService(repo Repository) HelloService {
-	return HelloService{repository: repo}
+func NewService(
+	transactionManager transaction.TransactionManager,
+	helloRepository HelloRepository,
+) HelloService {
+	return HelloService{transactionManager, helloRepository}
 }
 
-func (s HelloService) Hello2(ctx context.Context, id string, age int) string {
-	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello2"))
+func (s HelloService) ListAll(ctx context.Context) ([]HelloData, error) {
+	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
-
-	ctx, err := s.repository.BeginTransactionWithContext(ctx)
-	defer s.repository.Rollback(ctx)
-
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-
-	newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-	helloAdded, err := s.repository.Save(ctx, &newHello)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-	helloFound, err := s.repository.FindById(ctx, helloAdded.Id)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return err.Error()
-	}
-	s.repository.Commit(ctx)
-	return helloFound.ToString()
+	return s.helloRepository.ListAll(ctx), nil
 }
 
-func (s HelloService) Hello(ctx context.Context, id string, age int) string {
+func (s HelloService) Hello(ctx context.Context, id string, age int) (HelloData, error) {
+	var result HelloData
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Hello"))
 	defer end()
 
-	data, err := s.repository.RunWithTransaction(ctx, func(ctxTx context.Context) (*HelloData, error) {
-
-		ctxTx, end := trace.Trace(ctxTx, trace.NameConfig(traceName, "HelloTransactional"))
-		defer end()
-
-		newHello := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
-		helloAdded, err := s.repository.Save(ctxTx, &newHello)
+	data, err := s.transactionManager.Execute(ctx, func(ctxTx context.Context) (any, error) {
+		hello1 := HelloData{Id: id, Name: fmt.Sprintf("Bruno %v", id), Age: age}
+		_, err := s.helloRepository.Save(ctxTx, &hello1)
 		if err != nil {
 			trace.InjectError(ctxTx, err)
 			return nil, err
 		}
-		helloFound, err := s.repository.FindById(ctxTx, helloAdded.Id)
+		id2 := uuid.NewString()
+		hello2 := HelloData{Id: id2, Name: fmt.Sprintf("Bruno %v", id2), Age: age}
+		_, err = s.helloRepository.Save(ctxTx, &hello2)
 		if err != nil {
 			trace.InjectError(ctxTx, err)
 			return nil, err
 		}
-		return helloFound, nil
+		return &hello1, nil
 	})
 	if err != nil {
 		trace.InjectError(ctx, err)
-		return err.Error()
+		return result, err
 	}
-	return data.ToString()
+	if value, ok := data.(*HelloData); ok {
+		return *value, nil
+	}
+	return result, errors.New("invalid type returned")
 }

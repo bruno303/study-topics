@@ -12,9 +12,9 @@ run-cli:
 run-api:
 	go run cmd/api/*.go
 
-
-build-api-debug:
+debug-api:
 	go build -gcflags="all=-N -l" -o $(API_OUTPUT) cmd/api/*.go
+	$(API_OUTPUT)
 
 run-api-live:
 	air -c .air.toml
