@@ -3,8 +3,8 @@ import express from 'express';
 import { createConnection } from 'typeorm';
 import { UserController } from './controllers/UserController';
 import { UserService } from './services/UserService';
-import { UserRepository } from './infra/repository/UserRepository';
-import { TransactionManagerImpl } from './infra/repository/TransactionManagerImpl';
+import { TransactionManagerImpl } from './infra/repository/typeormbatch/TransactionManagerImpl';
+import { UserRepository } from './infra/repository/typeormbatch/UserRepository';
 
 const app = express();
 app.use(express.json());
