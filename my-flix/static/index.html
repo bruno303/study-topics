@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎬 Movie Streaming</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background: #0e0e0e;
+        color: white;
+        text-align: center;
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 32px;
+        margin-bottom: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: auto;
+        background: #1c1c1c;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+      }
+
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 18px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      select {
+        background: #333;
+        color: white;
+      }
+
+      button {
+        background: #e50914;
+        color: white;
+        font-weight: bold;
+      }
+
+      button:hover {
+        background: #ff0a16;
+      }
+
+      video {
+        width: 100%;
+        margin-top: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
+  <body>
+    <h1>🎥 Movie Streaming Server</h1>
+
+    <div class="container">
+      <label for="movieSelect">Choose a Movie:</label>
+      <select id="movieSelect" onchange="updateSubtitles()"></select>
+
+      <label for="audioSelect">Choose Audio:</label>
+      <select id="audioSelect"></select>
+
+      <label for="subtitleSelect">Choose Subtitle:</label>
+      <select id="subtitleSelect"></select>
+
+      <button onclick="playMovie()">▶ Play Movie</button>
+
+      <video id="video" controls></video>
+    </div>
+
+    <script>
+      let movies = [];
+
+      async function loadMovies() {
+        try {
+          const response = await fetch("/movies");
+          movies = await response.json();
+          const movieSelect = document.getElementById("movieSelect");
+
+          movieSelect.innerHTML = "";
+          movies.forEach((movie) => {
+            const option = document.createElement("option");
+            option.value = movie.name;
+            option.textContent = movie.name.replace(/-/g, " ");
+            movieSelect.appendChild(option);
+          });
+
+          updateOptions();
+        } catch (error) {
+          console.error("Failed to load movies:", error);
+        }
+      }
+
+      function updateOptions() {
+        const movieName = document.getElementById("movieSelect").value;
+        const movie = movies.find((m) => m.name === movieName);
+
+        const subtitleSelect = document.getElementById("subtitleSelect");
+        subtitleSelect.innerHTML = "";
+        movie.subtitles.forEach((sub) => {
+          const option = document.createElement("option");
+          option.value = sub;
+          option.textContent = sub.split("/").pop();
+          subtitleSelect.appendChild(option);
+        });
+
+        //   const audioSelect = document.getElementById("audioSelect");
+        //   audioSelect.innerHTML = "";
+        //   movie.audioTracks.forEach((track) => {
+        //       const option = document.createElement("option");
+        //       option.value = track.index;
+        //       option.textContent = track.language ? track.language.toUpperCase() : `Track ${track.index}`;
+        //       audioSelect.appendChild(option);
+        //   });
+      }
+
+      async function playMovie() {
+        const movieName = document.getElementById("movieSelect").value;
+        const subtitleUrl = document.getElementById("subtitleSelect").value;
+        const audioTrackIndex = document.getElementById("audioSelect").value;
+        const video = document.getElementById("video");
+
+        try {
+          const response = await fetch(`/play/${movieName}`);
+          const data = await response.json();
+
+          if (!response.ok)
+            throw new Error(data.error || "Error processing movie");
+
+          if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(data.url);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.SUBTITLE_TRACK_LOADED, () => {
+              console.log("Subtitles loaded. Forcing display...");
+              document
+                .getElementById("video")
+                .textTracks.forEach((track) => (track.mode = "showing"));
+            });
+
+            // Select audio track dynamically
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              hls.audioTracks.forEach((track, index) => {
+                const option = document.createElement("option");
+                option.value = index;
+                option.textContent = track.name || `Track ${index}`;
+                audioSelect.appendChild(option);
+              });
+
+              // Set default audio track
+              hls.audioTrack = audioSelect.value;
+
+              // Change audio track when selector is updated
+              audioSelect.addEventListener("change", () => {
+                hls.audioTrack = audioSelect.value;
+              });
+
+              if (subtitleUrl) {
+                const track = document.createElement("track");
+                track.kind = "subtitles";
+                track.label = "Subtitles";
+                track.src = subtitleUrl;
+                track.default = true;
+                video.appendChild(track);
+              }
+            });
+          } else {
+            video.src = data.url;
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          alert("Failed to process/play movie.");
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const video = document.getElementById("video");
+        const tracks = video.textTracks; // Get all text tracks
+
+        if (tracks.length > 0) {
+          tracks[0].mode = "showing"; // Force enable the first subtitle track
+        }
+      });
+
+      window.onload = loadMovies;
+    </script>
+  </body>
+</html>

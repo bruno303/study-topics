@@ -53,11 +53,18 @@ func (w HelloProducerWorker) Start() {
 	})
 
 	go func() {
+		msgCount := 0
 		for range nextTick.C {
+			if msgCount >= w.cfg.MaxMessages {
+				log.Log().Info(context.Background(), "Already sent the max quantity of messages: %d. Stopping...", w.cfg.MaxMessages)
+				nextTick.Stop()
+				run = false
+			}
 			if !run {
 				return
 			}
 			_ = w.produceMessage(context.Background())
+			msgCount++
 		}
 	}()
 

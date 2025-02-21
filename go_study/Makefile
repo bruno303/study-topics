@@ -10,9 +10,7 @@ run-cli:
 	go run cmd/cli/*.go
 
 run-api:
-#	go run cmd/api/*.go
-	go build -o $(API_OUTPUT) cmd/api/*.go
-	$(API_OUTPUT)
+	go run cmd/api/*.go
 
 debug-api:
 	go build -gcflags="all=-N -l" -o $(API_OUTPUT) cmd/api/*.go
@@ -34,7 +32,7 @@ docker-down:
 	docker compose down
 
 docker-up-app: docker-up-infra
-	docker compose -f docker-compose.api.yaml up --build --force-recreate
+	docker compose -f docker-compose.api.yml up --build --force-recreate
 
 test:
 	go test -timeout 30s ./...
