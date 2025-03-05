@@ -35,5 +35,5 @@ Project to learn and practice go concepts.
 - [ ] Authentication
 - [x] Authorization
 - [x] Live reload for development
-- [ ] Mocks
+- [x] Mocks
 - [x] Unit of work pattern

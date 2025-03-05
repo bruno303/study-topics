@@ -12,6 +12,7 @@ require (
 	go.opentelemetry.io/otel/exporters/zipkin v1.27.0
 	go.opentelemetry.io/otel/sdk v1.27.0
 	go.opentelemetry.io/otel/trace v1.27.0
+	go.uber.org/mock v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

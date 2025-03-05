@@ -39,3 +39,6 @@ test:
 
 test-watch:
 	nodemon --watch ./ -e go,yml,yaml,json --delay 2 --exec "make test"
+
+mocks:
+	go generate -v ./...

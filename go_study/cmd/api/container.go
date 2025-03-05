@@ -49,7 +49,7 @@ type RepositoryContainer struct {
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	return ServiceContainer{
-		HelloService: hello.NewService(repoContainer.OptimizedTransactionManager, repoContainer.OptimizedHelloRepository),
+		HelloService: hello.NewService(repoContainer.TransactionManager, repoContainer.HelloRepository),
 	}
 }
 

@@ -4,16 +4,42 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/bruno303/study-topics/go-study/internal/transaction"
+	"go.uber.org/mock/gomock"
 )
 
 var (
-	repo      fakeRepo                = fakeRepo{}
-	txManager *fakeTransactionManager = &fakeTransactionManager{}
+	ctrl      *gomock.Controller
+	txManager *transaction.MockTransactionManager
+	repo      *MockHelloRepository
+	subject   HelloService
 )
 
+func beforeEach(t *testing.T) {
+	ctrl = gomock.NewController(t)
+	txManager = transaction.NewMockTransactionManager(ctrl)
+	repo = NewMockHelloRepository(ctrl)
+	subject = NewService(txManager, repo)
+}
+
 func TestHello(t *testing.T) {
-	expected := HelloData{Id: "id", Name: "name", Age: 30}
-	subject := NewService(txManager, repo)
+	beforeEach(t)
+	expected := HelloData{Id: "id", Name: "Bruno id", Age: 18}
+
+	txManager.
+		EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, callback func(context.Context) (any, error)) (any, error) {
+			return callback(ctx)
+		}).Times(1)
+
+	repo.
+		EXPECT().
+		Save(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, entity *HelloData) (*HelloData, error) {
+			return entity, nil
+		}).Times(2)
 
 	result, err := subject.Hello(context.Background(), "id", 18)
 	if err != nil {
@@ -26,11 +52,16 @@ func TestHello(t *testing.T) {
 }
 
 func TestHelloWithError(t *testing.T) {
+	beforeEach(t)
 	errorStr := "error xpto"
-	txManager.response = func(ctx context.Context) (any, error) {
-		return nil, errors.New(errorStr)
-	}
-	subject := NewService(txManager, repo)
+
+	txManager.
+		EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, callback func(context.Context) (any, error)) (any, error) {
+			return nil, errors.New(errorStr)
+		}).
+		Times(1)
 
 	_, err := subject.Hello(context.Background(), "id", 18)
 	if err == nil {
@@ -40,28 +71,4 @@ func TestHelloWithError(t *testing.T) {
 	if err.Error() != errorStr {
 		t.Errorf("Error should be \n%s \nbut got \n%s", errorStr, err.Error())
 	}
-}
-
-type fakeRepo struct{}
-type fakeTransactionManager struct {
-	response func(context.Context) (any, error)
-}
-
-func (r fakeRepo) Save(ctx context.Context, entity *HelloData) (*HelloData, error) {
-	return entity, nil
-}
-
-func (r fakeRepo) FindById(ctx context.Context, id any) (*HelloData, error) {
-	return &HelloData{Id: id.(string), Name: "name", Age: 30}, nil
-}
-
-func (r fakeRepo) ListAll(ctx context.Context) []HelloData {
-	return make([]HelloData, 0)
-}
-
-func (r *fakeTransactionManager) Execute(ctx context.Context, callback func(context.Context) (any, error)) (any, error) {
-	if r.response != nil {
-		return r.response(ctx)
-	}
-	return callback(ctx)
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen -source=service.go -destination=mocks.go -package hello
+
 type HelloRepository interface {
 	Save(ctx context.Context, entity *HelloData) (*HelloData, error)
 	FindById(ctx context.Context, id any) (*HelloData, error)
