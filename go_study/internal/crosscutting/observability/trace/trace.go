@@ -26,6 +26,7 @@ type (
 		ExtractTraceIds(ctx context.Context) TraceIds
 		InjectAttributes(ctx context.Context, attrs ...attr.Attribute)
 		InjectError(ctx context.Context, err error)
+		EndTrace(ctx context.Context)
 	}
 )
 

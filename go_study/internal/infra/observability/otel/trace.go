@@ -59,6 +59,10 @@ func (t OtelTracerAdapter) InjectError(ctx context.Context, err error) {
 	span.RecordError(err)
 }
 
+func (t OtelTracerAdapter) EndTrace(ctx context.Context) {
+	EndTrace(ctx)
+}
+
 func startSpan(ctx context.Context, tracerName string, spanName string) (context.Context, tracelib.Span) {
 	return otel.Tracer(tracerName).Start(
 		ctx,

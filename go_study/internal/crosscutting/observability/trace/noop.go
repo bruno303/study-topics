@@ -27,3 +27,5 @@ func (t NoOpTracer) ExtractTraceIds(ctx context.Context) TraceIds {
 func (t NoOpTracer) InjectAttributes(ctx context.Context, attrs ...attr.Attribute) {}
 
 func (t NoOpTracer) InjectError(ctx context.Context, err error) {}
+
+func (t NoOpTracer) EndTrace(ctx context.Context) {}
