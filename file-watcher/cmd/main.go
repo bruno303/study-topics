@@ -1,8 +1,9 @@
 package main
 
 import (
+	"context"
 	"file-watcher/internal/config"
-	"file-watcher/internal/fs"
+	"file-watcher/internal/monitor"
 	"file-watcher/internal/process"
 	"flag"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+
+	log "github.com/bruno303/go-toolkit/pkg/log"
 )
 
 type commandsFlag []string
@@ -24,27 +27,32 @@ func (c *commandsFlag) Set(value string) error {
 }
 
 func main() {
+	ctx := context.Background()
 	cfg := parseInput()
 
-	cmd := process.NewCommand(cfg.Commands, cfg.Signal)
+	log.SetLogger(log.NewSlogAdapter(log.SlogAdapterOpts{
+		Level:      log.LevelDebug,
+		FormatJson: false,
+		Source:     "default",
+	}))
 
-	// Handle interrupt signals (e.g., Ctrl+C) to clean up resources
+	cmd := process.NewCommand(cfg.Commands, cfg.Signal)
+	m := monitor.NewMonitor(cfg.FilesToWatch, cfg.Delay, func() error {
+		cmd.Run(ctx)
+		return nil
+	})
+
+	manager := monitor.NewMonitorManager(m, cmd)
+
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-signalChan
-		cmd.Stop()
+		manager.Stop(ctx)
 		os.Exit(0)
 	}()
 
-	go func() {
-		cmd.Run()
-	}()
-
-	fs.StartMonitor(cfg.FilesToWatch, cfg.Delay, func() error {
-		cmd.Run()
-		return nil
-	})
+	manager.Start(ctx)
 }
 
 func parseInput() config.Config {

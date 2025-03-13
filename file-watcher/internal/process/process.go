@@ -1,12 +1,13 @@
 package process
 
 import (
+	"context"
 	"errors"
-	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	log "github.com/bruno303/go-toolkit/pkg/log"
 )
 
 type Command struct {
@@ -25,7 +26,8 @@ func NewCommand(commands []string, signal os.Signal) *Command {
 	for _, c := range commands {
 		parts := strings.Fields(c)
 		if len(parts) == 0 {
-			log.Fatal("Error: Empty command")
+			log.Log().Error(context.Background(), "Empty command received", errors.New("empty command"))
+			os.Exit(1)
 		}
 		executable := parts[0]
 		args := parts[1:]
@@ -35,45 +37,45 @@ func NewCommand(commands []string, signal os.Signal) *Command {
 	return &Command{commands: internalCommands, signal: signal}
 }
 
-func (c *Command) Run() {
-	c.stopPreviousCommand()
+func (c *Command) Run(ctx context.Context) {
+	c.stopPreviousCommand(ctx)
 
 	for _, command := range c.commands {
-		c.runSingleCommand(command)
+		c.runSingleCommand(ctx, command)
 	}
 }
 
-func (c *Command) runSingleCommand(command internalCommand) {
+func (c *Command) runSingleCommand(ctx context.Context, command internalCommand) {
 	cmd := exec.Command(command.executable, command.args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	c.currentCmd = cmd
 
-	fmt.Printf("Executing command: %s %s\n", command.executable, strings.Join(command.args, " "))
+	log.Log().Info(ctx, "Executing command: %s %s\n", command.executable, strings.Join(command.args, " "))
 	err := cmd.Start()
 	if err != nil {
-		log.Println("Error starting command:", err)
+		log.Log().Error(ctx, "Error starting command:", err)
 		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		log.Log().Error(ctx, "Error executing command:", err)
 	} else {
-		fmt.Println("Command completed successfully")
+		log.Log().Debug(ctx, "Command completed successfully")
 	}
 }
 
-func (c *Command) stopPreviousCommand() {
+func (c *Command) stopPreviousCommand(ctx context.Context) {
 	if c.currentCmd != nil && c.currentCmd.Process != nil {
-		fmt.Println("Stopping previous command...")
+		log.Log().Debug(ctx, "Stopping previous command...")
 		err := c.currentCmd.Process.Signal(c.signal)
 		if err != nil && !errors.Is(err, os.ErrProcessDone) {
-			log.Println("Error stopping previous command:", err)
+			log.Log().Error(ctx, "Error stopping previous command:", err)
 		}
 	}
 }
 
-func (c *Command) Stop() {
-	c.stopPreviousCommand()
+func (c *Command) Stop(ctx context.Context) {
+	c.stopPreviousCommand(ctx)
 }

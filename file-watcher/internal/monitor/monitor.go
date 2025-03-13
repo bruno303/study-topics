@@ -1,19 +1,35 @@
-package fs
+package monitor
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/fsnotify/fsnotify"
 )
 
-func StartMonitor(filesToWatch []string, delay int, cb func() error) {
+type Monitor struct {
+	FilesToWatch []string
+	Delay        int
+	Callback     func() error
+}
+
+func NewMonitor(filesToWatch []string, delay int, callback func() error) *Monitor {
+	return &Monitor{
+		FilesToWatch: filesToWatch,
+		Delay:        delay,
+		Callback:     callback,
+	}
+}
+
+func (m *Monitor) Start(ctx context.Context) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		log.Log().Error(ctx, "Error creating file watcher:", err)
+		os.Exit(1)
 	}
 	defer watcher.Close()
 
@@ -37,16 +53,16 @@ func StartMonitor(filesToWatch []string, delay int, cb func() error) {
 					}
 
 					debounceTimer = time.AfterFunc(debounceWait, func() {
-						fmt.Println("File modified:", event.Name)
+						log.Log().Info(ctx, "File modified:", event.Name)
 
-						if delay > 0 {
-							fmt.Printf("Waiting %d seconds before re-executing...\n", delay)
-							time.Sleep(time.Duration(delay) * time.Second)
+						if m.Delay > 0 {
+							log.Log().Debug(ctx, "Waiting %d seconds before re-executing...\n", m.Delay)
+							time.Sleep(time.Duration(m.Delay) * time.Second)
 						}
 
-						err := cb()
+						err := m.Callback()
 						if err != nil {
-							log.Println("Error running command:", err)
+							log.Log().Error(ctx, "Error running command:", err)
 							os.Exit(1)
 						}
 					})
@@ -55,19 +71,20 @@ func StartMonitor(filesToWatch []string, delay int, cb func() error) {
 				if !ok {
 					return
 				}
-				log.Println("Error:", err)
+				log.Log().Error(ctx, "Error:", err)
 			}
 		}
 	}()
 
 	files := make([]string, 0)
-	for _, pattern := range filesToWatch {
+	for _, pattern := range m.FilesToWatch {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			log.Fatalf("Error parsing pattern %s: %v", pattern, err)
+			log.Log().Error(ctx, fmt.Sprintf("Error parsing pattern %s", pattern), err)
+			os.Exit(1)
 		}
 		if len(matches) == 0 {
-			log.Printf("Warning: No files match the pattern %s", pattern)
+			log.Log().Warn(ctx, "Warning: No files match the pattern %s", pattern)
 		}
 		for _, match := range matches {
 			// If it's a directory, recursively add all files
@@ -82,7 +99,8 @@ func StartMonitor(filesToWatch []string, delay int, cb func() error) {
 					return nil
 				})
 				if err != nil {
-					log.Fatalf("Error walking directory %s: %v", match, err)
+					log.Log().Error(ctx, fmt.Sprintf("Error walking directory %s", match), err)
+					os.Exit(1)
 				}
 			} else {
 				files = append(files, match)
@@ -93,11 +111,12 @@ func StartMonitor(filesToWatch []string, delay int, cb func() error) {
 	for _, file := range files {
 		err := watcher.Add(file)
 		if err != nil {
-			log.Fatal(err)
+			log.Log().Error(ctx, "Error watching file", err)
+			os.Exit(1)
 		}
 	}
 
-	fmt.Printf("Watching file: %s\n", files)
+	log.Log().Info(ctx, "Watching file: %s\n", files)
 	<-done
 }
 

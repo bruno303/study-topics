@@ -13,8 +13,3 @@ Is important to note that Go escapes `"` using another `"` and not the usual bac
 ## Dependencies
 
 - [fsnotify](https://github.com/fsnotify/fsnotify)
-
-## TODO
-
-- Add more robust log system
-- Add tests
