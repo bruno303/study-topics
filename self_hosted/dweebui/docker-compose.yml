@@ -1,0 +1,23 @@
+services:
+  dweebui:
+    container_name: dweebui
+    image: lllllllillllllillll/dweebui
+    environment:
+      PORT: 8000
+      SECRET: bso
+    restart: unless-stopped
+    ports:
+      - 3005:8000
+    volumes:
+      - dweebui:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    networks:
+      - dweebui_net
+
+volumes:
+  dweebui:
+
+networks:
+  dweebui_net:
+    driver: bridge

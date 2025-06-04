@@ -1,0 +1,75 @@
+services:
+  app:
+    container_name: mydrive
+    image: kylehoell/mydrive:latest
+    hostname: mydrive
+    restart: unless-stopped
+    volumes:
+      # Use the following volumes section if you want to use bind mounts:
+      # - /path/to/data:/data/
+      # - /path/to/temp:/temp/
+
+      # Use the following volumes section if you want to use named volumes:
+      - mydrive-data:/data/
+      - mydrive-temp:/temp/
+    # ports:
+    #   - "${HTTP_PORT:-3000}:3001"
+      # Optional: Uncomment the following line if you want to use HTTPS
+      #- "${HTTPS_PORT:-8080}:8080"
+
+    # Use expose: if using a reverse proxy
+    expose:
+      - 3001
+    #     - 8080
+    env_file:
+      - .env # Copy .env.example to .env and fill in the values
+    depends_on:
+      - mongo
+    networks:
+      - mydrive_network
+
+  mongo:
+    image: mongo:8
+    container_name: mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: username
+      MONGO_INITDB_ROOT_PASSWORD: password
+    expose:
+      - 27017
+    volumes:
+      - db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      timeout: 10s
+      interval: 10s
+      retries: 10
+      start_period: 10s
+    networks:
+      - mydrive_network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mydrive_cloudflared
+    command: tunnel --no-autoupdate run --url http://mydrive:3001
+    restart: unless-stopped
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    networks:
+      - mydrive_network
+    depends_on:
+      - app
+
+networks:
+  mydrive_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1
+
+# Use the following volumes section if you want to use named volumes.
+volumes:
+  mydrive-data:
+  mydrive-temp:
+  db-data:
