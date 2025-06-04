@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: postgres-sharding
+  shards:
+    datasources:
+      shard1:
+        url: jdbc:postgresql://localhost:5433/shard-test
+        username: user
+        password: pass
+        driverClassName: org.postgresql.Driver
+      shard2:
+        url: jdbc:postgresql://localhost:5434/shard-test
+        username: user
+        password: pass
+        driverClassName: org.postgresql.Driver
+      shard3:
+        url: jdbc:postgresql://localhost:5435/shard-test
+        username: user
+        password: pass
+        driverClassName: org.postgresql.Driver
