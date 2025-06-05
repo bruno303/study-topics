@@ -1,6 +1,10 @@
 spring:
   application:
     name: postgres-sharding
+  jpa:
+    hibernate:
+      ddl-auto: none
+      dialect: org.hibernate.dialect.PostgreSQLDialect
   shards:
     datasources:
       shard1:

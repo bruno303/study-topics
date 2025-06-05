@@ -2,6 +2,7 @@ package com.bso.postgressharding.infra.repository.impl
 
 import com.bso.postgressharding.application.user.UserRepository
 import com.bso.postgressharding.domain.entities.User
+import com.bso.postgressharding.infra.config.SpringJpaProperties
 import com.bso.postgressharding.infra.repository.ConsistentHashRouter
 import jakarta.persistence.EntityManagerFactory
 import org.springframework.data.jpa.repository.support.JpaRepositoryFactory
@@ -18,7 +19,8 @@ typealias PersistenceUser = com.bso.postgressharding.infra.entities.User
 
 @Component
 class UserRepositoryJpaImpl(
-    shardDataSources: Map<String, DataSource>
+    shardDataSources: Map<String, DataSource>,
+    springJpaProperties: SpringJpaProperties
 ) : UserRepository {
 
     private val router = ConsistentHashRouter(shardDataSources.keys.toList())
@@ -27,12 +29,12 @@ class UserRepositoryJpaImpl(
             val vendorAdapter = HibernateJpaVendorAdapter().apply {
                 setGenerateDdl(true)
                 setShowSql(true)
-                setDatabasePlatform("org.hibernate.dialect.PostgreSQLDialect")
+                setDatabasePlatform(springJpaProperties.dialect)
             }
 
             val jpaProperties = mapOf(
-                "hibernate.hbm2ddl.auto" to "none",
-                "hibernate.dialect" to "org.hibernate.dialect.PostgreSQLDialect",
+                "hibernate.hbm2ddl.auto" to springJpaProperties.ddlAuto,
+                "hibernate.dialect" to springJpaProperties.dialect,
                 "jakarta.persistence.jdbc.url" to (dataSource?.connection?.metaData?.url)
             )
 

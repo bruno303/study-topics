@@ -17,3 +17,10 @@ class ShardDatabaseProperties {
         "shard3" to shard3,
     )
 }
+
+@ConfigurationProperties(prefix = "spring.jpa.hibernate")
+@Component
+class SpringJpaProperties {
+    var ddlAuto: String = ""
+    var dialect: String = ""
+}

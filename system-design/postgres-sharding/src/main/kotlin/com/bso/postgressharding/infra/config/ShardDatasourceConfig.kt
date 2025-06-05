@@ -17,7 +17,7 @@ class ShardDataSourceConfig(
                 .url(props.url)
                 .username(props.username)
                 .password(props.password)
-                .driverClassName(props.driverClassName ?: "org.postgresql.Driver")
+                .driverClassName(props.driverClassName)
                 .build()
         }
     }
