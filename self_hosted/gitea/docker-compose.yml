@@ -3,7 +3,7 @@ services:
     image: docker.gitea.com/gitea:1.23.8-rootless
     container_name: gitea
     hostname: gitea
-    restart: always
+    restart: unless-stopped
     environment:
       - USER_UID=1000
       - USER_GID=1000
@@ -33,7 +33,7 @@ services:
   gitea-runner:
     image: gitea/act_runner:0.2.11
     container_name: gitea-runner
-    restart: always
+    restart: unless-stopped
     environment:
       - CONFIG_FILE=/config.yaml
       - GITEA_INSTANCE_URL=${GITEA_INSTANCE_URL}
@@ -53,7 +53,8 @@ services:
   db:
     image: postgres:14
     container_name: gitea_db
-    restart: always
+    hostname: db
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=gitea
       - POSTGRES_PASSWORD=gitea
@@ -63,25 +64,13 @@ services:
     networks:
       - gitea_network
 
-  cloudflared-gitea:
-    image: cloudflare/cloudflared
-    container_name: gitea_cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --url http://gitea:3000
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_GITEA_TOKEN}
-    depends_on:
-      - gitea
-    networks:
-      - gitea_network
-
-  # cloudflared-registry:
+  # cloudflared-gitea:
   #   image: cloudflare/cloudflared
-  #   container_name: registry_cloudflared
+  #   container_name: gitea_cloudflared
   #   restart: unless-stopped
   #   command: tunnel --no-autoupdate run --url http://gitea:3000
   #   environment:
-  #     - TUNNEL_TOKEN=${CLOUDFLARE_REGISTRY_TOKEN}
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_GITEA_TOKEN}
   #   depends_on:
   #     - gitea
   #   networks:
