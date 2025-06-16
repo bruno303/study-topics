@@ -28,7 +28,7 @@ services:
     depends_on:
       - mongo
     networks:
-      - mydrive_network
+      - self_hosted
 
   mongo:
     image: mongo:8
@@ -48,7 +48,7 @@ services:
       retries: 10
       start_period: 10s
     networks:
-      - mydrive_network
+      - self_hosted
 
   # cloudflared:
   #   image: cloudflare/cloudflared:latest
@@ -63,12 +63,9 @@ services:
   #     - app
 
 networks:
-  mydrive_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.22.0.0/16
-          gateway: 172.22.0.1
+  self_hosted:
+    external: true
+    name: self_hosted
 
 # Use the following volumes section if you want to use named volumes.
 volumes:

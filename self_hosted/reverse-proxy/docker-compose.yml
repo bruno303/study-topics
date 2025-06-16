@@ -1,0 +1,47 @@
+services:
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "22:22"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #   extra_hosts:
+  #     - "host.docker.internal:172.20.0.1"
+
+  caddy:
+    image: caddybuilds/caddy-cloudflare:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:172.20.0.1"
+    networks:
+      - self_hosted
+
+  # dnsmasq:
+  #   image: jpillora/dnsmasq
+  #   container_name: dnsmasq
+  #   ports:
+  #     - "53:53/udp"
+  #     - "53:53/tcp"
+  #   volumes:
+  #     - ./dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf:ro
+  #     - ./dnsmasq/hosts:/etc/dnsmasq/hosts:ro
+  #   restart: unless-stopped
+
+networks:
+  self_hosted:
+    driver: bridge
+    name: self_hosted
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

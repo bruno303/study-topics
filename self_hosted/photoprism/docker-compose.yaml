@@ -29,6 +29,7 @@ services:
     ## Use photoprism/photoprism:preview for testing preview builds:
     image: photoprism/photoprism:latest
     hostname: photoprism
+    container_name: photoprism
     restart: unless-stopped
     ## Don't enable automatic restarts until PhotoPrism has been properly configured and tested!
     ## If the service gets stuck in a restart loop, this points to a memory, filesystem, network, or database issue:
@@ -43,9 +44,9 @@ services:
     ## Server port mapping in the format "Host:Container". To use a different port, change the host port on
     ## the left-hand side and keep the container port, e.g. "80:2342" (for HTTP) or "443:2342 (for HTTPS):
     ports:
-      - "3004:2342"
+      - "3004:3004"
     expose:
-      - 2342
+      - 3004
     ## Before you start the service, please check the following config options (and change them as needed):
     ## https://docs.photoprism.app/getting-started/config-options/
     environment:
@@ -55,6 +56,7 @@ services:
       PHOTOPRISM_SITE_URL: "http://localhost:2342/"  # server URL in the format "http(s)://domain.name(:port)/(path)"
       PHOTOPRISM_DISABLE_TLS: "false"                # disables HTTPS/TLS even if the site URL starts with https:// and a certificate is available
       PHOTOPRISM_DEFAULT_TLS: "true"                 # defaults to a self-signed HTTPS/TLS certificate if no other certificate is available
+      PHOTOPRISM_HTTP_PORT: 3004
       PHOTOPRISM_ORIGINALS_LIMIT: 5000               # file size limit for originals in MB (increase for high-res video)
       PHOTOPRISM_HTTP_COMPRESSION: "gzip"            # improves transfer speed and bandwidth utilization (none or gzip)
       PHOTOPRISM_LOG_LEVEL: "info"                   # log level: trace, debug, info, warning, or error
@@ -120,7 +122,7 @@ services:
       # - "~/Import:/photoprism/import"                  # *Optional* base folder from which files can be imported to originals
       - "./storage:/photoprism/storage"                  # *Writable* storage folder for cache, database, and sidecar files (DO NOT REMOVE)
     networks:
-      photoprism_network:
+      - self_hosted
 
   ## MariaDB Database Server (recommended)
   ## see https://docs.photoprism.app/getting-started/faq/#should-i-use-sqlite-mariadb-or-mysql
@@ -145,36 +147,9 @@ services:
       MARIADB_PASSWORD: "insecure"
       MARIADB_ROOT_PASSWORD: "insecure"
     networks:
-      photoprism_network:
-
-  # cloudflared:
-  #   image: cloudflare/cloudflared:latest
-  #   container_name: photoprism_cloudflared
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
-  #   depends_on:
-  #     - photoprism
-  #   networks:
-  #     photoprism_network:
+      - self_hosted
 
 networks:
-  photoprism_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.24.0.0/16
-          gateway: 172.24.0.1
-
-  ## Watchtower upgrades services automatically (optional)
-  ## see https://docs.photoprism.app/getting-started/updates/#watchtower
-  ## activate via "COMPOSE_PROFILES=update docker compose up -d"
-  # watchtower:
-  #   restart: unless-stopped
-  #   image: containrrr/watchtower
-  #   profiles: ["update"]
-  #   environment:
-  #     WATCHTOWER_CLEANUP: "true"
-  #     WATCHTOWER_POLL_INTERVAL: 7200 # checks for updates every two hours
-  #   volumes:
-  #     - "/var/run/docker.sock:/var/run/docker.sock"
-  #     - "~/.docker/config.json:/config.json" # optional, for authentication if you have a Docker Hub account
+  self_hosted:
+    external: true
+    name: self_hosted

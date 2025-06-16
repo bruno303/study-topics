@@ -23,10 +23,8 @@ services:
     ports:
       - "3000:3000"
       - "2222:2222"
-    extra_hosts:
-      - "host.docker.internal:172.20.0.1"
     networks:
-      - gitea_network
+      - self_hosted
     depends_on:
       - db
 
@@ -44,11 +42,9 @@ services:
       - ./gitea-runner/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8088:8088"
-    extra_hosts:
-      - "host.docker.internal:172.20.0.1"
+      - "4001:4001"
     networks:
-      - gitea_network
+      - self_hosted
 
   db:
     image: postgres:14
@@ -62,7 +58,7 @@ services:
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
     networks:
-      - gitea_network
+      - self_hosted
 
   # cloudflared-gitea:
   #   image: cloudflare/cloudflared
@@ -77,9 +73,6 @@ services:
   #     - gitea_network
 
 networks:
-  gitea_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-          gateway: 172.20.0.1
+  self_hosted:
+    external: true
+    name: self_hosted
