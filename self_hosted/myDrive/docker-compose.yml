@@ -6,12 +6,12 @@ services:
     restart: unless-stopped
     volumes:
       # Use the following volumes section if you want to use bind mounts:
-      # - /path/to/data:/data/
-      # - /path/to/temp:/temp/
+      - ./mydrive-data:/data/
+      - ./mydrive-temp:/temp/
 
       # Use the following volumes section if you want to use named volumes:
-      - mydrive-data:/data/
-      - mydrive-temp:/temp/
+      # - mydrive-data:/data/
+      # - mydrive-temp:/temp/
     # ports:
     #   - "${HTTP_PORT:-3000}:3001"
       # Optional: Uncomment the following line if you want to use HTTPS
@@ -40,7 +40,7 @@ services:
     expose:
       - 27017
     volumes:
-      - db-data:/data/db
+      - ./db-data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       timeout: 10s
