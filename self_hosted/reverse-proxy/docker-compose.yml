@@ -1,12 +1,32 @@
 services:
-  # nginx:
-  #   image: nginx:alpine
-  #   ports:
-  #     - "22:22"
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #   extra_hosts:
-  #     - "host.docker.internal:172.20.0.1"
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    hostname: nginx
+    restart: unless-stopped
+    expose:
+      - 80
+      # - 443
+    ports:
+      - "90:80"
+      # - "443:443"
+      # - "22:22"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - self_hosted
+
+  cloudflared-nginx:
+    image: cloudflare/cloudflared
+    container_name: cloudflared-nginx
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --url http://nginx:80
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    depends_on:
+      - nginx
+    networks:
+      - self_hosted
 
   caddy:
     image: caddybuilds/caddy-cloudflare:latest
