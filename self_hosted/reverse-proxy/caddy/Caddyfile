@@ -15,7 +15,7 @@ gitea.bsoapp.net {
 }
 
 photos.bsoapp.net {
-    reverse_proxy photoprism:2342
+    reverse_proxy photoprism:3004
     import cloudflare
 }
 
