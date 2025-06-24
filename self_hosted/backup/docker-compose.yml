@@ -2,7 +2,7 @@ services:
   backup:
     image: restic/restic:latest
     volumes:
-      - ${HOST_ROOT}:/data:ro           # Mounted volumes to back up
+      - ${HOST_ROOT}/data:/data:ro           # Mounted volumes to back up
       - ./backups:/backups              # Local backup repo, or mount rclone volume
       - ./backup.sh:/backup.sh          # The backup script
     env_file:

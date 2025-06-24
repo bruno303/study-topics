@@ -13,15 +13,14 @@ services:
       - GITEA__database__USER=gitea
       - GITEA__database__PASSWD=gitea
     volumes:
-      - ./gitea/data:/var/lib/gitea
-      - ./gitea/config:/etc/gitea
+      - ${VOLUMES_DIR}/gitea/data:/var/lib/gitea
+      - ${VOLUMES_DIR}/gitea/config:/etc/gitea
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     expose:
       - 3000
       - 2222
     ports:
-      - "3000:3000"
       - "2222:2222"
     networks:
       - self_hosted
@@ -56,21 +55,9 @@ services:
       - POSTGRES_PASSWORD=gitea
       - POSTGRES_DB=gitea
     volumes:
-      - ./postgres/data:/var/lib/postgresql/data
+      - ${VOLUMES_DIR}/postgres/data:/var/lib/postgresql/data
     networks:
       - self_hosted
-
-  # cloudflared-gitea:
-  #   image: cloudflare/cloudflared
-  #   container_name: gitea_cloudflared
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run --url http://gitea:3000
-  #   environment:
-  #     - TUNNEL_TOKEN=${CLOUDFLARE_GITEA_TOKEN}
-  #   depends_on:
-  #     - gitea
-  #   networks:
-  #     - gitea_network
 
 networks:
   self_hosted:

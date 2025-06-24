@@ -37,8 +37,8 @@ services:
       - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/data:/data
-      - ./caddy/config:/config
+      - ${VOLUMES_DIR}/caddy/data:/data
+      - ${VOLUMES_DIR}/caddy/config:/config
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     extra_hosts:

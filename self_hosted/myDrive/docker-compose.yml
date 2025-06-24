@@ -6,8 +6,8 @@ services:
     restart: unless-stopped
     volumes:
       # Use the following volumes section if you want to use bind mounts:
-      - ./mydrive-data:/data/
-      - ./mydrive-temp:/temp/
+      - ${VOLUMES_DIR}/mydrive-data:/data/
+      - ${VOLUMES_DIR}/mydrive-temp:/temp/
 
       # Use the following volumes section if you want to use named volumes:
       # - mydrive-data:/data/
@@ -40,7 +40,7 @@ services:
     expose:
       - 27017
     volumes:
-      - ./db-data:/data/db
+      - ${VOLUMES_DIR}/db-data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       timeout: 10s
