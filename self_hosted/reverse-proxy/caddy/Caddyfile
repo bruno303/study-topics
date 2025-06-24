@@ -9,17 +9,12 @@
   }
 }
 
-gitea.bsoapp.net {
+git.internal.bsoapp.net {
     reverse_proxy gitea:3000
     import cloudflare
 }
 
-photos.bsoapp.net {
-    reverse_proxy photoprism:3004
-    import cloudflare
-}
-
-drive.bsoapp.net {
+drive.internal.bsoapp.net {
     reverse_proxy mydrive:3001
     import cloudflare
 }

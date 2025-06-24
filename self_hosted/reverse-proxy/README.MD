@@ -1,10 +1,23 @@
 # Reverse Proxy
 
+## Architecture
+
+```mermaid
+graph TD
+  A[Request from Internet] --> B[DNS Resolution - Cloudflare]
+  B -->|*.internal| C[Tailscale DNS → Your Machine IP]
+  C --> D["Caddy (Ports 80/443)"]
+  D --> E["Local Services"]
+  B -->|"other domains"| F["Cloudflare Tunnel (Proxy)"]
+  F --> G[Nginx Reverse Proxy]
+  G --> E
+```
+
 ## HTTPS
 
-I'm using caddy to reverse proxy https requests to my internal services
+Caddy is used as reverse proxy for my internal services. Also, it handles https.
 
-Another possiblity, if want custom domain, but without https, is use nginx and a dns like dnsmasq.
+Nginx is used as reverse proxy for my public services. HTTPS in this case is handled by cloudflare itself.
 
 ## DNS
 
