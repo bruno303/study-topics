@@ -4,12 +4,12 @@ This project aims to guarantee that all important data from the homelab is backe
 
 ## Generating backup
 
-The backup is done by restic that is executed inside a container. The container executed the [backup.sh](./backup.sh) script.
-This script will check all folders, if they are defined in `VOLUME` env var, all its volumes will be backed up, keeping only the last 3 backups of each volume.
+The backup is done by [restic](https://github.com/restic/restic). All the necessary scripts are documented on [Makefile](./Makefile).
+This script will save a backup of all subfolders of the data folder defined in `DATA_DIR`, keeping only the last 3 backups of each volume.
 
 ## Uploading
 
-The upload of the backup is done by [rclone](https://rclone.org/) that will upload the backup to google drive.
+The upload of the backup is done by [rclone](https://rclone.org/). The destination can be flash drives, folders or even cloud providers.
 
 ## Scheduling
 
