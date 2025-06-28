@@ -23,6 +23,6 @@ rclone copy "$ARCHIVE_NAME" "$BACKUP_DEST_DIR" --progress
 cd "$BACKUP_DEST_DIR"
 ls -1t backup-*.tar.gz | tail -n +2 | xargs -r rm --
 
-# Clean temp archive
+# Keep only the last 3 backups on tmp folder
 cd "$BACKUP_CONTEXT_DIR"
-rm "$ARCHIVE_NAME"
+ls -1t ./tmp/backup-*.tar.gz | tail -n +4 | xargs -r rm --

@@ -1,0 +1,20 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    hostname: vaultwarden
+    restart: unless-stopped
+    environment:
+      DOMAIN: "${DOMAIN}"
+      # SIGNUPS_ALLOWED: "true"
+    volumes:
+      - ${VOLUMES_DIR}/vaultwarden/vw-data/:/data/
+    expose:
+      - 80
+    networks:
+      - self_hosted
+
+networks:
+  self_hosted:
+    external: true
+    name: self_hosted
