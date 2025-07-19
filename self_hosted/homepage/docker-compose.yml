@@ -1,0 +1,21 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    hostname: homepage
+    restart: unless-stopped
+    expose:
+      - 3000
+    volumes:
+      - ${VOLUMES_DIR}/app/config:/app/config
+      - ${VOLUMES_DIR}/app/public/icons:/app/public/icons
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: dash.internal.bsoapp.net # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+    networks:
+      - self_hosted
+
+networks:
+  self_hosted:
+    external: true
+    name: self_hosted

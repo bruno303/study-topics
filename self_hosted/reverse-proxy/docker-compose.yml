@@ -7,8 +7,8 @@ services:
     expose:
       - 80
       # - 443
-    ports:
-      - "90:80"
+    # ports:
+      # - "90:80"
       # - "443:443"
       # - "22:22"
     volumes:
@@ -20,7 +20,7 @@ services:
     image: cloudflare/cloudflared
     container_name: cloudflared-nginx
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --url http://nginx:80
+    command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
     depends_on:

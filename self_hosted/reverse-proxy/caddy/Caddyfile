@@ -18,3 +18,8 @@ drive.internal.bsoapp.net {
     reverse_proxy mydrive:3001
     import cloudflare
 }
+
+dash.internal.bsoapp.net {
+    reverse_proxy homepage:3000
+    import cloudflare
+}
