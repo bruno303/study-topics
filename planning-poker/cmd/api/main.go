@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
 	"planning-poker/internal/infra"
 	"planning-poker/internal/planningpoker"
 	"strings"
@@ -56,25 +57,76 @@ func main() {
 	}
 
 	logger.Info(ctx, "Starting server on :8080")
-	if err = http.ListenAndServe(":8080", handlers.CORS(
-		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"}),
-		handlers.AllowedOrigins([]string{"*"}),
-		handlers.AllowedHeaders([]string{"content-type", "authorization", "origin"}),
-		handlers.AllowCredentials(),
-	)(r)); err != nil {
+	if err = http.ListenAndServe(
+		":8080",
+		loggingMiddleware(corsMiddleware(r, logger), logger),
+	); err != nil {
 		logger.Error(ctx, "Error starting server", err)
 	}
 }
 
 func configureLogging() {
+	logLevel := os.Getenv("LOG_LEVEL")
+
+	var ll log.Level
+	switch strings.ToUpper(logLevel) {
+	case "DEBUG":
+		ll = log.LevelDebug
+	case "INFO":
+		ll = log.LevelInfo
+	case "WARN":
+		ll = log.LevelWarn
+	case "ERROR":
+		ll = log.LevelError
+	default:
+		ll = log.LevelInfo
+	}
+
 	log.SetLoggerFactory(func(name string) log.Logger {
 		return log.NewSlogAdapter(
 			log.SlogAdapterOpts{
-				Level:                 log.LevelInfo,
+				Level:                 ll,
 				FormatJson:            false,
 				ExtractAdditionalInfo: func(context.Context) []any { return []any{} },
 				Source:                name,
 			},
 		)
 	})
+}
+
+func getCORSOrigins(logger log.Logger) []string {
+	var allowedOrigins []string
+	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+
+	if corsOrigins == "" {
+		allowedOrigins = []string{
+			"*",
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			"http://localhost:8080",
+		}
+	} else {
+		allowedOrigins = strings.Split(corsOrigins, ",")
+	}
+
+	logger.Debug(context.Background(), "Allowed origins: %v", allowedOrigins)
+	return allowedOrigins
+}
+
+func loggingMiddleware(next http.Handler, logger log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Info(r.Context(), "Request: %s %s from Origin: %s", r.Method, r.URL.Path, r.Header.Get("Origin"))
+		next.ServeHTTP(w, r)
+	})
+}
+
+func corsMiddleware(next http.Handler, logger log.Logger) http.Handler {
+	middleware := handlers.CORS(
+		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "PUT", "DELETE"}),
+		handlers.AllowedOrigins(getCORSOrigins(logger)),
+		handlers.AllowedHeaders([]string{"content-type", "authorization", "origin"}),
+		handlers.AllowCredentials(),
+		handlers.OptionStatusCode(http.StatusOK),
+	)
+	return middleware(next)
 }

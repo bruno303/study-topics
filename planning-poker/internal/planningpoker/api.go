@@ -22,7 +22,7 @@ var upgrader = websocket.Upgrader{
 
 func ConfigurePlanningPokerAPI(mux *mux.Router, hub *Hub) {
 	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub))
-	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST")
+	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST", "OPTIONS")
 	mux.HandleFunc("/planning/room/{roomID}", getRoom(hub)).Methods("GET")
 }
 

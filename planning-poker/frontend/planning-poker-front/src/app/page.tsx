@@ -223,7 +223,8 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
         },
         body: JSON.stringify({
           createdBy: userName
-        })
+        }),
+        credentials: 'include'
       });
       
       if (!response.ok) {
