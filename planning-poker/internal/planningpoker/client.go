@@ -47,6 +47,11 @@ func (c *Client) receive() (map[string]any, error) {
 }
 
 func (c *Client) vote(vote *string) {
+	if c.room.Reveal {
+		logger.Debug(context.Background(), "Vote ignored for client %s because votes are already revealed", c.ID)
+		return
+	}
+
 	c.Vote = vote
 	if vote != nil && *vote != "" {
 		c.HasVoted = true
@@ -54,7 +59,7 @@ func (c *Client) vote(vote *string) {
 		c.HasVoted = false
 	}
 
-	c.room.CheckReveal()
+	c.room.checkReveal()
 }
 
 func (c *Client) updateName(ctx context.Context, name string) {
@@ -103,9 +108,9 @@ func (c *Client) Listen(ctx context.Context) {
 				c.room.ToggleOwner(msg["id"].(string))
 			})
 
-		case "new-round":
+		case "new-voting":
 			c.executeIfOwner(func() {
-				c.room.NewRound()
+				c.room.NewVoting()
 			})
 
 		case "reveal-votes":
@@ -116,6 +121,11 @@ func (c *Client) Listen(ctx context.Context) {
 		case "update-story":
 			c.executeIfOwner(func() {
 				c.room.SetCurrentStory(msg["story"].(string))
+			})
+
+		case "vote-again":
+			c.executeIfOwner(func() {
+				c.room.ResetVoting()
 			})
 		}
 

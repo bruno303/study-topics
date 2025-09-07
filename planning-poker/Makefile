@@ -1,4 +1,6 @@
 FRONT_DIR=frontend/planning-poker-front
+BACKEND_URL=http://localhost:8080
+BACKEND_HOST=localhost:8080
 
 include .env
 export
@@ -8,6 +10,10 @@ init:
 	go mod tidy
 	go mod download
 	cd $(FRONT_DIR) && npm i
+
+deps:
+	go mod tidy
+	go mod vendor
 
 .PHONY: run
 run:
@@ -23,7 +29,7 @@ build:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -timeout 30s ./...
 
 .PHONY: clean
 clean:
@@ -36,14 +42,8 @@ fmt:
 docker-build-backend:
 	docker build --no-cache -t planning-poker-backend .
 
-docker-run-backend: docker-build-backend
-	docker run --rm -p 8080:8080 --env-file .env --name planning-poker-backend planning-poker-backend
-
 docker-build-frontend:
 	cd $(FRONT_DIR) && docker build -f Dockerfile \
-		--build-arg NEXT_PUBLIC_BACKEND_URL=http://localhost:8080 \
-  	--build-arg NEXT_PUBLIC_BACKEND_HOST=localhost:8080 \
+		--build-arg NEXT_PUBLIC_BACKEND_URL=$(BACKEND_URL) \
+  	--build-arg NEXT_PUBLIC_WEBSOCKET_URL=$(WEBSOCKET_URL) \
 		--no-cache -t planning-poker-frontend .
-
-docker-run-frontend: docker-build-frontend
-	cd $(FRONT_DIR) && docker run --rm -p 3000:3000 --name planning-poker-frontend planning-poker-frontend

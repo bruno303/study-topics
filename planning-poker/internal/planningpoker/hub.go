@@ -99,7 +99,7 @@ func (r *Room) Broadcast(ctx context.Context, message any) {
 	}
 }
 
-func (r *Room) NewRound() {
+func (r *Room) NewVoting() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -111,7 +111,18 @@ func (r *Room) NewRound() {
 	}
 }
 
-func (r *Room) CheckReveal() {
+func (r *Room) ResetVoting() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.Reveal = false
+	for _, client := range r.Clients {
+		client.HasVoted = false
+		client.Vote = nil
+	}
+}
+
+func (r *Room) checkReveal() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

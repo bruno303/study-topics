@@ -1,6 +1,6 @@
 'use client'
 
-import { Eye, EyeOff, RotateCcw, Shield, Users } from 'lucide-react';
+import { Eye, EyeOff, Repeat, RotateCcw, Shield, Users } from 'lucide-react';
 import { Ref, RefObject, useEffect, useRef, useState } from 'react';
 
 type Card = string | null
@@ -45,15 +45,17 @@ export default function PlanningPoker(props: PlanningPokerProps) {
   }, [participants, clientId]);
 
   const handleCardSelect = (card: Card) => {
-    props.socket.current?.send(JSON.stringify({ type: 'vote', vote: card }));
+    if (!isRevealed) {
+      props.socket.current?.send(JSON.stringify({ type: 'vote', vote: card }));
+    }
   };
 
   const handleRevealVotes = () => {
     props.socket.current?.send(JSON.stringify({ type: 'reveal-votes' }));
   };
 
-  const handleNewRound = () => {
-    props.socket.current?.send(JSON.stringify({ type: 'new-round' }));
+  const handleNewVoting = () => {
+    props.socket.current?.send(JSON.stringify({ type: 'new-voting' }));
   };
 
   const handleUpdateUsername = (username: string) => {
@@ -75,13 +77,17 @@ export default function PlanningPoker(props: PlanningPokerProps) {
     }));
   };
 
+  const handleVoteAgain = () => {
+    props.socket.current?.send(JSON.stringify({ type: 'vote-again' }));
+  }
+
   const connectWebSocket = async(roomCode: string | null) => {
     if (!roomCode) {
       return
     }
 
     // Simulate websocket connection to get room data at real time
-    props.socket.current = new WebSocket(`ws://${process.env.NEXT_PUBLIC_BACKEND_HOST}/planning/${roomCode}/ws`);
+    props.socket.current = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/planning/${roomCode}/ws`);
 
     props.socket.current.onmessage = (event) => {
       try {
@@ -306,6 +312,10 @@ export default function PlanningPoker(props: PlanningPokerProps) {
     },
     successButton: {
       backgroundColor: '#10b981',
+      color: 'white'
+    },
+    warningButton: {
+      backgroundColor: '#eab308',
       color: 'white'
     },
     participantsHeader: {
@@ -539,13 +549,22 @@ export default function PlanningPoker(props: PlanningPokerProps) {
                   {isRevealed ? 'Hide Votes' : 'Reveal Votes'}
                 </button>
                 <button
-                  onClick={handleNewRound}
+                  onClick={handleNewVoting}
                   style={{...styles.button, ...styles.successButton}}
                   onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#059669'}
                   onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#10b981'}
                 >
                   <RotateCcw size={20} />
-                  New Round
+                  New Voting
+                </button>
+                <button
+                  onClick={handleVoteAgain}
+                  style={{...styles.button, ...styles.warningButton}}
+                  onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#f97316'}
+                  onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#eab308'}
+                >
+                  <Repeat size={20} />
+                  Vote Again
                 </button>
               </div>
               )}
