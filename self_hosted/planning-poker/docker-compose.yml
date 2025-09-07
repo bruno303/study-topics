@@ -1,0 +1,24 @@
+services:
+  frontend:
+    image: bruno303/planning-poker-frontend:0.0.1
+    container_name: planning-poker-frontend
+    expose:
+      - 3000
+    networks:
+      - self_hosted
+
+  backend:
+    image: bruno303/planning-poker-backend:0.0.1
+    container_name: planning-poker-backend
+    expose:
+      - 8080
+    environment:
+      - CORS_ALLOWED_ORIGINS=https://planning-poker.bsoapp.net
+      - LOG_LEVEL=INFO
+    networks:
+      - self_hosted
+
+networks:
+  self_hosted:
+    external: true
+    name: self_hosted
