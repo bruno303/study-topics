@@ -46,9 +46,9 @@ func (c *Client) receive() (map[string]any, error) {
 	return msg, err
 }
 
-func (c *Client) vote(vote *string) {
+func (c *Client) vote(ctx context.Context, vote *string) {
 	if c.room.Reveal {
-		logger.Debug(context.Background(), "Vote ignored for client %s because votes are already revealed", c.ID)
+		logger.Debug(ctx, "Vote ignored for client %s because votes are already revealed", c.ID)
 		return
 	}
 
@@ -96,11 +96,11 @@ func (c *Client) Listen(ctx context.Context) {
 			c.updateName(ctx, msg["username"].(string))
 
 		case "vote":
-			c.vote(lo.ToPtr(msg["vote"].(string)))
+			c.vote(ctx, lo.ToPtr(msg["vote"].(string)))
 
 		case "toggle-spectator":
 			c.executeIfOwner(func() {
-				c.room.ToggleSpectator(msg["id"].(string))
+				c.room.ToggleSpectator(ctx, msg["id"].(string))
 			})
 
 		case "toggle-owner":

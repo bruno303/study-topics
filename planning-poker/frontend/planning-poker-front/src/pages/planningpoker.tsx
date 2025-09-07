@@ -24,7 +24,7 @@ export default function PlanningPoker(props: PlanningPokerProps) {
   const [selectedCard, setSelectedCard] = useState<Card>(null);
   const [userName, setUserName] = useState(props.userName);
   const [isRevealed, setIsRevealed] = useState(false);
-  const [currentStory, setCurrentStory] = useState('User Authentication System');
+  const [currentStory, setCurrentStory] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [clientId, setClientId] = useState('');
 
@@ -40,7 +40,7 @@ export default function PlanningPoker(props: PlanningPokerProps) {
 
   useEffect(() => {
     if (clientId && participants.length > 0) {
-      setSelectedCard(participants.filter((p: any) => p.id === clientId)[0]?.vote ?? null);
+      setSelectedCard(getCurrentUser()?.vote ?? null);
     }
   }, [participants, clientId]);
 
@@ -93,14 +93,14 @@ export default function PlanningPoker(props: PlanningPokerProps) {
       try {
         const data = JSON.parse(event.data);
 
-        console.log('Received message from websocket:', data);
+        // console.log('Received message from websocket:', data);
 
         if (data.type === 'room-state') {
           
           setParticipants(data.participants);
           setCurrentStory(data.currentStory);
           setIsRevealed(data.reveal);
-          setSelectedCard(participants.filter((p: any) => p.id == clientId)[0]?.vote ?? null);
+          setSelectedCard(getCurrentUser()?.vote ?? null);
 
         } else if (data.type === 'update-client-id') {
           setClientId(data.clientId);
@@ -127,8 +127,12 @@ export default function PlanningPoker(props: PlanningPokerProps) {
     };
   }
 
+  const getCurrentUser = () => {
+    return participants.filter((p: any) => p.id == clientId)[0];
+  }
+
   const isAdmin = (): Boolean => {
-    return participants.filter((p: any) => p.id == clientId)[0]?.isOwner ?? false
+    return getCurrentUser()?.isOwner ?? false
   }
 
   const getCardColor = (card: Card) => {

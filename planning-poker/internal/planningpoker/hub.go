@@ -147,11 +147,11 @@ func (r *Room) CountOwners() int {
 	return ownerCount
 }
 
-func (r *Room) ToggleSpectator(clientID string) {
+func (r *Room) ToggleSpectator(ctx context.Context, clientID string) {
 	for _, client := range r.Clients {
 		if client.ID == clientID {
 			client.IsSpectator = !client.IsSpectator
-			client.vote(nil)
+			client.vote(ctx, nil)
 			return
 		}
 	}

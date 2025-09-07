@@ -1,6 +1,6 @@
 FRONT_DIR=frontend/planning-poker-front
 BACKEND_URL=http://localhost:8080
-BACKEND_HOST=localhost:8080
+WEBSOCKET_URL=ws://localhost:8080
 
 include .env
 export

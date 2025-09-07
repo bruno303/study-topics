@@ -305,9 +305,8 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
   };
 
   const generateShareableLink = () => {
-    const url = `${window.location.origin}/room/${currentRoomId}`;
-    console.log(url);
-    return url;
+    // console.log(`${window.location.origin}/room/${currentRoomId}`);
+    return `${window.location.origin}/room/${currentRoomId}`;
   };
 
   const handleEnterPressed = async (event: React.KeyboardEvent<HTMLInputElement>) => {
