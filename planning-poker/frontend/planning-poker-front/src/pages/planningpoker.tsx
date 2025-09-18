@@ -1,7 +1,7 @@
 'use client'
 
 import { Eye, EyeOff, Repeat, RotateCcw, Shield, Users } from 'lucide-react';
-import { Ref, RefObject, useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useState } from 'react';
 
 type Card = string | null
 type PlanningPokerProps = {
@@ -66,14 +66,14 @@ export default function PlanningPoker(props: PlanningPokerProps) {
   const handleToggleSpectator = (participantId: string) => {
     props.socket.current?.send(JSON.stringify({ 
       type: 'toggle-spectator', 
-      id: participantId 
+      clientId: participantId 
     }));
   };
 
   const handleToggleAdmin = (participantId: string) => {
     props.socket.current?.send(JSON.stringify({ 
       type: 'toggle-owner', 
-      id: participantId 
+      clientId: participantId 
     }));
   };
 

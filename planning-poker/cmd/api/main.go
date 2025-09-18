@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 	"planning-poker/internal/infra"
-	"planning-poker/internal/planningpoker"
+	httpapp "planning-poker/internal/infra/boundaries/http"
 	"strings"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
@@ -24,7 +24,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// mux := http.NewServeMux()
-	planningpoker.ConfigurePlanningPokerAPI(r, container.Hub)
+	httpapp.ConfigurePlanningPokerAPI(r, container.Hub)
 	infra.ConfigureInfraAPI(r)
 
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {

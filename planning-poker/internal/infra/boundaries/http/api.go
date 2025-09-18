@@ -1,34 +1,45 @@
-package planningpoker
+package http
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"planning-poker/internal/infra/boundaries/bus"
+	"planning-poker/internal/planningpoker"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
-var logger = log.NewLogger("planningpoker.api")
+var (
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+	logger = log.NewLogger("planningpoker.api")
+)
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
+type (
+	contextKey string
 
-func ConfigurePlanningPokerAPI(mux *mux.Router, hub *Hub) {
+	hub interface {
+		NewRoom(owner string) *planningpoker.Room
+		GetRoom(roomID string) (*planningpoker.Room, error)
+		RemoveRoom(roomID string)
+	}
+)
+
+func ConfigurePlanningPokerAPI(mux *mux.Router, hub hub) {
 	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub))
 	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST", "OPTIONS")
 	mux.HandleFunc("/planning/room/{roomID}", getRoom(hub)).Methods("GET")
 }
 
-type contextKey string
-
-func handleConnections(hub *Hub) http.HandlerFunc {
+func handleConnections(hub hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {
@@ -48,12 +59,11 @@ func handleConnections(hub *Hub) http.HandlerFunc {
 			return
 		}
 
-		client := NewClient(ws, room)
-		room.AddClient(client)
+		bus := bus.NewWebsocketBus(ws)
+		client := room.NewClient(bus)
 		logger.Info(r.Context(), "New client connected: %v on room: %v", client.ID, room.ID)
 
-		go client.Listen(r.Context())
-		client.Send(r.Context(), NewRoomStateCommand(room))
+		client.Listen(r.Context())
 	}
 }
 
@@ -65,7 +75,7 @@ type CreateRoomResponse struct {
 	RoomID string `json:"roomId"`
 }
 
-func createRoom(hub *Hub) http.HandlerFunc {
+func createRoom(hub hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var body CreateRoomRequest
@@ -82,7 +92,7 @@ func createRoom(hub *Hub) http.HandlerFunc {
 	}
 }
 
-func getRoom(hub *Hub) http.HandlerFunc {
+func getRoom(hub hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {
