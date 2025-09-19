@@ -2,19 +2,12 @@ package planningpoker
 
 import (
 	"context"
+	"planning-poker/internal/application/planningpoker/interfaces"
 	"planning-poker/internal/infra/boundaries/bus/events"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
-	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
-
-type Bus interface {
-	// Broadcast(ctx context.Context, message any)
-	Close() error
-	Listen(ctx context.Context, handleMessage func(msg events.Event))
-	Send(ctx context.Context, message any) error
-}
 
 type Client struct {
 	ID   string
@@ -27,14 +20,14 @@ type Client struct {
 	IsSpectator bool
 	IsOwner     bool
 
-	bus Bus
+	bus interfaces.Bus
 
 	logger log.Logger
 }
 
-func newClient(bus Bus) *Client {
+func newClient(id string, bus interfaces.Bus) *Client {
 	return &Client{
-		ID:     uuid.NewString(),
+		ID:     id,
 		bus:    bus,
 		logger: log.NewLogger("planningpoker.client"),
 	}

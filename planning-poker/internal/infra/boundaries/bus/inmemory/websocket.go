@@ -1,4 +1,4 @@
-package bus
+package inmemory
 
 import (
 	"context"
@@ -8,20 +8,18 @@ import (
 	"planning-poker/internal/infra/boundaries/bus/events"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type WebsocketBus struct {
 	ID     string
 	conn   *websocket.Conn
-	room   *InMemoryRoom
 	logger log.Logger
 }
 
-func NewWebsocketBus(socket *websocket.Conn) *WebsocketBus {
+func NewWebsocketBus(id string, socket *websocket.Conn) *WebsocketBus {
 	return &WebsocketBus{
-		ID:     uuid.NewString(),
+		ID:     id,
 		conn:   socket,
 		logger: log.NewLogger("websocket.client"),
 	}
@@ -32,7 +30,7 @@ func (c *WebsocketBus) Close() error {
 }
 
 func (c *WebsocketBus) Send(ctx context.Context, message any) error {
-	c.room.logger.Debug(ctx, "Sending message to client: %v", message)
+	c.logger.Debug(ctx, "Sending message to client: %v", message)
 	return c.conn.WriteJSON(message)
 }
 
@@ -44,7 +42,6 @@ func (c *WebsocketBus) receive() (map[string]any, error) {
 
 func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg events.Event)) {
 	defer c.Close()
-	defer c.room.RemoveClient(c)
 
 	for {
 		msg, err := c.receive()

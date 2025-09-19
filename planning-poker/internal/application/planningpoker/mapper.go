@@ -7,15 +7,13 @@ import (
 	"github.com/samber/lo"
 )
 
-func MapToParticipants(clients map[string]*Client, owner *Client) []Participant {
-
-	clis := lo.Values(clients)
-	slices.SortFunc(clis, func(a, b *Client) int {
+func MapToParticipants(clients []*Client, owner *Client) []Participant {
+	slices.SortFunc(clients, func(a, b *Client) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 
 	return lo.Map(
-		clis,
+		clients,
 		func(client *Client, _ int) Participant {
 			return Participant{
 				ID:          client.ID,

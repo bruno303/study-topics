@@ -3,11 +3,13 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"planning-poker/internal/infra/boundaries/bus"
-	"planning-poker/internal/planningpoker"
+	"planning-poker/internal/application/planningpoker"
+	"planning-poker/internal/application/planningpoker/interfaces"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -33,13 +35,13 @@ type (
 	}
 )
 
-func ConfigurePlanningPokerAPI(mux *mux.Router, hub hub) {
-	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub))
+func ConfigurePlanningPokerAPI(mux *mux.Router, hub hub, busFactory interfaces.BusFactory) {
+	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub, busFactory))
 	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST", "OPTIONS")
 	mux.HandleFunc("/planning/room/{roomID}", getRoom(hub)).Methods("GET")
 }
 
-func handleConnections(hub hub) http.HandlerFunc {
+func handleConnections(hub hub, busFactory interfaces.BusFactory) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {
@@ -59,10 +61,17 @@ func handleConnections(hub hub) http.HandlerFunc {
 			return
 		}
 
-		bus := bus.NewWebsocketBus(ws)
-		client := room.NewClient(bus)
-		logger.Info(r.Context(), "New client connected: %v on room: %v", client.ID, room.ID)
+		clientID := uuid.NewString()
+		bus, err := busFactory.Create(r.Context(), clientID, ws)
+		if err != nil {
+			logger.Error(r.Context(), fmt.Sprintf("Error creating bus for client %s", clientID), err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "{ \"msg\": \"Error creating bus for client %s\" }", clientID)
+			return
+		}
 
+		client := room.NewClient(clientID, bus)
+		logger.Info(r.Context(), "New client connected: %v on room: %v", client.ID, room.ID)
 		client.Listen(r.Context())
 	}
 }

@@ -2,8 +2,10 @@ package planningpoker
 
 import (
 	"context"
+	"planning-poker/internal/application/planningpoker/interfaces"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
@@ -36,11 +38,21 @@ type (
 	}
 )
 
-func (r *Room) NewClient(bus Bus) *Client {
+func NewRoom(owner string, clients ClientCollection) *Room {
+	return &Room{
+		ID:           uuid.NewString(),
+		Owner:        owner,
+		Clients:      clients,
+		CurrentStory: "",
+		Reveal:       false,
+	}
+}
+
+func (r *Room) NewClient(id string, bus interfaces.Bus) *Client {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	client := newClient(bus)
+	client := newClient(id, bus)
 	r.Clients.Add(client)
 	client.room = r
 

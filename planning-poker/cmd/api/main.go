@@ -24,7 +24,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// mux := http.NewServeMux()
-	httpapp.ConfigurePlanningPokerAPI(r, container.Hub)
+	httpapp.ConfigurePlanningPokerAPI(r, container.Hub, container.BusFactory)
 	infra.ConfigureInfraAPI(r)
 
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {

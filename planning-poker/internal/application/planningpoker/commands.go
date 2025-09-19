@@ -32,7 +32,7 @@ func NewRoomStateCommand(room *Room) RoomState {
 		Type:         "room-state",
 		CurrentStory: room.CurrentStory,
 		Reveal:       room.Reveal,
-		Participants: MapToParticipants(room.Clients, room.OwnerClient),
+		Participants: MapToParticipants(room.Clients.Values(), room.OwnerClient),
 	}
 }
 
