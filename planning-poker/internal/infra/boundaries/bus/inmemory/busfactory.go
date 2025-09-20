@@ -9,7 +9,7 @@ import (
 
 type WebSocketBusFactory struct{}
 
-func NewBusFactory() WebSocketBusFactory {
+func NewWebSocketBusFactory() WebSocketBusFactory {
 	return WebSocketBusFactory{}
 }
 

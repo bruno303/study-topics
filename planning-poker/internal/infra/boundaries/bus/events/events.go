@@ -2,48 +2,63 @@ package events
 
 type (
 	Event interface {
-		Type() string
+		GetType() string
+	}
+
+	EventTypeAware struct {
+		Type string `json:"type"`
 	}
 
 	InitEvent struct {
-		Payload struct {
-			Username string `json:"username"`
-		}
+		EventTypeAware
+		Username string `json:"username"`
 	}
 
 	VoteEvent struct {
-		Payload struct {
-			Vote string `json:"vote"`
-		}
+		EventTypeAware
+		Vote string `json:"vote"`
 	}
 
-	RevealEvent struct{}
+	RevealEvent struct {
+		EventTypeAware
+	}
 
-	ResetEvent struct{}
+	ResetEvent struct {
+		EventTypeAware
+	}
 
 	SpectatorEvent struct {
-		Payload struct {
-			ClientID string `json:"clientId"`
-		}
+		EventTypeAware
+		ClientID string `json:"clientId"`
 	}
 
 	StoryEvent struct {
-		Payload struct {
-			Story string `json:"story"`
-		}
+		EventTypeAware
+		Story string `json:"story"`
 	}
 
 	OwnerEvent struct {
-		Payload struct {
-			ClientID string `json:"clientId"`
-		}
+		EventTypeAware
+		ClientID string `json:"clientId"`
+	}
+
+	NewVotingEvent struct {
+		EventTypeAware
+	}
+
+	VoteAgainEvent struct {
+		EventTypeAware
 	}
 )
 
-func (e InitEvent) Type() string      { return "init" }
-func (e VoteEvent) Type() string      { return "vote" }
-func (e RevealEvent) Type() string    { return "reveal" }
-func (e ResetEvent) Type() string     { return "reset" }
-func (e SpectatorEvent) Type() string { return "toggle-spectator" }
-func (e StoryEvent) Type() string     { return "story" }
-func (e OwnerEvent) Type() string     { return "toggle-owner" }
+func (e EventTypeAware) GetType() string { return e.Type }
+
+// func (e InitEvent) Type() string      { return "init" }
+// func (e VoteEvent) Type() string      { return "vote" }
+// func (e RevealEvent) Type() string    { return "reveal-votes" }
+// func (e ResetEvent) Type() string     { return "reset" }
+// func (e SpectatorEvent) Type() string { return "toggle-spectator" }
+// func (e StoryEvent) Type() string     { return "update-story" }
+// func (e OwnerEvent) Type() string     { return "toggle-owner" }
+// func (e NewVotingEvent) Type() string { return "new-voting" }
+// func (e VoteAgainEvent) Type() string { return "vote-again" }

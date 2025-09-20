@@ -78,14 +78,18 @@ func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg events
 			e, uerr = unmarshalEvent[events.VoteEvent](jsonData)
 		case "reset":
 			e, uerr = unmarshalEvent[events.ResetEvent](jsonData)
-		case "reveal":
+		case "reveal-votes":
 			e, uerr = unmarshalEvent[events.RevealEvent](jsonData)
 		case "toggle-spectator":
 			e, uerr = unmarshalEvent[events.SpectatorEvent](jsonData)
 		case "toggle-owner":
 			e, uerr = unmarshalEvent[events.OwnerEvent](jsonData)
-		case "story":
+		case "update-story":
 			e, uerr = unmarshalEvent[events.StoryEvent](jsonData)
+		case "new-voting":
+			e, uerr = unmarshalEvent[events.NewVotingEvent](jsonData)
+		case "vote-again":
+			e, uerr = unmarshalEvent[events.VoteAgainEvent](jsonData)
 		default:
 			c.logger.Error(ctx, fmt.Sprintf("Unknown event type '%v' for client %v", eventType, c.ID), errors.New("unknown event type"))
 			continue

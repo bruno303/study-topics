@@ -13,6 +13,6 @@ type Container struct {
 func NewContainer() *Container {
 	return &Container{
 		Hub:        inmemory.NewHub(),
-		BusFactory: inmemory.NewBusFactory(),
+		BusFactory: inmemory.NewWebSocketBusFactory(),
 	}
 }

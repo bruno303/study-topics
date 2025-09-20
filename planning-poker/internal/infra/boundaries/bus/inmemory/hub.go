@@ -30,7 +30,7 @@ func (h *InMemoryHub) NewRoom(owner string) *planningpoker.Room {
 func (h *InMemoryHub) GetRoom(roomID string) (*planningpoker.Room, error) {
 	for _, room := range h.Rooms {
 		if room.ID == roomID {
-			return planningpoker.NewRoom(room.Owner, NewInMemoryClientCollection(room.Clients.Values()...)), nil
+			return room, nil
 		}
 	}
 	return nil, fmt.Errorf("room %s not found", roomID)

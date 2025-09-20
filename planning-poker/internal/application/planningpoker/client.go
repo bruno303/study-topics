@@ -67,21 +67,21 @@ func (c *Client) Listen(ctx context.Context) {
 	c.Send(ctx, NewUpdateClientIDCommand(c.ID))
 
 	go c.bus.Listen(ctx, func(msg events.Event) {
-		switch msg.Type() {
+		switch msg.GetType() {
 		case "init":
-			c.updateName(ctx, msg.(events.InitEvent).Payload.Username)
+			c.updateName(ctx, msg.(events.InitEvent).Username)
 
 		case "vote":
-			c.vote(ctx, lo.ToPtr(msg.(events.VoteEvent).Payload.Vote))
+			c.vote(ctx, lo.ToPtr(msg.(events.VoteEvent).Vote))
 
 		case "toggle-spectator":
 			c.executeIfOwner(func() {
-				c.room.ToggleSpectator(ctx, msg.(events.SpectatorEvent).Payload.ClientID)
+				c.room.ToggleSpectator(ctx, msg.(events.SpectatorEvent).ClientID)
 			})
 
 		case "toggle-owner":
 			c.executeIfOwner(func() {
-				c.room.ToggleOwner(msg.(events.OwnerEvent).Payload.ClientID)
+				c.room.ToggleOwner(msg.(events.OwnerEvent).ClientID)
 			})
 
 		case "new-voting":
@@ -96,7 +96,7 @@ func (c *Client) Listen(ctx context.Context) {
 
 		case "update-story":
 			c.executeIfOwner(func() {
-				c.room.SetCurrentStory(msg.(events.StoryEvent).Payload.Story)
+				c.room.SetCurrentStory(msg.(events.StoryEvent).Story)
 			})
 
 		case "vote-again":
