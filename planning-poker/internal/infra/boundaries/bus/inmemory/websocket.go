@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"planning-poker/internal/infra/boundaries/bus/events"
+	"planning-poker/internal/application/planningpoker"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/gorilla/websocket"
@@ -40,7 +40,7 @@ func (c *WebsocketBus) receive() (map[string]any, error) {
 	return msg, err
 }
 
-func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg events.Event)) {
+func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg planningpoker.Event)) {
 	defer c.Close()
 
 	for {
@@ -69,27 +69,27 @@ func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg events
 			continue
 		}
 
-		var e events.Event
+		var e planningpoker.Event
 		var uerr error
 		switch eventType {
 		case "init":
-			e, uerr = unmarshalEvent[events.InitEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.InitEvent](jsonData)
 		case "vote":
-			e, uerr = unmarshalEvent[events.VoteEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.VoteEvent](jsonData)
 		case "reset":
-			e, uerr = unmarshalEvent[events.ResetEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.ResetEvent](jsonData)
 		case "reveal-votes":
-			e, uerr = unmarshalEvent[events.RevealEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.RevealEvent](jsonData)
 		case "toggle-spectator":
-			e, uerr = unmarshalEvent[events.SpectatorEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.SpectatorEvent](jsonData)
 		case "toggle-owner":
-			e, uerr = unmarshalEvent[events.OwnerEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.OwnerEvent](jsonData)
 		case "update-story":
-			e, uerr = unmarshalEvent[events.StoryEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.StoryEvent](jsonData)
 		case "new-voting":
-			e, uerr = unmarshalEvent[events.NewVotingEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.NewVotingEvent](jsonData)
 		case "vote-again":
-			e, uerr = unmarshalEvent[events.VoteAgainEvent](jsonData)
+			e, uerr = unmarshalEvent[planningpoker.VoteAgainEvent](jsonData)
 		default:
 			c.logger.Error(ctx, fmt.Sprintf("Unknown event type '%v' for client %v", eventType, c.ID), errors.New("unknown event type"))
 			continue
@@ -104,7 +104,7 @@ func (c *WebsocketBus) Listen(ctx context.Context, handleMessage func(msg events
 	}
 }
 
-func unmarshalEvent[T events.Event](data []byte) (T, error) {
+func unmarshalEvent[T planningpoker.Event](data []byte) (T, error) {
 	var event T
 	err := json.Unmarshal(data, &event)
 	return event, err

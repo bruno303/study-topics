@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"planning-poker/internal/application/planningpoker"
-	"planning-poker/internal/application/planningpoker/interfaces"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/google/uuid"
@@ -35,13 +34,13 @@ type (
 	}
 )
 
-func ConfigurePlanningPokerAPI(mux *mux.Router, hub hub, busFactory interfaces.BusFactory) {
+func ConfigurePlanningPokerAPI(mux *mux.Router, hub hub, busFactory planningpoker.BusFactory) {
 	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub, busFactory))
 	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST", "OPTIONS")
 	mux.HandleFunc("/planning/room/{roomID}", getRoom(hub)).Methods("GET")
 }
 
-func handleConnections(hub hub, busFactory interfaces.BusFactory) http.HandlerFunc {
+func handleConnections(hub hub, busFactory planningpoker.BusFactory) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {

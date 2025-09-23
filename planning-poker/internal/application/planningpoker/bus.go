@@ -1,14 +1,13 @@
-package interfaces
+package planningpoker
 
 import (
 	"context"
-	"planning-poker/internal/infra/boundaries/bus/events"
 )
 
 type (
 	Bus interface {
 		Close() error
-		Listen(ctx context.Context, handleMessage func(msg events.Event))
+		Listen(ctx context.Context, handleMessage func(msg Event))
 		Send(ctx context.Context, message any) error
 	}
 

@@ -7,13 +7,15 @@ import (
 )
 
 type InMemoryHub struct {
-	lock  sync.Mutex
-	Rooms []*planningpoker.Room
+	lock                 sync.Mutex
+	Rooms                []*planningpoker.Room
+	eventHandlerStrategy planningpoker.EventHandlerStrategy
 }
 
-func NewHub() *InMemoryHub {
+func NewHub(eventHandlerStrategy planningpoker.EventHandlerStrategy) *InMemoryHub {
 	return &InMemoryHub{
-		Rooms: make([]*planningpoker.Room, 0),
+		Rooms:                make([]*planningpoker.Room, 0),
+		eventHandlerStrategy: eventHandlerStrategy,
 	}
 }
 
@@ -21,7 +23,7 @@ func (h *InMemoryHub) NewRoom(owner string) *planningpoker.Room {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	room := planningpoker.NewRoom(owner, NewInMemoryClientCollection())
+	room := planningpoker.NewRoom(owner, NewInMemoryClientCollection(), h.eventHandlerStrategy)
 	room.Hub = h
 	h.Rooms = append(h.Rooms, room)
 	return room

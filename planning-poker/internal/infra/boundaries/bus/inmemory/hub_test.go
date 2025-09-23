@@ -1,11 +1,19 @@
 package inmemory
 
 import (
+	"context"
+	"planning-poker/internal/application/planningpoker"
 	"testing"
 )
 
+type mockEventHandlerStrategy struct{}
+
+func (m mockEventHandlerStrategy) HandleEvent(ctx context.Context, event any, client *planningpoker.Client) error {
+	return nil
+}
+
 func TestNewRoom(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(mockEventHandlerStrategy{})
 	owner := "test-owner"
 
 	room := hub.NewRoom(owner)
@@ -31,7 +39,7 @@ func TestNewRoom(t *testing.T) {
 }
 
 func TestGetRoom(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(mockEventHandlerStrategy{})
 	owner := "owner1"
 	room := hub.NewRoom(owner)
 
@@ -50,7 +58,7 @@ func TestGetRoom(t *testing.T) {
 }
 
 func TestRemoveRoom(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(mockEventHandlerStrategy{})
 	room1 := hub.NewRoom("owner1")
 	room2 := hub.NewRoom("owner2")
 

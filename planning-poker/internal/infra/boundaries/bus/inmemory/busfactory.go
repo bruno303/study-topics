@@ -2,7 +2,7 @@ package inmemory
 
 import (
 	"context"
-	"planning-poker/internal/application/planningpoker/interfaces"
+	"planning-poker/internal/application/planningpoker"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,6 +13,6 @@ func NewWebSocketBusFactory() WebSocketBusFactory {
 	return WebSocketBusFactory{}
 }
 
-func (f WebSocketBusFactory) Create(ctx context.Context, id string, connection any) (interfaces.Bus, error) {
+func (f WebSocketBusFactory) Create(ctx context.Context, id string, connection any) (planningpoker.Bus, error) {
 	return NewWebsocketBus(id, connection.(*websocket.Conn)), nil
 }

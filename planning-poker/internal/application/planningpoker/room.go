@@ -2,7 +2,6 @@ package planningpoker
 
 import (
 	"context"
-	"planning-poker/internal/application/planningpoker/interfaces"
 	"sync"
 
 	"github.com/google/uuid"
@@ -27,32 +26,34 @@ type (
 	}
 
 	Room struct {
-		ID           string
-		Owner        string
-		OwnerClient  *Client
-		Clients      ClientCollection
-		CurrentStory string
-		Reveal       bool
-		Hub          Hub
-		lock         sync.Mutex
+		ID                   string
+		Owner                string
+		OwnerClient          *Client
+		Clients              ClientCollection
+		CurrentStory         string
+		Reveal               bool
+		Hub                  Hub
+		eventHandlerStrategy EventHandlerStrategy
+		lock                 sync.Mutex
 	}
 )
 
-func NewRoom(owner string, clients ClientCollection) *Room {
+func NewRoom(owner string, clients ClientCollection, eventHandlerStrategy EventHandlerStrategy) *Room {
 	return &Room{
-		ID:           uuid.NewString(),
-		Owner:        owner,
-		Clients:      clients,
-		CurrentStory: "",
-		Reveal:       false,
+		ID:                   uuid.NewString(),
+		Owner:                owner,
+		Clients:              clients,
+		CurrentStory:         "",
+		eventHandlerStrategy: eventHandlerStrategy,
+		Reveal:               false,
 	}
 }
 
-func (r *Room) NewClient(id string, bus interfaces.Bus) *Client {
+func (r *Room) NewClient(id string, bus Bus) *Client {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	client := newClient(id, bus)
+	client := newClient(id, bus, r.eventHandlerStrategy)
 	r.Clients.Add(client)
 	client.room = r
 
@@ -166,4 +167,11 @@ func (r *Room) SetCurrentStory(story string) {
 	defer r.lock.Unlock()
 
 	r.CurrentStory = story
+}
+
+func (r *Room) ToggleReveal() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.Reveal = !r.Reveal
 }
