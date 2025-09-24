@@ -1,4 +1,12 @@
-package planningpoker
+package dto
+
+import (
+	"planning-poker/internal/application/planningpoker/entity"
+	"slices"
+	"strings"
+
+	"github.com/samber/lo"
+)
 
 type (
 	RoomState struct {
@@ -16,18 +24,13 @@ type (
 		IsOwner     bool    `json:"isOwner"`
 	}
 
-	UpdateName struct {
-		Type     string `json:"type"`
-		Username string `json:"username"`
-	}
-
 	UpdateClientID struct {
 		Type     string `json:"type"`
 		ClientID string `json:"clientId"`
 	}
 )
 
-func NewRoomStateCommand(room *Room) RoomState {
+func NewRoomStateCommand(room *entity.Room) RoomState {
 	return RoomState{
 		Type:         "room-state",
 		CurrentStory: room.CurrentStory,
@@ -36,16 +39,29 @@ func NewRoomStateCommand(room *Room) RoomState {
 	}
 }
 
-func NewUpdateNameCommand(username string) UpdateName {
-	return UpdateName{
-		Type:     "update-name",
-		Username: username,
-	}
-}
-
 func NewUpdateClientIDCommand(clientID string) UpdateClientID {
 	return UpdateClientID{
 		Type:     "update-client-id",
 		ClientID: clientID,
 	}
+}
+
+func MapToParticipants(clients []*entity.Client, owner *entity.Client) []Participant {
+	slices.SortFunc(clients, func(a, b *entity.Client) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	return lo.Map(
+		clients,
+		func(client *entity.Client, _ int) Participant {
+			return Participant{
+				ID:          client.ID,
+				Name:        client.Name,
+				Vote:        client.GetVote(),
+				HasVoted:    client.HasVoted,
+				IsSpectator: client.IsSpectator,
+				IsOwner:     client.IsOwner,
+			}
+		},
+	)
 }

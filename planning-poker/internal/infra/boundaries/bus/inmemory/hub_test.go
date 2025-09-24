@@ -1,19 +1,12 @@
 package inmemory
 
 import (
-	"context"
-	"planning-poker/internal/application/planningpoker"
+	"planning-poker/internal/application/planningpoker/entity"
 	"testing"
 )
 
-type mockEventHandlerStrategy struct{}
-
-func (m mockEventHandlerStrategy) HandleEvent(ctx context.Context, event any, client *planningpoker.Client) error {
-	return nil
-}
-
 func TestNewRoom(t *testing.T) {
-	hub := NewHub(mockEventHandlerStrategy{})
+	hub := NewHub()
 	owner := "test-owner"
 
 	room := hub.NewRoom(owner)
@@ -24,13 +17,10 @@ func TestNewRoom(t *testing.T) {
 	if room.Owner != owner {
 		t.Errorf("expected room owner to be %q, got %q", owner, room.Owner)
 	}
-	if room.Hub != hub {
-		t.Errorf("expected room.Hub to be the hub instance")
-	}
 	if len(hub.Rooms) != 1 {
 		t.Errorf("expected hub.Rooms to have 1 room, got %d", len(hub.Rooms))
 	}
-	if hub.Rooms[0] != room {
+	if hub.Rooms[room.ID] != room {
 		t.Errorf("expected hub.Rooms[0] to be the created room")
 	}
 	if room.Clients == nil {
@@ -39,26 +29,26 @@ func TestNewRoom(t *testing.T) {
 }
 
 func TestGetRoom(t *testing.T) {
-	hub := NewHub(mockEventHandlerStrategy{})
+	hub := NewHub()
 	owner := "owner1"
 	room := hub.NewRoom(owner)
 
-	got, err := hub.GetRoom(room.ID)
-	if err != nil {
-		t.Fatalf("expected to find room, got error: %v", err)
+	got, ok := hub.GetRoom(room.ID)
+	if !ok {
+		t.Fatalf("expected to find room but got not found")
 	}
 	if got != room {
 		t.Errorf("expected to get the created room, got different room")
 	}
 
-	_, err = hub.GetRoom("non-existent-id")
-	if err == nil {
-		t.Error("expected error for non-existent room ID, got nil")
+	_, ok = hub.GetRoom("non-existent-id")
+	if ok {
+		t.Error("expected \"false\" for non-existent room ID, got \"true\"")
 	}
 }
 
 func TestRemoveRoom(t *testing.T) {
-	hub := NewHub(mockEventHandlerStrategy{})
+	hub := NewHub()
 	room1 := hub.NewRoom("owner1")
 	room2 := hub.NewRoom("owner2")
 
@@ -70,7 +60,7 @@ func TestRemoveRoom(t *testing.T) {
 	if len(hub.Rooms) != 1 {
 		t.Errorf("expected 1 room after removal, got %d", len(hub.Rooms))
 	}
-	if hub.Rooms[0] != room2 {
+	if hub.Rooms[room2.ID] != room2 {
 		t.Errorf("expected remaining room to be room2")
 	}
 
@@ -78,5 +68,25 @@ func TestRemoveRoom(t *testing.T) {
 	hub.RemoveRoom("non-existent-id")
 	if len(hub.Rooms) != 1 {
 		t.Errorf("expected 1 room after removing non-existent, got %d", len(hub.Rooms))
+	}
+}
+
+func TestAddAndFindClient(t *testing.T) {
+	hub := NewHub()
+	client := &entity.Client{ID: "client1", Name: "Alice"}
+
+	hub.AddClient(client)
+
+	got, ok := hub.FindClientByID(client.ID)
+	if !ok {
+		t.Fatalf("expected to find client but got not found")
+	}
+	if got != client {
+		t.Errorf("expected to get the added client, got different client")
+	}
+
+	_, ok = hub.FindClientByID("non-existent-id")
+	if ok {
+		t.Error("expected \"false\" for non-existent client ID, got \"true\"")
 	}
 }

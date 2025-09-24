@@ -1,32 +1,30 @@
 package main
 
 import (
-	"planning-poker/internal/application/planningpoker"
+	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/infra/boundaries/bus/inmemory"
 )
 
 type Container struct {
-	Hub                  *inmemory.InMemoryHub
-	BusFactory           inmemory.WebSocketBusFactory
-	EventHandlerStrategy planningpoker.EventHandlerStrategy
+	Hub      *inmemory.InMemoryHub
+	Usecases usecase.UseCases
 }
 
 func NewContainer() *Container {
-	eventHandlerStrategy := planningpoker.NewEventhandlerStrategyImpl(
-		planningpoker.NewInitEventHandler(),
-		planningpoker.NewVoteEventHandler(),
-		planningpoker.NewRevealEventHandler(),
-		planningpoker.NewResetEventHandler(),
-		planningpoker.NewSpectatorEventHandler(),
-		planningpoker.NewStoryEventHandler(),
-		planningpoker.NewOwnerEventHandler(),
-		planningpoker.NewNewVotingEventHandler(),
-		planningpoker.NewVoteAgainEventHandler(),
-	)
+	hub := inmemory.NewHub()
 
 	return &Container{
-		Hub:                  inmemory.NewHub(eventHandlerStrategy),
-		BusFactory:           inmemory.NewWebSocketBusFactory(),
-		EventHandlerStrategy: eventHandlerStrategy,
+		Hub: hub,
+		Usecases: usecase.UseCases{
+			UpdateName:      usecase.NewUpdateNameUseCase(hub),
+			Vote:            usecase.NewVoteUseCase(hub),
+			Reveal:          usecase.NewRevealUseCase(hub),
+			Reset:           usecase.NewResetUseCase(hub),
+			ToggleSpectator: usecase.NewToggleSpectatorUseCase(hub),
+			ToggleOwner:     usecase.NewToggleOwnerUseCase(hub),
+			UpdateStory:     usecase.NewUpdateStoryUseCase(hub),
+			NewVoting:       usecase.NewNewVotingUseCase(hub),
+			VoteAgain:       usecase.NewVoteAgainUseCase(hub),
+		},
 	}
 }

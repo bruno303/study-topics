@@ -1,4 +1,4 @@
-package planningpoker
+package entity
 
 import (
 	"context"
@@ -9,12 +9,6 @@ import (
 )
 
 type (
-	Hub interface {
-		NewRoom(owner string) *Room
-		GetRoom(roomID string) (*Room, error)
-		RemoveRoom(roomID string)
-	}
-
 	ClientCollection interface {
 		Add(client *Client)
 		Remove(clientID string)
@@ -26,34 +20,31 @@ type (
 	}
 
 	Room struct {
-		ID                   string
-		Owner                string
-		OwnerClient          *Client
-		Clients              ClientCollection
-		CurrentStory         string
-		Reveal               bool
-		Hub                  Hub
-		eventHandlerStrategy EventHandlerStrategy
-		lock                 sync.Mutex
+		ID           string
+		Owner        string
+		OwnerClient  *Client
+		Clients      ClientCollection
+		CurrentStory string
+		Reveal       bool
+		lock         sync.Mutex
 	}
 )
 
-func NewRoom(owner string, clients ClientCollection, eventHandlerStrategy EventHandlerStrategy) *Room {
+func NewRoom(owner string, clients ClientCollection) *Room {
 	return &Room{
-		ID:                   uuid.NewString(),
-		Owner:                owner,
-		Clients:              clients,
-		CurrentStory:         "",
-		eventHandlerStrategy: eventHandlerStrategy,
-		Reveal:               false,
+		ID:           uuid.NewString(),
+		Owner:        owner,
+		Clients:      clients,
+		CurrentStory: "",
+		Reveal:       false,
 	}
 }
 
-func (r *Room) NewClient(id string, bus Bus) *Client {
+func (r *Room) NewClient(id string) *Client {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	client := newClient(id, bus, r.eventHandlerStrategy)
+	client := newClient(id)
 	r.Clients.Add(client)
 	client.room = r
 
@@ -69,24 +60,12 @@ func (r *Room) RemoveClient(ctx context.Context, clientID string) {
 	defer r.lock.Unlock()
 
 	r.Clients.Remove(clientID)
-	if r.Clients.Count() == 0 {
-		r.Hub.RemoveRoom(r.ID)
-		return
-	}
 
 	if r.CountOwners() == 0 {
 		if client, ok := r.Clients.First(); ok {
 			client.IsOwner = true
 		}
 	}
-
-	r.Broadcast(ctx, NewRoomStateCommand(r))
-}
-
-func (r *Room) Broadcast(ctx context.Context, message any) {
-	r.Clients.ForEach(func(c *Client) {
-		c.bus.Send(ctx, message)
-	})
 }
 
 func (r *Room) NewVoting() {
@@ -97,7 +76,7 @@ func (r *Room) NewVoting() {
 	r.Reveal = false
 	r.Clients.ForEach(func(c *Client) {
 		c.HasVoted = false
-		c.Vote = nil
+		c.vote = nil
 	})
 }
 
@@ -109,7 +88,7 @@ func (r *Room) ResetVoting() {
 
 	r.Clients.ForEach(func(c *Client) {
 		c.HasVoted = false
-		c.Vote = nil
+		c.vote = nil
 	})
 }
 
@@ -139,7 +118,7 @@ func (r *Room) ToggleSpectator(ctx context.Context, clientID string) {
 		return client.ID == clientID
 	}).ForEach(func(client *Client) {
 		client.IsSpectator = !client.IsSpectator
-		client.vote(ctx, nil)
+		client.Vote(ctx, nil)
 	})
 }
 
@@ -174,4 +153,8 @@ func (r *Room) ToggleReveal() {
 	defer r.lock.Unlock()
 
 	r.Reveal = !r.Reveal
+}
+
+func (r *Room) IsEmpty() bool {
+	return r.Clients.Count() == 0
 }

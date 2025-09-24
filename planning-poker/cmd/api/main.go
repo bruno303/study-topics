@@ -22,9 +22,7 @@ func main() {
 	container := NewContainer()
 
 	r := mux.NewRouter()
-
-	// mux := http.NewServeMux()
-	httpapp.ConfigurePlanningPokerAPI(r, container.Hub, container.BusFactory)
+	httpapp.ConfigurePlanningPokerAPI(r, container.Hub, container.Usecases)
 	infra.ConfigureInfraAPI(r)
 
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {

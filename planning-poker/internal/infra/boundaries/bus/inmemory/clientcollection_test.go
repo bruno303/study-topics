@@ -1,12 +1,12 @@
 package inmemory
 
 import (
-	"planning-poker/internal/application/planningpoker"
+	"planning-poker/internal/application/planningpoker/entity"
 	"testing"
 )
 
-func newTestClient(id, name string) *planningpoker.Client {
-	return &planningpoker.Client{ID: id, Name: name}
+func newTestClient(id, name string) *entity.Client {
+	return &entity.Client{ID: id, Name: name}
 }
 
 func TestAddAndValues(t *testing.T) {
@@ -65,7 +65,7 @@ func TestForEach(t *testing.T) {
 	cc := NewInMemoryClientCollection(client1, client2)
 
 	var ids []string
-	cc.ForEach(func(c *planningpoker.Client) {
+	cc.ForEach(func(c *entity.Client) {
 		ids = append(ids, c.ID)
 	})
 	if len(ids) != 2 || ids[0] != "1" || ids[1] != "2" {
@@ -78,7 +78,7 @@ func TestFilter(t *testing.T) {
 	client2 := newTestClient("2", "Bob")
 	cc := NewInMemoryClientCollection(client1, client2)
 
-	filtered := cc.Filter(func(c *planningpoker.Client) bool {
+	filtered := cc.Filter(func(c *entity.Client) bool {
 		return c.Name == "Bob"
 	})
 
