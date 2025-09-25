@@ -3,8 +3,8 @@ package inmemory
 import (
 	"context"
 	"fmt"
-	"planning-poker/internal/application/planningpoker/entity"
-	"planning-poker/internal/application/planningpoker/shared"
+	"planning-poker/internal/domain"
+	"planning-poker/internal/domain/entity"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 )
@@ -12,17 +12,17 @@ import (
 type InMemoryHub struct {
 	Rooms   map[string]*entity.Room
 	Clients map[string]*entity.Client
-	Buses   map[string]shared.Bus
+	Buses   map[string]domain.Bus
 	logger  log.Logger
 }
 
-var _ shared.Hub = (*InMemoryHub)(nil)
+var _ domain.Hub = (*InMemoryHub)(nil)
 
 func NewHub() *InMemoryHub {
 	return &InMemoryHub{
 		Rooms:   make(map[string]*entity.Room),
 		Clients: make(map[string]*entity.Client),
-		Buses:   make(map[string]shared.Bus),
+		Buses:   make(map[string]domain.Bus),
 		logger:  log.NewLogger("inmemory.hub"),
 	}
 }
@@ -59,11 +59,11 @@ func (h *InMemoryHub) AddClient(c *entity.Client) {
 	h.Clients[c.ID] = c
 }
 
-func (h *InMemoryHub) AddBus(clientID string, bus shared.Bus) {
+func (h *InMemoryHub) AddBus(clientID string, bus domain.Bus) {
 	h.Buses[clientID] = bus
 }
 
-func (h *InMemoryHub) GetBus(clientID string) (shared.Bus, bool) {
+func (h *InMemoryHub) GetBus(clientID string) (domain.Bus, bool) {
 	bus, ok := h.Buses[clientID]
 	return bus, ok
 }
@@ -72,7 +72,7 @@ func (h *InMemoryHub) RemoveBus(clientID string) {
 	delete(h.Buses, clientID)
 }
 
-func (h *InMemoryHub) RemoveClient(ctx context.Context, clientID string, roomID string) {
+func (h *InMemoryHub) RemoveClient(ctx context.Context, clientID string, roomID string) error {
 	delete(h.Clients, clientID)
 	h.RemoveBus(clientID)
 
@@ -82,6 +82,7 @@ func (h *InMemoryHub) RemoveClient(ctx context.Context, clientID string, roomID 
 			h.RemoveRoom(room.ID)
 		}
 	}
+	return nil
 }
 
 func (h *InMemoryHub) BroadcastToRoom(ctx context.Context, roomID string, message any) error {

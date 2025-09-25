@@ -41,8 +41,6 @@ func (c *Client) Vote(ctx context.Context, vote *string) {
 	} else {
 		c.HasVoted = false
 	}
-
-	c.room.checkReveal()
 }
 
 func (c *Client) Room() *Room {

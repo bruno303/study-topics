@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"planning-poker/internal/application/planningpoker/entity"
+	"planning-poker/internal/domain/entity"
 	"slices"
 	"strings"
 

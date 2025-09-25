@@ -2,39 +2,41 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"planning-poker/internal/application/planningpoker/shared"
+	"fmt"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
+	"planning-poker/internal/domain"
 )
 
 type (
 	ToggleSpectatorCommand struct {
-		ClientID       string
+		RoomID         string
+		SenderID       string
 		TargetClientID string
 	}
 	ToggleSpectatorUseCase struct {
-		hub shared.Hub
+		hub domain.Hub
 	}
 )
 
-func NewToggleSpectatorUseCase(hub shared.Hub) ToggleSpectatorUseCase {
+func NewToggleSpectatorUseCase(hub domain.Hub) ToggleSpectatorUseCase {
 	return ToggleSpectatorUseCase{
 		hub: hub,
 	}
 }
 
 func (uc ToggleSpectatorUseCase) Execute(ctx context.Context, cmd ToggleSpectatorCommand) error {
-	client, ok := uc.hub.FindClientByID(cmd.ClientID)
+	room, ok := uc.hub.GetRoom(cmd.RoomID)
 	if !ok {
-		return errors.New("client not found")
+		return fmt.Errorf("room %s not found", cmd.RoomID)
 	}
 
-	if !client.IsOwner {
-		return errors.New("only the room owner can toggle spectator mode")
+	if err := room.ToggleSpectator(ctx, cmd.SenderID, cmd.TargetClientID); err != nil {
+		return err
 	}
 
-	client.Room().ToggleSpectator(ctx, cmd.TargetClientID)
-	uc.hub.BroadcastToRoom(ctx, client.Room().ID, dto.NewRoomStateCommand(client.Room()))
+	if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
+		return err
+	}
 
 	return nil
 }

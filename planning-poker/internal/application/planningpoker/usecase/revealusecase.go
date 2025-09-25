@@ -2,44 +2,38 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"planning-poker/internal/application/planningpoker/shared"
+	"fmt"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
+	"planning-poker/internal/domain"
 )
 
 type (
 	RevealCommand struct {
-		ClientID string
+		RoomID   string
+		SenderID string
 	}
 	RevealUseCase struct {
-		hub shared.Hub
+		hub domain.Hub
 	}
 )
 
-func NewRevealUseCase(hub shared.Hub) RevealUseCase {
+func NewRevealUseCase(hub domain.Hub) RevealUseCase {
 	return RevealUseCase{
 		hub: hub,
 	}
 }
 
 func (uc RevealUseCase) Execute(ctx context.Context, cmd RevealCommand) error {
-	client, ok := uc.hub.FindClientByID(cmd.ClientID)
+	room, ok := uc.hub.GetRoom(cmd.RoomID)
 	if !ok {
-		return errors.New("client not found")
+		return fmt.Errorf("room %s not found", cmd.RoomID)
 	}
 
-	if !client.IsOwner {
-		return errors.New("only the room owner can toggle reveal")
+	if err := room.ToggleReveal(ctx, cmd.SenderID); err != nil {
+		return err
 	}
 
-	room, ok := uc.hub.GetRoom(client.Room().ID)
-	if !ok {
-		return errors.New("room not found")
-	}
-
-	room.ToggleReveal()
-
-	uc.hub.BroadcastToRoom(ctx, client.Room().ID, dto.NewRoomStateCommand(client.Room()))
+	uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room))
 
 	return nil
 }

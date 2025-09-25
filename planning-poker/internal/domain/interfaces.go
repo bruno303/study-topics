@@ -1,15 +1,15 @@
-package shared
+package domain
 
 import (
 	"context"
-	"planning-poker/internal/application/planningpoker/entity"
+	"planning-poker/internal/domain/entity"
 )
 
 type (
 	Hub interface {
 		FindClientByID(clientID string) (*entity.Client, bool)
 		AddClient(c *entity.Client)
-		RemoveClient(ctx context.Context, clientID string, roomID string)
+		RemoveClient(ctx context.Context, clientID string, roomID string) error
 
 		NewRoom(owner string) *entity.Room
 		GetRoom(roomID string) (*entity.Room, bool)

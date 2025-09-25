@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"planning-poker/internal/application/planningpoker/shared"
 	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
+	"planning-poker/internal/domain"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/google/uuid"
@@ -34,19 +34,19 @@ type (
 	WebsocketBus struct {
 		ID       string
 		conn     *websocket.Conn
-		hub      shared.Hub
+		hub      domain.Hub
 		usecases usecase.UseCases
 		logger   log.Logger
 	}
 )
 
-func ConfigurePlanningPokerAPI(mux *mux.Router, hub shared.Hub, usecases usecase.UseCases) {
+func ConfigurePlanningPokerAPI(mux *mux.Router, hub domain.Hub, usecases usecase.UseCases) {
 	mux.HandleFunc("/planning/{roomID}/ws", handleConnections(hub, usecases))
 	mux.HandleFunc("/planning/room", createRoom(hub)).Methods("POST", "OPTIONS")
 	mux.HandleFunc("/planning/room/{roomID}", getRoom(hub)).Methods("GET")
 }
 
-func handleConnections(hub shared.Hub, usecases usecase.UseCases) http.HandlerFunc {
+func handleConnections(hub domain.Hub, usecases usecase.UseCases) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {
@@ -83,7 +83,10 @@ func handleConnections(hub shared.Hub, usecases usecase.UseCases) http.HandlerFu
 
 		defer bus.Close()
 		defer func() {
-			hub.RemoveClient(r.Context(), client.ID, room.ID)
+			usecases.LeaveRoom.Execute(r.Context(), usecase.LeaveRoomCommand{
+				RoomID:   room.ID,
+				SenderID: client.ID,
+			})
 		}()
 
 		bus.Send(r.Context(), dto.NewUpdateClientIDCommand(client.ID))
@@ -99,7 +102,7 @@ type CreateRoomResponse struct {
 	RoomID string `json:"roomId"`
 }
 
-func createRoom(hub shared.Hub) http.HandlerFunc {
+func createRoom(hub domain.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		var body CreateRoomRequest
@@ -116,7 +119,7 @@ func createRoom(hub shared.Hub) http.HandlerFunc {
 	}
 }
 
-func getRoom(hub shared.Hub) http.HandlerFunc {
+func getRoom(hub domain.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := mux.Vars(r)["roomID"]
 		if roomID == "" {
@@ -137,7 +140,7 @@ func getRoom(hub shared.Hub) http.HandlerFunc {
 func NewWebsocketBus(
 	id string,
 	socket *websocket.Conn,
-	hub shared.Hub,
+	hub domain.Hub,
 	usecases usecase.UseCases,
 ) *WebsocketBus {
 	return &WebsocketBus{
@@ -171,15 +174,14 @@ func (c *WebsocketBus) Listen(ctx context.Context) {
 		msg, err := c.receive()
 		if err != nil {
 			if _, ok := err.(*websocket.CloseError); ok {
-				c.logger.Info(ctx, "Client %v disconnected", c)
-
+				c.logger.Info(ctx, "Client %v disconnected", c.ID)
 			} else {
 				c.logger.Error(ctx, fmt.Sprintf("Error receiving message from client %v", c.ID), err)
 			}
 
 			return
 		}
-		c.logger.Info(ctx, "Message received from client %v: %v", c, msg)
+		c.logger.Info(ctx, "Message received from client %v: %v", c.ID, msg)
 
 		eventType, ok := msg["type"].(string)
 		if !ok {
@@ -191,44 +193,53 @@ func (c *WebsocketBus) Listen(ctx context.Context) {
 		switch eventType {
 		case "update-name":
 			uerr = c.usecases.UpdateName.Execute(ctx, usecase.UpdateNameCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 				Username: msg["username"].(string),
 			})
 		case "vote":
 			uerr = c.usecases.Vote.Execute(ctx, usecase.VoteCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 				Vote:     lo.ToPtr(msg["vote"].(string)),
 			})
 		case "reset":
 			uerr = c.usecases.Reset.Execute(ctx, usecase.ResetCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 			})
 		case "reveal-votes":
 			uerr = c.usecases.Reveal.Execute(ctx, usecase.RevealCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 			})
 		case "toggle-spectator":
 			uerr = c.usecases.ToggleSpectator.Execute(ctx, usecase.ToggleSpectatorCommand{
-				ClientID:       msg["clientId"].(string),
+				RoomID:         msg["roomId"].(string),
+				SenderID:       msg["clientId"].(string),
 				TargetClientID: msg["targetClientId"].(string),
 			})
 		case "toggle-owner":
 			uerr = c.usecases.ToggleOwner.Execute(ctx, usecase.ToggleOwnerCommand{
-				ClientID:       msg["clientId"].(string),
+				RoomID:         msg["roomId"].(string),
+				SenderID:       msg["clientId"].(string),
 				TargetClientID: msg["targetClientId"].(string),
 			})
 		case "update-story":
 			uerr = c.usecases.UpdateStory.Execute(ctx, usecase.UpdateStoryCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 				Story:    msg["story"].(string),
 			})
 		case "new-voting":
 			uerr = c.usecases.NewVoting.Execute(ctx, usecase.NewVotingCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 			})
 		case "vote-again":
 			uerr = c.usecases.VoteAgain.Execute(ctx, usecase.VoteAgainCommand{
-				ClientID: msg["clientId"].(string),
+				RoomID:   msg["roomId"].(string),
+				SenderID: msg["clientId"].(string),
 			})
 		default:
 			c.logger.Error(ctx, fmt.Sprintf("Unknown event type '%v' for client %v", eventType, c.ID), errors.New("unknown event type"))

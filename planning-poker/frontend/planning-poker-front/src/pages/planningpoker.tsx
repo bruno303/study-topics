@@ -46,25 +46,26 @@ export default function PlanningPoker(props: PlanningPokerProps) {
 
   const handleCardSelect = (card: Card) => {
     if (!isRevealed) {
-      props.socket.current?.send(JSON.stringify({ type: 'vote', vote: card, clientId: clientId }));
+      props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'vote', vote: card, clientId: clientId }));
     }
   };
 
   const handleRevealVotes = () => {
-    props.socket.current?.send(JSON.stringify({ type: 'reveal-votes', clientId: clientId }));
+    props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'reveal-votes', clientId: clientId }));
   };
 
   const handleNewVoting = () => {
-    props.socket.current?.send(JSON.stringify({ type: 'new-voting', clientId: clientId }));
+    props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'new-voting', clientId: clientId }));
   };
 
   const handleUpdateUsername = (username: string) => {
     setUserName(username);
-    props.socket.current?.send(JSON.stringify({ type: 'update-name', username: username }));
+    props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'update-name', username: username, clientId: clientId }));
   }
 
   const handleToggleSpectator = (participantId: string) => {
     props.socket.current?.send(JSON.stringify({ 
+      roomId: props.roomId,
       type: 'toggle-spectator',
       targetClientId: participantId,
       clientId: clientId
@@ -72,15 +73,16 @@ export default function PlanningPoker(props: PlanningPokerProps) {
   };
 
   const handleToggleAdmin = (participantId: string) => {
-    props.socket.current?.send(JSON.stringify({ 
-      type: 'toggle-owner', 
+    props.socket.current?.send(JSON.stringify({
+      roomId: props.roomId,
+      type: 'toggle-owner',
       targetClientId: participantId,
       clientId: clientId
     }));
   };
 
   const handleVoteAgain = () => {
-    props.socket.current?.send(JSON.stringify({ type: 'vote-again' }));
+    props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'vote-again', clientId: clientId }));
   }
 
   const connectWebSocket = async(roomCode: string | null) => {
@@ -106,7 +108,7 @@ export default function PlanningPoker(props: PlanningPokerProps) {
 
         } else if (data.type === 'update-client-id') {
           setClientId(data.clientId);
-          props.socket.current?.send(JSON.stringify({ type: 'update-name', username: props.userName, clientId: data.clientId }));
+          props.socket.current?.send(JSON.stringify({ roomId: props.roomId, type: 'update-name', username: props.userName, clientId: data.clientId }));
 
         } else {
           throw new Error('Invalid message from websocket');
@@ -462,14 +464,14 @@ export default function PlanningPoker(props: PlanningPokerProps) {
                   onChange={e => setCurrentStory(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
-                      props.socket.current?.send(JSON.stringify({ clientId: clientId, type: 'update-story', story: currentStory }));
+                      props.socket.current?.send(JSON.stringify({ roomId: props.roomId, clientId: clientId, type: 'update-story', story: currentStory }));
                     }
                   }}
                   style={{ ...styles.input, fontStyle: 'italic' }}
                 />
                 <button
                   style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                  onClick={() => props.socket.current?.send(JSON.stringify({ clientId: clientId, type: 'update-story', story: currentStory }))}
+                  onClick={() => props.socket.current?.send(JSON.stringify({ roomId: props.roomId, clientId: clientId, type: 'update-story', story: currentStory }))}
                 >
                   Save
                 </button>

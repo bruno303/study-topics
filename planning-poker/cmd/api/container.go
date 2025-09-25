@@ -25,6 +25,7 @@ func NewContainer() *Container {
 			UpdateStory:     usecase.NewUpdateStoryUseCase(hub),
 			NewVoting:       usecase.NewNewVotingUseCase(hub),
 			VoteAgain:       usecase.NewVoteAgainUseCase(hub),
+			LeaveRoom:       usecase.NewLeaveRoomUseCase(hub),
 		},
 	}
 }

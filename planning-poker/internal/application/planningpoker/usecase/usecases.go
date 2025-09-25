@@ -10,4 +10,5 @@ type UseCases struct {
 	UpdateStory     UpdateStoryUseCase
 	NewVoting       NewVotingUseCase
 	VoteAgain       VoteAgainUseCase
+	LeaveRoom       LeaveRoomUseCase
 }

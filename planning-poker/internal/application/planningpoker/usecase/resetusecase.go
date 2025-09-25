@@ -2,44 +2,40 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"planning-poker/internal/application/planningpoker/shared"
+	"fmt"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
+	"planning-poker/internal/domain"
 )
 
 type (
 	ResetCommand struct {
-		ClientID string
+		RoomID   string
+		SenderID string
 	}
 	ResetUseCase struct {
-		hub shared.Hub
+		hub domain.Hub
 	}
 )
 
-func NewResetUseCase(hub shared.Hub) ResetUseCase {
+func NewResetUseCase(hub domain.Hub) ResetUseCase {
 	return ResetUseCase{
 		hub: hub,
 	}
 }
 
 func (uc ResetUseCase) Execute(ctx context.Context, cmd ResetCommand) error {
-	client, ok := uc.hub.FindClientByID(cmd.ClientID)
+	room, ok := uc.hub.GetRoom(cmd.RoomID)
 	if !ok {
-		return errors.New("client not found")
+		return fmt.Errorf("room %s not found", cmd.RoomID)
 	}
 
-	if !client.IsOwner {
-		return errors.New("only the room owner can reset voting")
+	if err := room.ResetVoting(ctx, cmd.SenderID); err != nil {
+		return err
 	}
 
-	room, ok := uc.hub.GetRoom(client.Room().ID)
-	if !ok {
-		return errors.New("room not found")
+	if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
+		return err
 	}
-
-	room.ResetVoting()
-
-	uc.hub.BroadcastToRoom(ctx, client.Room().ID, dto.NewRoomStateCommand(client.Room()))
 
 	return nil
 }

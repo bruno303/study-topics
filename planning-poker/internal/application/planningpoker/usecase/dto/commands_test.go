@@ -2,7 +2,7 @@ package dto
 
 import (
 	"context"
-	"planning-poker/internal/application/planningpoker/entity"
+	"planning-poker/internal/domain/entity"
 	"reflect"
 	"testing"
 

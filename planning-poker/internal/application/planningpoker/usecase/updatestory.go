@@ -2,38 +2,41 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"planning-poker/internal/application/planningpoker/shared"
+	"fmt"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
+	"planning-poker/internal/domain"
 )
 
 type (
 	UpdateStoryCommand struct {
-		ClientID string
+		RoomID   string
+		SenderID string
 		Story    string
 	}
 	UpdateStoryUseCase struct {
-		hub shared.Hub
+		hub domain.Hub
 	}
 )
 
-func NewUpdateStoryUseCase(hub shared.Hub) UpdateStoryUseCase {
+func NewUpdateStoryUseCase(hub domain.Hub) UpdateStoryUseCase {
 	return UpdateStoryUseCase{
 		hub: hub,
 	}
 }
 
 func (uc UpdateStoryUseCase) Execute(ctx context.Context, cmd UpdateStoryCommand) error {
-	client, ok := uc.hub.FindClientByID(cmd.ClientID)
+	room, ok := uc.hub.GetRoom(cmd.RoomID)
 	if !ok {
-		return errors.New("client not found")
-	}
-	if !client.IsOwner {
-		return errors.New("only the room owner can update the story")
+		return fmt.Errorf("room %s not found", cmd.RoomID)
 	}
 
-	client.Room().SetCurrentStory(cmd.Story)
-	uc.hub.BroadcastToRoom(ctx, client.Room().ID, dto.NewRoomStateCommand(client.Room()))
+	if err := room.SetCurrentStory(ctx, cmd.SenderID, cmd.Story); err != nil {
+		return err
+	}
+
+	if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
+		return err
+	}
 
 	return nil
 }
