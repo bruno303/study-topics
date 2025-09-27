@@ -23,3 +23,8 @@ dash.internal.bsoapp.net {
     reverse_proxy homepage:3000
     import cloudflare
 }
+
+pihole.internal.bsoapp.net {
+    reverse_proxy pihole:80
+    import cloudflare
+}

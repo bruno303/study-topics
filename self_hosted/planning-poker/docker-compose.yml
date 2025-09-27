@@ -2,6 +2,7 @@ services:
   frontend:
     image: bruno303/planning-poker-frontend:0.0.1
     container_name: planning-poker-frontend
+    restart: unless-stopped
     expose:
       - 3000
     networks:
@@ -10,6 +11,7 @@ services:
   backend:
     image: bruno303/planning-poker-backend:0.0.1
     container_name: planning-poker-backend
+    restart: unless-stopped
     expose:
       - 8080
     environment:
