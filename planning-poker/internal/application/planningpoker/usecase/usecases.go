@@ -11,4 +11,5 @@ type UseCases struct {
 	NewVoting       NewVotingUseCase
 	VoteAgain       VoteAgainUseCase
 	LeaveRoom       LeaveRoomUseCase
+	JoinRoom        JoinRoomUseCase
 }

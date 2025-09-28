@@ -43,6 +43,9 @@ clean:
 fmt:
 	go fmt ./...
 
+generate:
+	go generate ./...
+
 docker-build-backend:
 	docker build --no-cache -t planning-poker-backend .
 

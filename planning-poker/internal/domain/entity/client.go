@@ -13,7 +13,7 @@ type (
 
 		room *Room
 
-		vote        *string
+		CurrentVote *string
 		HasVoted    bool
 		IsSpectator bool
 		IsOwner     bool
@@ -35,7 +35,7 @@ func (c *Client) Vote(ctx context.Context, vote *string) {
 		return
 	}
 
-	c.vote = vote
+	c.CurrentVote = vote
 	if vote != nil && *vote != "" {
 		c.HasVoted = true
 	} else {
@@ -45,10 +45,6 @@ func (c *Client) Vote(ctx context.Context, vote *string) {
 
 func (c *Client) Room() *Room {
 	return c.room
-}
-
-func (c *Client) GetVote() *string {
-	return c.vote
 }
 
 func (c *Client) UpdateName(ctx context.Context, name string) {

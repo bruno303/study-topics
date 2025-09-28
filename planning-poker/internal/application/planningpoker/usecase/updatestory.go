@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"planning-poker/internal/application/lock"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
 	"planning-poker/internal/domain"
 )
@@ -14,29 +15,34 @@ type (
 		Story    string
 	}
 	UpdateStoryUseCase struct {
-		hub domain.Hub
+		hub         domain.Hub
+		lockManager lock.LockManager
 	}
 )
 
-func NewUpdateStoryUseCase(hub domain.Hub) UpdateStoryUseCase {
+func NewUpdateStoryUseCase(hub domain.Hub, lockManager lock.LockManager) UpdateStoryUseCase {
 	return UpdateStoryUseCase{
-		hub: hub,
+		hub:         hub,
+		lockManager: lockManager,
 	}
 }
 
 func (uc UpdateStoryUseCase) Execute(ctx context.Context, cmd UpdateStoryCommand) error {
-	room, ok := uc.hub.GetRoom(cmd.RoomID)
-	if !ok {
-		return fmt.Errorf("room %s not found", cmd.RoomID)
-	}
+	return uc.lockManager.ExecuteWithLock(ctx, cmd.RoomID, func(ctx context.Context) error {
 
-	if err := room.SetCurrentStory(ctx, cmd.SenderID, cmd.Story); err != nil {
-		return err
-	}
+		room, ok := uc.hub.GetRoom(cmd.RoomID)
+		if !ok {
+			return fmt.Errorf("room %s not found", cmd.RoomID)
+		}
 
-	if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
-		return err
-	}
+		if err := room.SetCurrentStory(ctx, cmd.SenderID, cmd.Story); err != nil {
+			return err
+		}
 
-	return nil
+		if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

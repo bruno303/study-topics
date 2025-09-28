@@ -57,7 +57,7 @@ func MapToParticipants(clients []*entity.Client, owner *entity.Client) []Partici
 			return Participant{
 				ID:          client.ID,
 				Name:        client.Name,
-				Vote:        client.GetVote(),
+				Vote:        client.CurrentVote,
 				HasVoted:    client.HasVoted,
 				IsSpectator: client.IsSpectator,
 				IsOwner:     client.IsOwner,

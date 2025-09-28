@@ -1,9 +1,10 @@
 package entity
 
+//go:generate mockgen -destination mocks.go -package entity . ClientCollection
+
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -27,7 +28,6 @@ type (
 		Clients      ClientCollection
 		CurrentStory string
 		Reveal       bool
-		lock         sync.Mutex
 	}
 )
 
@@ -42,9 +42,6 @@ func NewRoom(owner string, clients ClientCollection) *Room {
 }
 
 func (r *Room) NewClient(id string) *Client {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client := newClient(id)
 	r.Clients.Add(client)
 	client.room = r
@@ -57,9 +54,6 @@ func (r *Room) NewClient(id string) *Client {
 }
 
 func (r *Room) RemoveClient(ctx context.Context, clientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	r.Clients.Remove(clientID)
 
 	if r.CountOwners() == 0 && r.Clients.Count() > 0 {
@@ -74,9 +68,6 @@ func (r *Room) RemoveClient(ctx context.Context, clientID string) error {
 }
 
 func (r *Room) NewVoting(ctx context.Context, clientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -95,9 +86,6 @@ func (r *Room) NewVoting(ctx context.Context, clientID string) error {
 }
 
 func (r *Room) ResetVoting(ctx context.Context, clientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -134,9 +122,6 @@ func (r *Room) CountOwners() int {
 }
 
 func (r *Room) ToggleSpectator(ctx context.Context, clientID string, targetClientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -157,9 +142,6 @@ func (r *Room) ToggleSpectator(ctx context.Context, clientID string, targetClien
 }
 
 func (r *Room) ToggleOwner(ctx context.Context, clientID string, targetClientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -191,9 +173,6 @@ func (r *Room) ToggleOwner(ctx context.Context, clientID string, targetClientID 
 }
 
 func (r *Room) SetCurrentStory(ctx context.Context, clientID string, story string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -207,9 +186,6 @@ func (r *Room) SetCurrentStory(ctx context.Context, clientID string, story strin
 }
 
 func (r *Room) ToggleReveal(ctx context.Context, clientID string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
@@ -233,9 +209,6 @@ func (r *Room) getClient(clientID string) (*Client, bool) {
 }
 
 func (r *Room) Vote(ctx context.Context, clientID string, vote *string) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	client, ok := r.getClient(clientID)
 	if !ok {
 		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)

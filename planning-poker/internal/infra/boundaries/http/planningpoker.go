@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"planning-poker/internal/application/planningpoker/usecase"
-	"planning-poker/internal/application/planningpoker/usecase/dto"
 	"planning-poker/internal/domain"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
@@ -60,37 +59,31 @@ func handleConnections(hub domain.Hub, usecases usecase.UseCases) http.HandlerFu
 			logger.Error(r.Context(), "Error upgrading to WebSocket", err)
 		}
 
-		room, ok := hub.GetRoom(roomID)
-		if !ok {
-			logger.Error(r.Context(), "Error getting room", err)
-			return
-		}
-
-		clientID := uuid.NewString()
-		client := room.NewClient(clientID)
-		hub.AddClient(client)
-
-		bus := NewWebsocketBus(client.ID, ws, hub, usecases)
+		output, err := usecases.JoinRoom.Execute(r.Context(), usecase.JoinRoomCommand{
+			RoomID:   roomID,
+			SenderID: uuid.NewString(),
+			BusFactory: func(clientID string) domain.Bus {
+				return NewWebsocketBus(clientID, ws, hub, usecases)
+			},
+		})
 		if err != nil {
-			logger.Error(r.Context(), fmt.Sprintf("Error creating bus for client %s", clientID), err)
+			logger.Error(r.Context(), fmt.Sprintf("Error joining room %s", roomID), err)
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "{ \"msg\": \"Error creating bus for client %s\" }", clientID)
+			fmt.Fprintf(w, "{ \"msg\": \"Error joining room %s\" }", roomID)
 			return
 		}
 
-		hub.AddBus(client.ID, bus)
-		logger.Info(r.Context(), "New client connected: %v on room: %v", client.ID, room.ID)
+		logger.Info(r.Context(), "New client connected: %v on room: %v", output.Client.ID, output.Room.ID)
 
-		defer bus.Close()
+		defer output.Bus.Close()
 		defer func() {
 			usecases.LeaveRoom.Execute(r.Context(), usecase.LeaveRoomCommand{
-				RoomID:   room.ID,
-				SenderID: client.ID,
+				RoomID:   output.Room.ID,
+				SenderID: output.Client.ID,
 			})
 		}()
 
-		bus.Send(r.Context(), dto.NewUpdateClientIDCommand(client.ID))
-		bus.Listen(r.Context())
+		output.Bus.Listen(r.Context())
 	}
 }
 

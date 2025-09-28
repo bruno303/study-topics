@@ -1,51 +1,32 @@
 package dto
 
 import (
-	"context"
 	"planning-poker/internal/domain/entity"
 	"reflect"
 	"testing"
 
 	"github.com/samber/lo"
+	"go.uber.org/mock/gomock"
 )
-
-// Mocks for Room and ClientCollection
-
-type mockClientCollection struct {
-	clients []*entity.Client
-}
-
-func (m *mockClientCollection) Add(client *entity.Client) {}
-func (m *mockClientCollection) Remove(clientID string)    {}
-func (m *mockClientCollection) Count() int                { return len(m.clients) }
-func (m *mockClientCollection) First() (*entity.Client, bool) {
-	if len(m.clients) > 0 {
-		return m.clients[0], true
-	}
-	return nil, false
-}
-func (m *mockClientCollection) ForEach(f func(client *entity.Client)) {}
-func (m *mockClientCollection) Filter(f func(client *entity.Client) bool) entity.ClientCollection {
-	return m
-}
-func (m *mockClientCollection) Values() []*entity.Client { return m.clients }
 
 func TestNewRoomStateCommand(t *testing.T) {
 	vote := "5"
 	clients := []*entity.Client{
-		{ID: "1", Name: "Alice", IsSpectator: false, IsOwner: true},
-		{ID: "2", Name: "Bob", IsSpectator: true, IsOwner: false},
+		{ID: "1", Name: "Alice", CurrentVote: &vote, HasVoted: true, IsSpectator: false, IsOwner: true},
+		{ID: "2", Name: "Bob", CurrentVote: nil, HasVoted: false, IsSpectator: true, IsOwner: false},
 	}
 
-	clients[0].Vote(context.Background(), &vote)
-	clients[1].Vote(context.Background(), nil)
+	ctrl := gomock.NewController(t)
+	clientCollection := entity.NewMockClientCollection(ctrl)
+
+	clientCollection.EXPECT().Values().Return(clients).AnyTimes()
 
 	owner := clients[0]
 	room := &entity.Room{
 		ID:           "room1",
 		Owner:        "Alice",
 		OwnerClient:  owner,
-		Clients:      &mockClientCollection{clients: clients},
+		Clients:      clientCollection,
 		CurrentStory: "Story 1",
 		Reveal:       true,
 	}
@@ -76,16 +57,11 @@ func TestNewUpdateClientIDCommand(t *testing.T) {
 }
 
 func TestMapToParticipants(t *testing.T) {
-	ctx := context.Background()
-
 	clients := []*entity.Client{
-		{ID: "1", Name: "Alice", IsSpectator: false, IsOwner: false},
-		{ID: "2", Name: "Bob", IsSpectator: false, IsOwner: true},
-		{ID: "3", Name: "Charlie", IsSpectator: true, IsOwner: false},
+		{ID: "1", Name: "Alice", CurrentVote: lo.ToPtr("5"), HasVoted: true, IsSpectator: false, IsOwner: false},
+		{ID: "2", Name: "Bob", CurrentVote: lo.ToPtr("3"), HasVoted: true, IsSpectator: false, IsOwner: true},
+		{ID: "3", Name: "Charlie", CurrentVote: lo.ToPtr("?"), HasVoted: true, IsSpectator: true, IsOwner: false},
 	}
-	clients[0].Vote(ctx, lo.ToPtr("5"))
-	clients[1].Vote(ctx, lo.ToPtr("3"))
-	clients[2].Vote(ctx, lo.ToPtr("?"))
 
 	owner := clients[1]
 
