@@ -17,7 +17,7 @@ services:
       - self_hosted
 
   cloudflared-nginx:
-    image: cloudflare/cloudflared
+    image: cloudflare/cloudflared:latest
     container_name: cloudflared-nginx
     restart: unless-stopped
     command: tunnel --no-autoupdate run
@@ -25,6 +25,8 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
     depends_on:
       - nginx
+    dns:
+      - 1.1.1.1 # avoid pihole DNS resolution
     networks:
       - self_hosted
 
@@ -43,6 +45,8 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     extra_hosts:
       - "host.docker.internal:172.20.0.1"
+    dns:
+      - 1.1.1.1 # avoid pihole DNS resolution
     networks:
       - self_hosted
 
