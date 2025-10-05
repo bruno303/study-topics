@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"net/http"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/hello"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
-	"github.com/bruno303/study-topics/go-study/internal/hello"
 	"github.com/bruno303/study-topics/go-study/internal/infra/api"
 	"github.com/bruno303/study-topics/go-study/internal/infra/api/middleware"
 
@@ -34,7 +34,12 @@ func withTrace(pattern string, h http.Handler) http.Handler {
 
 func create(helloService hello.HelloService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		result, err := helloService.Hello(r.Context(), uuid.NewString(), rand.Intn(150))
+
+		input := hello.HelloInput{
+			Id:  uuid.NewString(),
+			Age: rand.Intn(100),
+		}
+		result, err := helloService.Hello(r.Context(), input)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))

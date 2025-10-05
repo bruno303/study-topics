@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
-	"github.com/bruno303/study-topics/go-study/internal/hello"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +21,7 @@ func NewOptimizedHelloRepository(pool *pgxpool.Pool) OptimizedHelloRepository {
 	}
 }
 
-func (r OptimizedHelloRepository) Save(ctx context.Context, entity *hello.HelloData) (*hello.HelloData, error) {
+func (r OptimizedHelloRepository) Save(ctx context.Context, entity *models.HelloData) (*models.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Save"))
 	defer end()
 
@@ -47,7 +47,7 @@ func (r OptimizedHelloRepository) Save(ctx context.Context, entity *hello.HelloD
 	return entity, nil
 }
 
-func (r OptimizedHelloRepository) FindById(ctx context.Context, id any) (*hello.HelloData, error) {
+func (r OptimizedHelloRepository) FindById(ctx context.Context, id any) (*models.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "FindById"))
 	defer end()
 
@@ -58,7 +58,7 @@ func (r OptimizedHelloRepository) FindById(ctx context.Context, id any) (*hello.
 	return r.mapRow(&row)
 }
 
-func (r OptimizedHelloRepository) ListAll(ctx context.Context) []hello.HelloData {
+func (r OptimizedHelloRepository) ListAll(ctx context.Context) []models.HelloData {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
 
@@ -73,12 +73,12 @@ func (r OptimizedHelloRepository) ListAll(ctx context.Context) []hello.HelloData
 		return nil
 	}
 
-	result := make([]hello.HelloData, 0)
+	result := make([]models.HelloData, 0)
 
 	for rows.Next() {
 		data, err := r.mapRowsNextValue(&rows)
 		if err != nil {
-			return make([]hello.HelloData, 0)
+			return make([]models.HelloData, 0)
 		}
 		result = append(result, *data)
 	}
@@ -93,14 +93,14 @@ func (r OptimizedHelloRepository) getTransactionOrNil(ctx context.Context) *Opti
 	return nil
 }
 
-func (r OptimizedHelloRepository) mapRow(row *pgx.Row) (*hello.HelloData, error) {
-	result := new(hello.HelloData)
+func (r OptimizedHelloRepository) mapRow(row *pgx.Row) (*models.HelloData, error) {
+	result := new(models.HelloData)
 	err := (*row).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }
 
-func (r OptimizedHelloRepository) mapRowsNextValue(rows *pgx.Rows) (*hello.HelloData, error) {
-	result := new(hello.HelloData)
+func (r OptimizedHelloRepository) mapRowsNextValue(rows *pgx.Rows) (*models.HelloData, error) {
+	result := new(models.HelloData)
 	err := (*rows).Scan(&result.Id, &result.Name, &result.Age)
 	return result, err
 }

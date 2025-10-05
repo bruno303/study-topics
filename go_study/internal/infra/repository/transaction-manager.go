@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,6 +21,9 @@ type (
 	}
 	txCtxKeyType string
 )
+
+var _ transaction.TransactionManager = (*TransactionManager)(nil)
+var _ transaction.Transaction = (*ApplicationTransaction)(nil)
 
 var txCtxKey txCtxKeyType = txCtxKeyType("transaction-key")
 

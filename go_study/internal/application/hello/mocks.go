@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	models "github.com/bruno303/study-topics/go-study/internal/application/hello/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,10 +42,10 @@ func (m *MockHelloRepository) EXPECT() *MockHelloRepositoryMockRecorder {
 }
 
 // FindById mocks base method.
-func (m *MockHelloRepository) FindById(ctx context.Context, id any) (*HelloData, error) {
+func (m *MockHelloRepository) FindById(ctx context.Context, id any) (*models.HelloData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindById", ctx, id)
-	ret0, _ := ret[0].(*HelloData)
+	ret0, _ := ret[0].(*models.HelloData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -56,10 +57,10 @@ func (mr *MockHelloRepositoryMockRecorder) FindById(ctx, id any) *gomock.Call {
 }
 
 // ListAll mocks base method.
-func (m *MockHelloRepository) ListAll(ctx context.Context) []HelloData {
+func (m *MockHelloRepository) ListAll(ctx context.Context) []models.HelloData {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAll", ctx)
-	ret0, _ := ret[0].([]HelloData)
+	ret0, _ := ret[0].([]models.HelloData)
 	return ret0
 }
 
@@ -70,10 +71,10 @@ func (mr *MockHelloRepositoryMockRecorder) ListAll(ctx any) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockHelloRepository) Save(ctx context.Context, entity *HelloData) (*HelloData, error) {
+func (m *MockHelloRepository) Save(ctx context.Context, entity *models.HelloData) (*models.HelloData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", ctx, entity)
-	ret0, _ := ret[0].(*HelloData)
+	ret0, _ := ret[0].(*models.HelloData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -82,4 +83,58 @@ func (m *MockHelloRepository) Save(ctx context.Context, entity *HelloData) (*Hel
 func (mr *MockHelloRepositoryMockRecorder) Save(ctx, entity any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockHelloRepository)(nil).Save), ctx, entity)
+}
+
+// MockHelloService is a mock of HelloService interface.
+type MockHelloService struct {
+	ctrl     *gomock.Controller
+	recorder *MockHelloServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockHelloServiceMockRecorder is the mock recorder for MockHelloService.
+type MockHelloServiceMockRecorder struct {
+	mock *MockHelloService
+}
+
+// NewMockHelloService creates a new mock instance.
+func NewMockHelloService(ctrl *gomock.Controller) *MockHelloService {
+	mock := &MockHelloService{ctrl: ctrl}
+	mock.recorder = &MockHelloServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockHelloService) EXPECT() *MockHelloServiceMockRecorder {
+	return m.recorder
+}
+
+// Hello mocks base method.
+func (m *MockHelloService) Hello(ctx context.Context, input HelloInput) (models.HelloData, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Hello", ctx, input)
+	ret0, _ := ret[0].(models.HelloData)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Hello indicates an expected call of Hello.
+func (mr *MockHelloServiceMockRecorder) Hello(ctx, input any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hello", reflect.TypeOf((*MockHelloService)(nil).Hello), ctx, input)
+}
+
+// ListAll mocks base method.
+func (m *MockHelloService) ListAll(ctx context.Context) ([]models.HelloData, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAll", ctx)
+	ret0, _ := ret[0].([]models.HelloData)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAll indicates an expected call of ListAll.
+func (mr *MockHelloServiceMockRecorder) ListAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAll", reflect.TypeOf((*MockHelloService)(nil).ListAll), ctx)
 }

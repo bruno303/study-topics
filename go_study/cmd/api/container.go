@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/hello"
 	"github.com/bruno303/study-topics/go-study/internal/config"
-	"github.com/bruno303/study-topics/go-study/internal/hello"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
+	"github.com/bruno303/study-topics/go-study/internal/infra/observability/otel/tracedecorator"
 	"github.com/bruno303/study-topics/go-study/internal/infra/repository"
+	"github.com/bruno303/study-topics/go-study/internal/infra/repository/transactionaldecorator"
 	"github.com/bruno303/study-topics/go-study/internal/infra/worker"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,8 +50,14 @@ type RepositoryContainer struct {
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
+	helloService := hello.NewService(repoContainer.HelloRepository)
+
 	return ServiceContainer{
-		HelloService: hello.NewService(repoContainer.TransactionManager, repoContainer.HelloRepository),
+		HelloService: tracedecorator.NewTraceableHelloService(
+			transactionaldecorator.NewTransactionalHelloService(
+				helloService, repoContainer.TransactionManager,
+			),
+		),
 	}
 }
 
