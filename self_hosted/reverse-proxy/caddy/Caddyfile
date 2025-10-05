@@ -28,8 +28,3 @@ pihole.internal.bsoapp.net {
     reverse_proxy pihole:80
     import cloudflare
 }
-
-book.internal.bsoapp.net {
-    reverse_proxy pdfding:8000
-    import cloudflare
-}

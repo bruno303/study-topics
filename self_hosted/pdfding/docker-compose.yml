@@ -17,6 +17,7 @@ services:
       # In production set the following values to True
       - CSRF_COOKIE_SECURE=${CSRF_COOKIE_SECURE:-FALSE}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-FALSE}
+      - DISABLE_USER_SIGNUP=TRUE
     expose:
       - 8000
     networks:
