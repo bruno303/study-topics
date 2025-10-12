@@ -1,0 +1,13 @@
+server:
+  http_listen_port: 3200
+
+compactor:
+  #flush_time: 1m
+  compaction: 
+    compaction_window: 5m
+  
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/blocks

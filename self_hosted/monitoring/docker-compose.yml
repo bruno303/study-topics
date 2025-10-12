@@ -1,0 +1,112 @@
+services:
+  # --------------------------------------------------------------------------------
+  # 1. PROMETHEUS (Coleta e Armazenamento de Métricas)
+  # --------------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    user: "${UID}:${GID}"
+    expose:
+      - 9090
+    # ports:
+    #   - "9090:9090" # UI do Prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${VOLUMES_DIR}/prometheus:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    restart: unless-stopped
+    mem_limit: 1024m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - self_hosted
+
+  # --------------------------------------------------------------------------------
+  # 2. NODE EXPORTER (Exportador de Métricas do HOST)
+  # Este serviço monitora seu sistema operacional Linux (o notebook).
+  # --------------------------------------------------------------------------------
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    # IMPORTANT: network_mode: host permite que ele acesse os recursos do HOST
+    network_mode: host 
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/).*
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------------
+  # 3. GRAFANA (Visualização)
+  # --------------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: "${UID}:${GID}"
+    expose:
+      - "3000"
+    # ports:
+      # - "3000:3000" # UI do Grafana
+    volumes:
+      - ${VOLUMES_DIR}/grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    depends_on:
+      - prometheus
+      - tempo
+    restart: unless-stopped
+    mem_limit: 512m
+    networks:
+      - self_hosted
+
+  # --------------------------------------------------------------------------------
+  # 4. TEMPO (Backend de Traces para Jaeger/OpenTelemetry)
+  # --------------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    user: "${UID}:${GID}"
+    command: 
+      - -config.file=/etc/tempo/tempo-local.yaml
+    volumes:
+      - ./tempo/tempo-local.yaml:/etc/tempo/tempo-local.yaml
+      - ${VOLUMES_DIR}/tempo:/tmp/tempo
+    ports:
+      # - "3200:3200"  # Porta HTTP (Métricas/UI)
+      # - "14268:14268" # Jaeger Thrift (protocolo de traces)
+      - "4317:4317"  # OTLP gRPC (OpenTelemetry - padrão moderno)
+      - "4318:4318"  # OTLP HTTP (OpenTelemetry)
+    restart: unless-stopped
+    mem_limit: 512m
+    networks:
+      - self_hosted
+
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:latest
+  #   container_name: cadvisor
+  #   # ports:
+  #   #   - "8080:8080"
+  #   volumes:
+  #     # These volumes give cAdvisor access to necessary host resources to see all containers
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:rw
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #     - /dev/disk/:/dev/disk:ro
+  #   restart: unless-stopped
+  #   mem_limit: 256m
+  #   networks:
+  #     - self_hosted
+
+networks:
+  self_hosted:
+    external: true
+    name: self_hosted
