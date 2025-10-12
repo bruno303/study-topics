@@ -8,11 +8,12 @@ import (
 	"github.com/bruno303/study-topics/go-study/internal/config"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/zipkin"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
 func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(context.Context) error, err error) {
@@ -65,7 +66,13 @@ func newTraceProvider(cfg *config.Config) (*trace.TracerProvider, error) {
 		return nil, err
 	}
 
-	traceExporter, err := zipkin.New(cfg.Application.Monitoring.TraceUrl)
+	traceExporter, err := otlptrace.New(
+		context.Background(),
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithInsecure(),
+			otlptracegrpc.WithEndpoint(cfg.Application.Monitoring.TraceUrl),
+		),
+	)
 	if err != nil {
 		return nil, err
 	}

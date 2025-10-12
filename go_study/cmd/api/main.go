@@ -79,7 +79,7 @@ func configureObservability(ctx context.Context, cfg *config.Config) func(contex
 func startApi(ctx context.Context, cfg *config.Config, container *Container) {
 	router := http.NewServeMux()
 	hello.SetupApi(cfg, router, container.Services.HelloService)
-	srv := &http.Server{Addr: ":8080", Handler: otelhttp.NewHandler(router, "/")}
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Application.Port), Handler: otelhttp.NewHandler(router, "/")}
 
 	shutdown.CreateListener(func() {
 		log.Log().Info(ctx, "Stopping API")

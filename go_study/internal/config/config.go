@@ -15,6 +15,7 @@ type Config struct {
 	Application struct {
 		Name    string `env:"NAME" yaml:"name"`
 		Version string `env:"VERSION" yaml:"version"`
+		Port    int    `env:"PORT" yaml:"port"`
 		Hello   struct {
 			Api struct {
 				Enabled bool `env:"ENABLED" yaml:"enabled"`
@@ -30,7 +31,7 @@ type Config struct {
 		Auth struct {
 			Enabled   bool   `env:"ENABLED" yaml:"enabled"`
 			SecretKey string `env:"SECRET_KEY" yaml:"secret-key"`
-		} `env:", prefix="AUTH_" yaml:"auth"`
+		} `env:", prefix=AUTH_" yaml:"auth"`
 	} `env:", prefix=APPLICATION_" yaml:"app"`
 	Database struct {
 		Host         string `env:"DATABASE_HOST" yaml:"host"`

@@ -16,8 +16,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - '2181:2181'
+    # ports:
+    #   - '2181:2181'
 
   kafka:
     image: &kafka-image confluentinc/cp-kafka:7.2.1
@@ -59,20 +59,20 @@ services:
     depends_on:
       - kafka
 
-  grafana:
-    image: grafana/grafana:latest
-    hostname: grafana
-    environment:
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-    volumes:
-      - ./docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/ds.yaml
-    ports:
-      - "3000:3000"
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   hostname: grafana
+  #   environment:
+  #     - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+  #     - GF_AUTH_ANONYMOUS_ENABLED=true
+  #     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  #   volumes:
+  #     - ./docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/ds.yaml
+  #   ports:
+  #     - "3000:3000"
 
-  zipkin:
-    image: openzipkin/zipkin:2.24.3
-    hostname: zipkin
-    ports:
-      - "9411:9411"
+  # zipkin:
+  #   image: openzipkin/zipkin:2.24.3
+  #   hostname: zipkin
+  #   ports:
+  #     - "9411:9411"
