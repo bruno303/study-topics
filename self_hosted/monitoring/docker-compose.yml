@@ -78,14 +78,68 @@ services:
       - -config.file=/etc/tempo/tempo-local.yaml
     volumes:
       - ./tempo/tempo-local.yaml:/etc/tempo/tempo-local.yaml
-      - ${VOLUMES_DIR}/tempo:/tmp/tempo
-    ports:
+      - ${VOLUMES_DIR}/tempo:/var/tempo
+    # ports:
       # - "3200:3200"  # Porta HTTP (Métricas/UI)
       # - "14268:14268" # Jaeger Thrift (protocolo de traces)
-      - "4317:4317"  # OTLP gRPC (OpenTelemetry - padrão moderno)
-      - "4318:4318"  # OTLP HTTP (OpenTelemetry)
+      # - "4317:4317"  # OTLP gRPC (OpenTelemetry - padrão moderno)
+      # - "4318:4318"  # OTLP HTTP (OpenTelemetry)
     restart: unless-stopped
     mem_limit: 512m
+    networks:
+      - self_hosted
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    # ports:
+    #   - "3100:3100"
+    volumes:
+      - ${VOLUMES_DIR}/loki:/loki
+      - ./loki/loki-config.yaml:/etc/loki/config.yaml
+    command: -config.file=/etc/loki/config.yaml
+    restart: unless-stopped
+    mem_limit: 512m
+    user: "${UID}:${GID}"
+    networks:
+      - self_hosted
+
+  # --------------------------------------------------------------------------------
+  # 6. PROMTAIL - HOST AND DOCKER LOGS (Agente de Logs para Loki)
+  # --------------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./loki/promtail-config.yaml:/etc/promtail/config.yaml
+      # Acessa os logs do Docker Daemon
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Acessa o log de status do Docker Daemon
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Acessa os logs do host Linux
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    user: "${UID}:${GID}"
+    networks:
+      - self_hosted
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    ports:
+      - "4317:4317"  # OTLP gRPC (OpenTelemetry - padrão moderno)
+      - "4318:4318"  # OTLP HTTP (OpenTelemetry)
+    command: [ "--config=/etc/otel-collector.yaml" ]
+    volumes:
+      - ./otel-collector/otel-collector.yaml:/etc/otel-collector.yaml
+    restart: unless-stopped
+    mem_limit: 256m
+    depends_on:
+      - tempo
+      - loki
     networks:
       - self_hosted
 

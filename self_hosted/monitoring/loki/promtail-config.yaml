@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: "info"
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: docker
+
+scrape_configs:
+# ------------------------------------------------
+# 1. Logs de Containers Docker
+# ------------------------------------------------
+- job_name: system
+  # Usa o Docker Discovery para encontrar logs de todos os containers
+  docker_sd_configs:
+    - host: unix:///var/run/docker.sock
+      refresh_interval: 5s
+  relabel_configs:
+    # Captura labels para identificação no Grafana
+    - source_labels: ['__meta_docker_container_name']
+      regex: '/(.*)'
+      target_label: container_name
+    - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+      target_label: service_name
+    - source_labels: ['__meta_docker_container_id']
+      target_label: container_id
+    - source_labels: ['__meta_docker_container_name']
+      target_label: job
+
+# ------------------------------------------------
+# 2. Logs do Host Linux (ex: syslog)
+# ------------------------------------------------
+- job_name: syslog
+  static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: syslog
+        __path__: /var/log/syslog
