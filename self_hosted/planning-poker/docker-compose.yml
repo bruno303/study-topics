@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: bruno303/planning-poker-frontend:0.0.3
+    image: bruno303/planning-poker-frontend:${VERSION}
     container_name: planning-poker-frontend
     restart: unless-stopped
     expose:
@@ -9,7 +9,7 @@ services:
       - self_hosted
 
   backend:
-    image: bruno303/planning-poker-backend:0.0.3
+    image: bruno303/planning-poker-backend:${VERSION}
     container_name: planning-poker-backend
     restart: unless-stopped
     expose:
