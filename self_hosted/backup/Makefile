@@ -33,3 +33,7 @@ backup:
 
 .PHONY: full-backup
 full-backup: backup save-backup
+
+.PHONY: verify-backup
+verify-backup:
+	cd backup-verifier && ./run-verifier.sh

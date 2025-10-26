@@ -1,0 +1,23 @@
+{
+  "name": "backup-verifier",
+  "version": "1.0.0",
+  "description": "A script to verify backup folders and send email notifications",
+  "main": "verifier.js",
+  "scripts": {
+    "start": "node verifier.js",
+    "test": "node verifier.js --test",
+    "help": "node verifier.js --help"
+  },
+  "dependencies": {
+    "nodemailer": "^6.10.1"
+  },
+  "keywords": [
+    "backup",
+    "verification",
+    "email",
+    "notification",
+    "monitoring"
+  ],
+  "author": "Bruno",
+  "license": "MIT"
+}
