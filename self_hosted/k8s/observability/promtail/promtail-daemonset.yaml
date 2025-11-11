@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: kube-system
+  labels:
+    app: promtail
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      serviceAccountName: promtail # We'll create this next
+      # Allows Promtail to run on all nodes (even master/server nodes)
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: promtail
+        image: grafana/promtail:latest
+        args:
+          - -config.file=/etc/promtail/promtail-config.yaml
+        volumeMounts:
+          # Mount the ConfigMap as the config file
+          - name: config
+            mountPath: /etc/promtail
+          # Mount the host's log directory
+          - name: logs
+            mountPath: /var/log/pods
+            readOnly: true
+          # Mount the position file directory
+          - name: positions
+            mountPath: /var/log/positions
+        env:
+          - name: HOSTNAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: spec.nodeName
+      volumes:
+        - name: config
+          configMap:
+            name: promtail-config
+        - name: logs
+          hostPath:
+            path: /var/log/pods
+        - name: positions
+          hostPath:
+            path: /var/log/positions
+            type: DirectoryOrCreate

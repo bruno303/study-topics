@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planning-poker-frontend
+  labels:
+    app: planning-poker-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: planning-poker-frontend
+  template:
+    metadata:
+      labels:
+        app: planning-poker-frontend
+    spec:
+      containers:
+      - name: planning-poker-frontend
+        image:  bruno303/planning-poker-frontend:0.0.6-1.k3s
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

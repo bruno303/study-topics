@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: kube-system # Deploy in kube-system for full cluster access
+data:
+  promtail-config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+    positions:
+      filename: /var/log/positions.yaml
+    clients:
+      - url: http://192.168.0.44:3100/loki/api/v1/push
+    scrape_configs:
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        # Standard configs to extract pod metadata as labels (namespace, name, container)
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: (.+)
+          target_label: app
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod_name
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container_name
+        - source_labels: [__meta_kubernetes_pod_uid]
+          target_label: pod_uid
+          replacement: $1
+          action: replace
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          action: replace
+          target_label: __host__
+        - source_labels:
+          - __meta_kubernetes_namespace
+          - __meta_kubernetes_pod_name
+          - __meta_kubernetes_pod_uid
+          - __meta_kubernetes_pod_container_name
+          regex: (.+);(.+);(.+);(.+)
+          action: replace
+          target_label: __path__
+          replacement: /var/log/pods/${1}_${2}_${3}/${4}/*.log
