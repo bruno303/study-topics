@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: planning-poker-backend
-        image:  bruno303/planning-poker-backend:0.0.6
+        image:  bruno303/planning-poker-backend:0.0.7
         env:
         - name: API_TRACING_ENABLED
           value: "false"
@@ -24,7 +24,7 @@ spec:
           value: DEBUG
         - name: TRACE_OTLP_ENDPOINT
           value: "192.168.0.44:4317"
-        - name: CORS_ALLOWED_ORIGINS
+        - name: API_CORS_ALLOWED_ORIGINS
           value: https://planning-poker.bsoapp.net
         ports:
         - containerPort: 8080
