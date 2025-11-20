@@ -1,0 +1,161 @@
+global:
+  # -- Common labels for all object directly managed by this chart.
+  commonLabels: {}
+
+# -- Overrides the chart's name
+nameOverride: ""
+
+# -- Overrides the chart's computed fullname
+fullnameOverride: ""
+
+# -- Define the amount of instances
+replicas: 1
+
+# -- Number of old history to retain to allow rollback (If not set, default Kubernetes value is set to 10)
+# revisionHistoryLimit: 1
+
+# -- labels for tempo
+labels: {}
+
+# -- Annotations for the StatefulSet
+annotations: {}
+
+tempo:
+  updateStrategy: RollingUpdate
+  resources: {}
+  #  requests:
+  #    cpu: 1000m
+  #    memory: 4Gi
+  #  limits:
+  #    cpu: 2000m
+  #    memory: 6Gi
+
+  memBallastSizeMbs: 1024
+  multitenancyEnabled: false
+  # -- If true, Tempo will report anonymous usage data about the shape of a deployment to Grafana Labs
+  reportingEnabled: false
+  metricsGenerator:
+    # -- If true, enables Tempo's metrics generator (https://grafana.com/docs/tempo/next/metrics-generator/)
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server/api/v1/write"
+  retention: 120h
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  receivers:
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_binary:
+          endpoint: 0.0.0.0:6832
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+    opencensus:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  ## Additional container arguments
+  extraArgs: {}
+  # -- Environment variables to add
+  extraEnv: []
+  # -- Environment variables from secrets or configmaps to add to the ingester pods
+  extraEnvFrom: []
+  # -- Volume mounts to add
+  extraVolumeMounts:
+  - name: tempo-data-pv
+    mountPath: /var/tempo
+
+tempoQuery:
+  repository: grafana/tempo-query
+  tag: null
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## Refers to: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ##
+  # pullSecrets:
+  #   - myRegistryKeySecretName
+
+  # -- if False the tempo-query container is not deployed
+  enabled: false
+
+  service:
+    port: 16686
+
+  ingress:
+    enabled: false
+
+# -- securityContext for container
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+
+serviceAccount:
+  # -- Specifies whether a ServiceAccount should be created
+  create: true
+  # -- The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: null
+  # -- Image pull secrets for the service account
+  imagePullSecrets: []
+  # -- Annotations for the service account
+  annotations: {}
+  # -- Labels for the service account
+  labels: {}
+  automountServiceAccountToken: true
+
+service:
+  type: ClusterIP
+  clusterIP: ""
+  # -- (string) IP address, in case of 'type: LoadBalancer'
+  loadBalancerIP:
+  # -- If service type is LoadBalancer, the exposed protocol can either be "UDP", "TCP" or "UDP,TCP"
+  protocol: "TCP"
+
+  annotations: {}
+  labels: {}
+  targetPort: ""
+
+serviceMonitor:
+  enabled: false
+  interval: ""
+  additionalLabels: {}
+  annotations: {}
+  # scrapeTimeout: 10s
+
+persistence:
+  enabled: false
+    # -- Enable StatefulSetAutoDeletePVC feature
+  enableStatefulSetAutoDeletePVC: false
+  # storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# -- Pod Annotations
+podAnnotations: {}
+
+# -- Pod (extra) Labels
+podLabels: {}
+
+# Apply extra labels to common labels.
+extraLabels: {}
+
+# -- Volumes to add
+extraVolumes:
+- name: tempo-data-pv
+  persistentVolumeClaim:
+    claimName: tempo-data-pvc

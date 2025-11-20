@@ -1,0 +1,21 @@
+persistence:
+  type: pvc
+  enabled: true
+  storageClassName: local-path
+  ## (Optional) Use this to bind the claim to an existing PersistentVolume (PV) by name.
+  volumeName: "grafana-data-pv"
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  # annotations: {}
+  finalizers:
+    - kubernetes.io/pvc-protection
+  extraPvcLabels: {}
+  disableWarning: false
+
+  inMemory:
+    enabled: false
+    # sizeLimit: 300Mi
+  lookupVolumeName: true
+
+replicas: 1
