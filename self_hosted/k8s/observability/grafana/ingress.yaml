@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: grafana-prd.bsoapp.net
+  - host: grafana.internal.bsoapp.net
     http:
       paths:
       - path: /
