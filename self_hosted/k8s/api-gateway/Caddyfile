@@ -1,0 +1,19 @@
+{
+  email brunooliveira812@gmail.com
+}
+
+(cloudflare) {
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    resolvers 1.1.1.1
+  }
+}
+
+*.internal.bsoapp.net {
+  reverse_proxy host.docker.internal:32644 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto https
+      header_up X-Real-IP {remote_host}
+  }
+  import cloudflare
+}
