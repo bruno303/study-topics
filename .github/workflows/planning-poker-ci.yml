@@ -12,8 +12,7 @@ on:
 env:
   # Base variables
   APP_DIR: planning-poker
-  IMAGE_NAME: planning-poker-backend
-  DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+  DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/planning-poker-backend
 
 jobs:
   build_and_publish:
@@ -53,7 +52,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add ${{ env.APP_DIR }}/version.txt
-          git commit -m "[planning-poker-backend] ci: version bump to ${{ steps.versioning.outputs.NEW_VERSION }} for ${{ env.IMAGE_NAME }}"
+          git commit -m "[planning-poker-backend] ci: version bump to ${{ steps.versioning.outputs.NEW_VERSION }}
           git push
 
       - name: Set up Docker Buildx
