@@ -68,8 +68,8 @@ jobs:
         with:
           context: ${{ env.APP_DIR }}
           build-args: |
-            NEXT_PUBLIC_BACKEND_URL=${{ env.PRODUCTION_BACKEND_URL }}
-            NEXT_PUBLIC_WEBSOCKET_URL=${{ env.PRODUCTION_WEBSOCKET_URL }}
+            NEXT_PUBLIC_BACKEND_URL=${{ vars.PRODUCTION_BACKEND_URL }}
+            NEXT_PUBLIC_WEBSOCKET_URL=${{ vars.PRODUCTION_WEBSOCKET_URL }}
           push: true
           tags: |
             ${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}
