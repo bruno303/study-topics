@@ -63,7 +63,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           
-      - name: Build and Push Docker image
+      - name: "[Production] Build and Push Docker image"
         uses: docker/build-push-action@v5
         with:
           context: ${{ env.APP_DIR }}
@@ -74,3 +74,14 @@ jobs:
           tags: |
             ${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}
             ${{ env.DOCKER_REPO }}:latest
+
+      - name: "[Staging] Build and Push Docker image"
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.APP_DIR }}
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=${{ vars.STAGING_BACKEND_URL }}
+            NEXT_PUBLIC_WEBSOCKET_URL=${{ vars.STAGING_WEBSOCKET_URL }}
+          push: true
+          tags: |
+            ${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}-stg
