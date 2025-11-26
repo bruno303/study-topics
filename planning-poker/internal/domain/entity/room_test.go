@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/samber/lo"
 	"go.uber.org/mock/gomock"
 )
 
@@ -17,8 +18,7 @@ func TestRoom_RevealWithNoValidVotes(t *testing.T) {
 		Name:        "Alice",
 		IsSpectator: false,
 	}
-	vote := "?"
-	client.CurrentVote = &vote
+	client.CurrentVote = lo.ToPtr("?")
 	client.HasVoted = true
 
 	mockCC := NewMockClientCollection(ctrl)
@@ -49,8 +49,7 @@ func TestRoom_RevealWithSingleValidVote(t *testing.T) {
 		Name:        "Alice",
 		IsSpectator: false,
 	}
-	vote := "5"
-	client.CurrentVote = &vote
+	client.CurrentVote = lo.ToPtr("5")
 	client.HasVoted = true
 
 	mockCC := NewMockClientCollection(ctrl)
@@ -79,8 +78,7 @@ func TestRoom_RevealWithMixedVotes(t *testing.T) {
 		Name:        "Alice",
 		IsSpectator: false,
 	}
-	vote1 := "3"
-	client1.CurrentVote = &vote1
+	client1.CurrentVote = lo.ToPtr("3")
 	client1.HasVoted = true
 
 	client2 := &Client{
@@ -88,8 +86,7 @@ func TestRoom_RevealWithMixedVotes(t *testing.T) {
 		Name:        "Bob",
 		IsSpectator: false,
 	}
-	vote2 := "coffee"
-	client2.CurrentVote = &vote2
+	client2.CurrentVote = lo.ToPtr("coffee")
 	client2.HasVoted = true
 
 	mockCC := NewMockClientCollection(ctrl)
@@ -118,8 +115,7 @@ func TestRoom_RevealWithAllInvalidVotes(t *testing.T) {
 		Name:        "Alice",
 		IsSpectator: false,
 	}
-	vote1 := "?"
-	client1.CurrentVote = &vote1
+	client1.CurrentVote = lo.ToPtr("?")
 	client1.HasVoted = true
 
 	client2 := &Client{
@@ -127,8 +123,7 @@ func TestRoom_RevealWithAllInvalidVotes(t *testing.T) {
 		Name:        "Bob",
 		IsSpectator: false,
 	}
-	vote2 := "coffee"
-	client2.CurrentVote = &vote2
+	client2.CurrentVote = lo.ToPtr("coffee")
 	client2.HasVoted = true
 
 	mockCC := NewMockClientCollection(ctrl)
@@ -159,8 +154,7 @@ func TestRoom_RevealWithSpectators(t *testing.T) {
 		Name:        "Alice",
 		IsSpectator: false,
 	}
-	vote1 := "5"
-	client1.CurrentVote = &vote1
+	client1.CurrentVote = lo.ToPtr("5")
 	client1.HasVoted = true
 
 	client2 := &Client{
@@ -168,8 +162,7 @@ func TestRoom_RevealWithSpectators(t *testing.T) {
 		Name:        "Bob",
 		IsSpectator: true,
 	}
-	vote2 := "10"
-	client2.CurrentVote = &vote2
+	client2.CurrentVote = lo.ToPtr("10")
 	client2.HasVoted = true
 
 	mockCC := NewMockClientCollection(ctrl)
