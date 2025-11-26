@@ -7,73 +7,24 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// simpleClientCollection is a simple in-memory implementation to avoid import cycles
-type simpleClientCollection struct {
-	clients []*Client
-}
-
-func newSimpleClientCollection(clients ...*Client) *simpleClientCollection {
-	return &simpleClientCollection{clients: clients}
-}
-
-func (cc *simpleClientCollection) Add(client *Client) {
-	cc.clients = append(cc.clients, client)
-}
-
-func (cc *simpleClientCollection) Remove(clientID string) {
-	for i, c := range cc.clients {
-		if c.ID == clientID {
-			cc.clients = append(cc.clients[:i], cc.clients[i+1:]...)
-			return
-		}
-	}
-}
-
-func (cc *simpleClientCollection) Values() []*Client {
-	return cc.clients
-}
-
-func (cc *simpleClientCollection) Count() int {
-	return len(cc.clients)
-}
-
-func (cc *simpleClientCollection) First() (*Client, bool) {
-	if len(cc.clients) == 0 {
-		return nil, false
-	}
-	return cc.clients[0], true
-}
-
-func (cc *simpleClientCollection) ForEach(f func(client *Client)) {
-	for _, client := range cc.clients {
-		f(client)
-	}
-}
-
-func (cc *simpleClientCollection) Filter(f func(client *Client) bool) ClientCollection {
-	filtered := newSimpleClientCollection()
-	for _, client := range cc.clients {
-		if f(client) {
-			filtered.Add(client)
-		}
-	}
-	return filtered
-}
-
 func TestRoom_RevealWithNoValidVotes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	// Test case: Single user votes with non-numeric value (NaN scenario)
-	cc := newSimpleClientCollection()
-	room := NewRoom(cc)
-	client := room.NewClient("client1")
-	client.Name = "Alice"
-
-	// Vote with a non-numeric value
+	client := &Client{
+		ID:          "client1",
+		Name:        "Alice",
+		IsSpectator: false,
+	}
 	vote := "?"
 	client.CurrentVote = &vote
 	client.HasVoted = true
+
+	mockCC := NewMockClientCollection(ctrl)
+	mockCC.EXPECT().Values().Return([]*Client{client}).AnyTimes()
+
+	room := NewRoom(mockCC)
 
 	// Reveal the votes
 	room.reveal(true)
@@ -93,15 +44,19 @@ func TestRoom_RevealWithSingleValidVote(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Test case: Single user votes with numeric value
-	cc := newSimpleClientCollection()
-	room := NewRoom(cc)
-	client := room.NewClient("client1")
-	client.Name = "Alice"
-
-	// Vote with a numeric value
+	client := &Client{
+		ID:          "client1",
+		Name:        "Alice",
+		IsSpectator: false,
+	}
 	vote := "5"
 	client.CurrentVote = &vote
 	client.HasVoted = true
+
+	mockCC := NewMockClientCollection(ctrl)
+	mockCC.EXPECT().Values().Return([]*Client{client}).AnyTimes()
+
+	room := NewRoom(mockCC)
 
 	// Reveal the votes
 	room.reveal(true)
@@ -119,20 +74,28 @@ func TestRoom_RevealWithMixedVotes(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Test case: Multiple users with mixed valid and invalid votes
-	cc := newSimpleClientCollection()
-	room := NewRoom(cc)
-	client1 := room.NewClient("client1")
-	client1.Name = "Alice"
-	client2 := room.NewClient("client2")
-	client2.Name = "Bob"
-
-	// One valid vote and one invalid vote
+	client1 := &Client{
+		ID:          "client1",
+		Name:        "Alice",
+		IsSpectator: false,
+	}
 	vote1 := "3"
-	vote2 := "coffee"
 	client1.CurrentVote = &vote1
 	client1.HasVoted = true
+
+	client2 := &Client{
+		ID:          "client2",
+		Name:        "Bob",
+		IsSpectator: false,
+	}
+	vote2 := "coffee"
 	client2.CurrentVote = &vote2
 	client2.HasVoted = true
+
+	mockCC := NewMockClientCollection(ctrl)
+	mockCC.EXPECT().Values().Return([]*Client{client1, client2}).AnyTimes()
+
+	room := NewRoom(mockCC)
 
 	// Reveal the votes
 	room.reveal(true)
@@ -150,20 +113,28 @@ func TestRoom_RevealWithAllInvalidVotes(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Test case: Multiple users all voting with non-numeric values
-	cc := newSimpleClientCollection()
-	room := NewRoom(cc)
-	client1 := room.NewClient("client1")
-	client1.Name = "Alice"
-	client2 := room.NewClient("client2")
-	client2.Name = "Bob"
-
-	// Both vote with non-numeric values
+	client1 := &Client{
+		ID:          "client1",
+		Name:        "Alice",
+		IsSpectator: false,
+	}
 	vote1 := "?"
-	vote2 := "coffee"
 	client1.CurrentVote = &vote1
 	client1.HasVoted = true
+
+	client2 := &Client{
+		ID:          "client2",
+		Name:        "Bob",
+		IsSpectator: false,
+	}
+	vote2 := "coffee"
 	client2.CurrentVote = &vote2
 	client2.HasVoted = true
+
+	mockCC := NewMockClientCollection(ctrl)
+	mockCC.EXPECT().Values().Return([]*Client{client1, client2}).AnyTimes()
+
+	room := NewRoom(mockCC)
 
 	// Reveal the votes
 	room.reveal(true)
@@ -183,21 +154,28 @@ func TestRoom_RevealWithSpectators(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Test case: Spectators should not be counted in results
-	cc := newSimpleClientCollection()
-	room := NewRoom(cc)
-	client1 := room.NewClient("client1")
-	client1.Name = "Alice"
-	client2 := room.NewClient("client2")
-	client2.Name = "Bob"
-	client2.IsSpectator = true
-
-	// Alice votes with numeric value, Bob (spectator) votes with numeric value
+	client1 := &Client{
+		ID:          "client1",
+		Name:        "Alice",
+		IsSpectator: false,
+	}
 	vote1 := "5"
-	vote2 := "10"
 	client1.CurrentVote = &vote1
 	client1.HasVoted = true
+
+	client2 := &Client{
+		ID:          "client2",
+		Name:        "Bob",
+		IsSpectator: true,
+	}
+	vote2 := "10"
 	client2.CurrentVote = &vote2
 	client2.HasVoted = true
+
+	mockCC := NewMockClientCollection(ctrl)
+	mockCC.EXPECT().Values().Return([]*Client{client1, client2}).AnyTimes()
+
+	room := NewRoom(mockCC)
 
 	// Reveal the votes
 	room.reveal(true)
