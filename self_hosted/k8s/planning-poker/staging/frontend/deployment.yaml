@@ -2,23 +2,27 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: planning-poker-frontend
+  namespace: staging
   labels:
     app: planning-poker-frontend
+    env: staging
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: planning-poker-frontend
+      env: staging
   template:
     metadata:
       labels:
         app: planning-poker-frontend
+        env: staging
     spec:
       containers:
       - name: planning-poker-frontend
-        image:  bruno303/planning-poker-frontend:0.0.11
+        image:  bruno303/planning-poker-frontend:0.0.12-stg
         ports:
-        - containerPort: 80
+        - containerPort: 3000
         resources:
           requests:
             cpu: "100m"

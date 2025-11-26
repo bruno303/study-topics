@@ -1,20 +1,21 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: planning-poker-frontend-ingress
+  name: planning-poker-backend-ingress
+  namespace: production
   annotations:
     # Use Traefik to handle the routing
     traefik.ingress.kubernetes.io/router.entrypoints: web
     # traefik.ingress.kubernetes.io/router.middlewares: default-strip-prefix@kubernetescrd
 spec:
   rules:
-  - host: planning-poker.bsoapp.net
+  - host: planning-poker-backend.bsoapp.net
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: planning-poker-frontend-svc
+            name: planning-poker-backend-svc
             port:
-              number: 3000
+              number: 8080

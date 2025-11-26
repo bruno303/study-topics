@@ -2,10 +2,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: planning-poker-frontend-svc
+  namespace: production
 spec:
   type: ClusterIP
   selector:
     app: planning-poker-frontend
+    env: production
   ports:
     - port: 3000
       targetPort: 3000
