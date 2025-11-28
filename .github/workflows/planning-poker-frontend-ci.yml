@@ -7,9 +7,14 @@ on:
     paths:
       - 'planning-poker/frontend/planning-poker-front/**'
       - '!planning-poker/frontend/planning-poker-front/version.txt'
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - 'planning-poker/frontend/planning-poker-front/**'
+      - '!planning-poker/frontend/planning-poker-front/version.txt'
 
 env:
-  # Base variables
   APP_DIR: planning-poker/frontend/planning-poker-front
   DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/planning-poker-frontend
 
@@ -17,6 +22,8 @@ jobs:
   build_and_publish:
     runs-on: ubuntu-latest
     environment: production
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     permissions:
       contents: write

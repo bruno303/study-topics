@@ -8,16 +8,75 @@ on:
       - 'planning-poker/**'
       - '!planning-poker/version.txt'
       - '!planning-poker/frontend/**'
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - 'planning-poker/**'
+      - '!planning-poker/version.txt'
+      - '!planning-poker/frontend/**'
 
 env:
-  # Base variables
   APP_DIR: planning-poker
   DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/planning-poker-backend
+  GO_VERSION: '1.25.4'
 
 jobs:
-  build_and_publish:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ${{ env.APP_DIR }}/go.sum
+
+      - name: Download Dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: go mod download
+
+      - name: Verify Dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: go mod verify
+
+      - name: Run Tests
+        working-directory: ${{ env.APP_DIR }}
+        run: go test -timeout 30s -coverprofile=coverage.out ./...
+
+      - name: Generate Coverage Report
+        working-directory: ${{ env.APP_DIR }}
+        run: go tool cover -func=coverage.out
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          working-directory: ${{ env.APP_DIR }}
+          args: --timeout=5m
+
+  release:
     runs-on: ubuntu-latest
     environment: production
+    needs: 
+      - test
+      - lint
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     permissions:
       contents: write
