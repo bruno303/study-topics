@@ -24,6 +24,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -53,6 +54,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -131,3 +133,12 @@ jobs:
           tags: |
             ${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}
             ${{ env.DOCKER_REPO }}:latest
+
+      - name: Summary
+        run: |
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 New Version: \`${{ steps.versioning.outputs.NEW_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "* **Image Tag:** \`${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}\`" >> $GITHUB_STEP_SUMMARY

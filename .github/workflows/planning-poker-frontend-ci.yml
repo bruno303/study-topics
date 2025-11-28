@@ -19,7 +19,7 @@ env:
   DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/planning-poker-frontend
 
 jobs:
-  build_and_publish:
+  release:
     runs-on: ubuntu-latest
     environment: production
 
@@ -92,3 +92,12 @@ jobs:
           push: true
           tags: |
             ${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}-stg
+
+      - name: Summary
+        run: |
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 New Version: \`${{ steps.versioning.outputs.NEW_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "* **Image Tag:** \`${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}-stg\`" >> $GITHUB_STEP_SUMMARY
