@@ -8,6 +8,7 @@ on:
       - 'planning-poker/frontend/planning-poker-front/**'
       - '!planning-poker/frontend/planning-poker-front/version.txt'
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: 
       - main
     paths:

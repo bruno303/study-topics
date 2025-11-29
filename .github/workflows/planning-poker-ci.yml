@@ -9,6 +9,7 @@ on:
       - '!planning-poker/version.txt'
       - '!planning-poker/frontend/**'
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: 
       - main
     paths:
@@ -71,12 +72,32 @@ jobs:
           working-directory: ${{ env.APP_DIR }}
           args: --timeout=5m
 
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    environment: production
+    needs: 
+      - test
+      - lint
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: ${{ env.APP_DIR }}
+
   release:
     runs-on: ubuntu-latest
     environment: production
     needs: 
       - test
       - lint
+      - sonarqube
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
