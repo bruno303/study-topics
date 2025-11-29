@@ -100,4 +100,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🚀 New Version: \`${{ steps.versioning.outputs.NEW_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "* **Image Tag:** \`${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}-stg\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **Image Tag [Staging]:** \`${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}-stg\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **Image Tag [Production]:** \`${{ env.DOCKER_REPO }}:${{ steps.versioning.outputs.NEW_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
