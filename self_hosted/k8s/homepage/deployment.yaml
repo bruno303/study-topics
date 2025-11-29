@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: production
+  labels:
+    app: homepage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      containers:
+      - name: homepage
+        image: ghcr.io/gethomepage/homepage:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: HOMEPAGE_ALLOWED_HOSTS
+          value: "dash.internal.bsoapp.net"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: homepage-config
+          mountPath: /app/config
+        - name: homepage-icons
+          mountPath: /app/public/icons
+      volumes:
+      - name: homepage-config
+        persistentVolumeClaim:
+          claimName: homepage-config-pvc
+      - name: homepage-icons
+        persistentVolumeClaim:
+          claimName: homepage-icons-pvc

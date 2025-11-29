@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: production
+  labels:
+    app: vaultwarden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      containers:
+      - name: vaultwarden
+        image: vaultwarden/server:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: DOMAIN
+          value: "https://vault.internal.bsoapp.net"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: vaultwarden-data
+          mountPath: /data
+      volumes:
+      - name: vaultwarden-data
+        persistentVolumeClaim:
+          claimName: vaultwarden-data-pvc

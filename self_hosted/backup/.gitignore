@@ -1,3 +1,4 @@
 backups/
 tmp/backup-*
 tmp/2*
+k3s-volumes-backups/

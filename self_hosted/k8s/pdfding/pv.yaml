@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pdfding-data-pv
+  namespace: production
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/k3s-volumes/pdfding/sqlite_data"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pdfding-media-pv
+  namespace: production
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/k3s-volumes/pdfding/media"

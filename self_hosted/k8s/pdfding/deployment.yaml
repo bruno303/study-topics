@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdfding
+  namespace: production
+  labels:
+    app: pdfding
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pdfding
+  template:
+    metadata:
+      labels:
+        app: pdfding
+    spec:
+      containers:
+      - name: pdfding
+        image: mrmn/pdfding:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DEFAULT_THEME
+          value: "dark"
+        - name: DEFAULT_THEME_COLOR
+          value: "blue"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pdfding-secret
+              key: SECRET_KEY
+        - name: HOST_NAME
+          value: "book.bsoapp.net"
+        - name: CSRF_COOKIE_SECURE
+          value: "TRUE"
+        - name: SESSION_COOKIE_SECURE
+          value: "$TRUE"
+        - name: DISABLE_USER_SIGNUP
+          value: "TRUE"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: pdfding-data
+          mountPath: /home/nonroot/pdfding/db
+        - name: pdfding-media
+          mountPath: /home/nonroot/pdfding/media
+      volumes:
+      - name: pdfding-data
+        persistentVolumeClaim:
+          claimName: pdfding-data-pvc
+      - name: pdfding-media
+        persistentVolumeClaim:
+          claimName: pdfding-media-pvc
