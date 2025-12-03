@@ -199,8 +199,10 @@ func walkRoutes(ctx context.Context, r *mux.Router, logger log.Logger) {
 func configureAPIS(r *mux.Router, container *Container) {
 	for _, api := range container.API.APIs {
 		route := r.Handle(api.Endpoint(), api.Handle())
-		if len(api.Methods()) > 0 {
-			route.Methods(api.Methods()...)
+
+		methods := api.Methods()
+		if len(methods) > 0 {
+			route.Methods(methods...)
 		}
 	}
 }

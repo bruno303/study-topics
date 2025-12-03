@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
 )
@@ -19,9 +20,9 @@ func (m *AdminMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorization := r.Header.Get("Authorization")
 
-		apiKey := strings.Replace(authorization, "Bearer ", "", 1)
+		apiKey := strings.TrimPrefix(authorization, "Bearer ")
 
-		if apiKey != m.apiKey {
+		if subtle.ConstantTimeCompare([]byte(apiKey), []byte(m.apiKey)) != 1 {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

@@ -67,7 +67,7 @@ func (api *WebsocketAPI) Endpoint() string {
 }
 
 func (api *WebsocketAPI) Methods() []string {
-	return []string{}
+	return nil
 }
 
 func (api *WebsocketAPI) Handle() http.Handler {
