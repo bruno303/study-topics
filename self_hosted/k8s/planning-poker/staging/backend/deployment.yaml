@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: planning-poker-backend
-        image:  bruno303/planning-poker-backend:0.0.13
+        image:  bruno303/planning-poker-backend:0.0.16
         env:
         - name: API_TRACING_ENABLED
           value: "true"
@@ -34,6 +34,11 @@ spec:
           value: https://planning-poker-staging.bsoapp.net
         - name: ENVIRONMENT
           value: staging
+        - name: ADMIN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: planning-poker-backend
+              key: ADMIN_API_KEY
         ports:
         - containerPort: 8080
         resources:
