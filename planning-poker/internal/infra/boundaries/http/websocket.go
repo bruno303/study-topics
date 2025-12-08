@@ -82,7 +82,6 @@ func (api *WebsocketAPI) Handle() http.Handler {
 		ws, err := api.upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			api.logger.Error(r.Context(), "Error upgrading to WebSocket", err)
-			SendJsonErrorMsg(w, http.StatusInternalServerError, "Error upgrading to WebSocket")
 			return
 		}
 
