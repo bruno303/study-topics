@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: grafana-ingress
+  namespace: monitoring
   annotations:
     # Use Traefik to handle the routing
     traefik.ingress.kubernetes.io/router.entrypoints: web
