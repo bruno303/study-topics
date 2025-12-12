@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea-runner-cache
+  namespace: production
+spec:
+  selector:
+    app: gitea-runner
+  ports:
+    - name: cache
+      port: 4001
+      targetPort: 4001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-runner
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gitea-runner
+  template:
+    metadata:
+      labels:
+        app: gitea-runner
+    spec:
+      containers:
+        - name: gitea-runner
+          image: gitea/act_runner:0.2.13
+          env:
+            - name: CONFIG_FILE
+              value: /config/config.yaml
+            - name: GITEA_INSTANCE_URL
+              value: "https://git.bsoapp.net"
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gitea
+                  key: GITEA_RUNNER_REGISTRATION_TOKEN
+            - name: GITEA_RUNNER_NAME
+              value: gitea-runner-default
+          ports:
+            - containerPort: 4001
+              name: cache
+          volumeMounts:
+            - name: runner-config
+              mountPath: /config
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: runner-config
+          configMap:
+            name: gitea-runner-config
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
