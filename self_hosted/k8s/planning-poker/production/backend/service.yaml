@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: planning-poker-backend-svc
   namespace: production
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "9090"
 spec:
   type: ClusterIP
   selector:
@@ -11,3 +15,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+      name: http
+    - port: 9090
+      targetPort: 9090
+      name: http-metrics
