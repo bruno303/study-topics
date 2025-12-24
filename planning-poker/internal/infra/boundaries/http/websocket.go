@@ -23,7 +23,7 @@ type (
 	WebsocketAPI struct {
 		upgrader     websocket.Upgrader
 		hub          domain.Hub
-		usecases     usecase.UseCases
+		usecases     usecase.UseCasesFacade
 		websocketCfg WebSocketConfig
 		logger       log.Logger
 	}
@@ -32,7 +32,7 @@ type (
 		ID       string
 		conn     *websocket.Conn
 		hub      domain.Hub
-		usecases usecase.UseCases
+		usecases usecase.UseCasesFacade
 		logger   log.Logger
 		cfg      WebSocketConfig
 	}
@@ -46,7 +46,7 @@ type (
 
 var _ API = (*WebsocketAPI)(nil)
 
-func NewWebsocketAPI(hub domain.Hub, usecases usecase.UseCases, websocketCfg WebSocketConfig) *WebsocketAPI {
+func NewWebsocketAPI(hub domain.Hub, usecases usecase.UseCasesFacade, websocketCfg WebSocketConfig) *WebsocketAPI {
 	return &WebsocketAPI{
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -119,7 +119,7 @@ func NewWebsocketBus(
 	id string,
 	socket *websocket.Conn,
 	hub domain.Hub,
-	usecases usecase.UseCases,
+	usecases usecase.UseCasesFacade,
 	websocketCfg WebSocketConfig,
 ) *WebsocketBus {
 	return &WebsocketBus{
