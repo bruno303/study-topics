@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: planning-poker-frontend
-        image:  bruno303/planning-poker-frontend:0.0.13
+        image:  bruno303/planning-poker-frontend:0.0.14
         ports:
         - containerPort: 3000
         resources:
