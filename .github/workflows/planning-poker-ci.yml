@@ -25,7 +25,6 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -55,7 +54,6 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -75,7 +73,6 @@ jobs:
   sonarqube:
     name: SonarQube
     runs-on: ubuntu-latest
-    environment: production
     needs: 
       - test
       - lint
@@ -93,7 +90,6 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    environment: production
     needs: 
       - test
       - lint
