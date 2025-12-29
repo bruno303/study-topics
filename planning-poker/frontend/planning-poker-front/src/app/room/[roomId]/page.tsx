@@ -6,6 +6,7 @@ import { Eye, EyeOff, Repeat, RotateCcw, Shield, Users, X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Header from './page.header';
+import gridStyles from './page.module.css';
 import { styles } from './page.styles';
 
 type Card = string | null
@@ -226,9 +227,9 @@ export default function PlanningPoker() {
             </div>
           </div>
 
-          <div style={styles.grid}>
+          <div className={gridStyles.grid}>
             {/* Main Voting Area */}
-            <div style={{...styles.gridLarge, ...styles.card}}>
+            <div style={styles.card}>
               {/* User Info */}
               <div style={styles.userInfo}>
                 <div style={styles.inputGroup}>
