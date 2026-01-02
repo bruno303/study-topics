@@ -1,4 +1,4 @@
-package main
+package integration
 
 import (
 	applock "planning-poker/internal/application/lock"
@@ -18,8 +18,8 @@ type (
 	}
 
 	Container struct {
-		Hub         *inmemory.InMemoryHub
-		LockManager *lock.InMemoryLockManager
+		Hub         domain.Hub
+		LockManager applock.LockManager
 		Usecases    usecase.UseCasesFacade
 		API         APIContainer
 	}

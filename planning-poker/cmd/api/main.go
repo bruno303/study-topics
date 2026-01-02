@@ -47,7 +47,7 @@ func main() {
 		}
 	}()
 
-	container := NewContainer(cfg)
+	container := newContainer(cfg)
 
 	r := mux.NewRouter()
 	configureMiddlewares(ctx, r, logger)
