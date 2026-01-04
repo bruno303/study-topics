@@ -1,7 +1,7 @@
-package integration
+package setup
 
 import (
-	applock "planning-poker/internal/application/lock"
+	"planning-poker/internal/application/lock"
 	"planning-poker/internal/application/planningpoker/metric"
 	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/config"
@@ -9,7 +9,7 @@ import (
 	"planning-poker/internal/infra/boundaries/bus/inmemory"
 	"planning-poker/internal/infra/boundaries/http"
 	"planning-poker/internal/infra/decorators/usecasedecorators"
-	"planning-poker/internal/infra/lock"
+	infralock "planning-poker/internal/infra/lock"
 )
 
 type (
@@ -19,15 +19,15 @@ type (
 
 	Container struct {
 		Hub         domain.Hub
-		LockManager applock.LockManager
+		LockManager lock.LockManager
 		Usecases    usecase.UseCasesFacade
 		API         APIContainer
 	}
 )
 
-func newContainer(cfg *config.Config) *Container {
+func NewContainer(cfg *config.Config) *Container {
 	hub := inmemory.NewHub()
-	lockManager := lock.NewInMemoryLockManager()
+	lockManager := infralock.NewInMemoryLockManager()
 	planningPokerMetric := metric.NewPlanningPokerMetric()
 	usecases := newUsecases(hub, lockManager, planningPokerMetric)
 
@@ -55,7 +55,7 @@ func newAPIContainer(cfg *config.Config, hub domain.Hub, usecases usecase.UseCas
 	}
 }
 
-func newUsecases(hub domain.Hub, lockManager applock.LockManager, metric metric.PlanningPokerMetric) usecase.UseCasesFacade {
+func newUsecases(hub domain.Hub, lockManager lock.LockManager, metric metric.PlanningPokerMetric) usecase.UseCasesFacade {
 	updateNameUseCase := usecase.NewUpdateNameUseCase(hub)
 	voteUseCase := usecase.NewVoteUseCase(hub, lockManager)
 	revealUseCase := usecase.NewRevealUseCase(hub, lockManager)

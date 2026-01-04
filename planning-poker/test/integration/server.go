@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"planning-poker/internal/config"
+	"planning-poker/internal/setup"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -15,16 +16,17 @@ import (
 type TestServer struct {
 	Server    *httptest.Server
 	Router    *mux.Router
-	Container *Container
+	Container *setup.Container
 }
 
 func NewTestServer(t *testing.T) *TestServer {
 	t.Helper()
 	cfg := getTestConfig()
-	container := newContainer(cfg)
+	setup.ConfigureLogging(cfg)
+	container := setup.NewContainer(cfg)
 
 	r := mux.NewRouter()
-	configureAPIS(r, container)
+	setup.ConfigureAPIs(r, container)
 	ts := httptest.NewServer(r)
 
 	return &TestServer{
@@ -38,7 +40,7 @@ func (ts *TestServer) Close() {
 	ts.Server.Close()
 }
 
-func (ts *TestServer) GetJSON(t *testing.T, path string, target interface{}) (*http.Response, error) {
+func (ts *TestServer) GetJSON(t *testing.T, path string, target any) (*http.Response, error) {
 	t.Helper()
 
 	resp, err := http.Get(ts.Server.URL + path)
@@ -64,15 +66,4 @@ func getTestConfig() *config.Config {
 		panic(fmt.Sprintf("failed to load test config: %v", err))
 	}
 	return cfg
-}
-
-func configureAPIS(r *mux.Router, container *Container) {
-	for _, api := range container.API.APIs {
-		route := r.Handle(api.Endpoint(), api.Handle())
-
-		methods := api.Methods()
-		if len(methods) > 0 {
-			route.Methods(methods...)
-		}
-	}
 }

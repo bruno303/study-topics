@@ -6,8 +6,11 @@ ifeq ($(wildcard .env),)
 $(shell cp example.env .env)
 endif
 
+# Only load .env for non-test targets
+ifeq ($(filter test-integration,$(MAKECMDGOALS)),)
 include .env
 export
+endif
 
 .PHONY: init
 init:
@@ -42,7 +45,7 @@ test-unit: lint fmt
 	go test -v -timeout 30s ./internal/...
 
 .PHONY: test-integration
-test-integration:
+test-integration: lint fmt
 	go test -v -timeout 30s ./test/integration/...
 
 .PHONY: test-coverage

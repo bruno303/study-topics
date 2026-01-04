@@ -59,7 +59,7 @@ func TestMyEndpoint(t *testing.T) {
 
 1. **Isolation**: Each test should be independent and not rely on state from other tests
 2. **Cleanup**: Always defer `ts.Close()` to clean up resources
-3. **Real Dependencies**: Use the same dependency container as production (via `api.NewContainer`)
+3. **Real Dependencies**: Use the same dependency container as production (via `setup.NewContainer`)
 4. **Fast Tests**: Keep integration tests focused and fast (< 1 second per test)
 5. **Error Messages**: Provide clear error messages that help diagnose failures
 
@@ -68,8 +68,8 @@ func TestMyEndpoint(t *testing.T) {
 Integration tests use a test-specific configuration with:
 - Tracing disabled
 - Metrics disabled
-- Log level set to ERROR (reduce noise)
+- Log level set to INFO
 - CORS set to allow all origins
 - Random ports assigned by httptest.Server
 
-See `getTestConfig()` in `server_test.go` for details.
+See `getTestConfig()` in `server.go` for details.
