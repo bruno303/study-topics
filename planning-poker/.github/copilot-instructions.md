@@ -122,7 +122,7 @@ Start dev server with `make run-frontend` or `npm run dev` in `frontend/planning
 1. Define interface in `internal/domain/` if cross-layer
 2. Implement use case in `internal/application/planningpoker/usecase/`
 3. Add HTTP handler in `internal/infra/boundaries/http/`
-4. Wire in [internal/app/container.go](../internal/app/container.go)
+4. Wire in [internal/setup/container.go](../internal/setup/container.go)
 5. Run `make generate` if new interfaces added
 6. Add tests (pattern: `<feature>_test.go` alongside implementation)
 7. Consider adding integration test in `test/integration/` for end-to-end validation

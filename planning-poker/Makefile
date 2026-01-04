@@ -50,7 +50,7 @@ test-integration: lint fmt
 
 .PHONY: test-coverage
 test-coverage:
-	go test -coverprofile=coverage.out ./...
+	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
 	go tool cover -html=coverage.out -o coverage.html
 	echo "Generated coverage report at coverage.html"
 	echo "If using WSL, run 'explorer.exe coverage.html' to view the report."

@@ -20,7 +20,7 @@ go test -cover ./test/integration/...
 
 ## Test Structure
 
-- `server_test.go` - Server setup and healthcheck tests
+- `server.go` - Server setup
 - `helpers.go` - Common testing utilities and HTTP client helpers
 - `README.md` - This file
 
