@@ -1,0 +1,64 @@
+services:
+  # 1. PostgreSQL (The Warehouse)
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: datalake
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    networks:
+      - data_study
+
+  # 2. Apache Airflow (The Orchestrator)
+  # (Simplified for brevity - usually requires webserver + scheduler)
+  airflow:
+    build: ./airflow
+    container_name: airflow
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres/airflow_db
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./scripts:/opt/airflow/scripts
+    ports:
+      - "8080:8080"
+    command: airflow standalone
+    networks:
+      - data_study
+
+  # 3. Apache Spark (The Worker)
+  # spark:
+  #   image: bitnamilegacy/spark:latest
+  #   environment:
+  #     - SPARK_MODE=master
+  #   ports:
+  #     - "8081:8081" # Spark UI
+  #   volumes:
+  #     - ./scripts:/opt/spark-scripts
+  #     - ./data:/opt/spark-data # Same shared folder so Spark can see what Airflow downloaded
+  #   networks:
+  #     - data_study
+
+  # 4. Metabase (The Dashboard)
+  metabase:
+    image: metabase/metabase:latest
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: user
+      MB_DB_PASS: password
+      MB_DB_HOST: postgres
+    networks:
+      - data_study
+
+networks:
+  data_study:
