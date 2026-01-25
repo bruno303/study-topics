@@ -6,7 +6,7 @@ import (
 	"planning-poker/internal/application/lock"
 	"planning-poker/internal/domain"
 	"planning-poker/internal/domain/entity"
-	"planning-poker/internal/infra/boundaries/bus/inmemory"
+	"planning-poker/internal/infra/boundaries/bus/clientcollection"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -39,7 +39,7 @@ func TestVoteUseCase_Execute_Success(t *testing.T) {
 	vote := "5"
 	room := &entity.Room{
 		ID:      roomID,
-		Clients: inmemory.NewInMemoryClientCollection(),
+		Clients: clientcollection.New(),
 	}
 
 	room.NewClient(senderID)
@@ -115,7 +115,7 @@ func TestVoteUseCase_Execute_BroadcastError(t *testing.T) {
 	vote := "5"
 	room := &entity.Room{
 		ID:      roomID,
-		Clients: inmemory.NewInMemoryClientCollection(),
+		Clients: clientcollection.New(),
 	}
 
 	room.NewClient(senderID)

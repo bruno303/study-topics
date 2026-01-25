@@ -1,6 +1,7 @@
 FRONT_DIR=frontend/planning-poker-front
 BACKEND_URL=http://localhost:8080
 WEBSOCKET_URL=ws://localhost:8080
+DOCKER_COMPOSE=docker compose
 
 ifeq ($(wildcard .env),)
 $(shell cp example.env .env)
@@ -72,3 +73,11 @@ clean:
 	rm -rf bin
 	rm -rf coverage.out
 	rm -rf coverage.html
+
+.PHONY: infra-up
+infra-up:
+	$(DOCKER_COMPOSE) up -d
+
+.PHONY: infra-down
+infra-down:
+	$(DOCKER_COMPOSE) down

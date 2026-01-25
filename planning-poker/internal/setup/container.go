@@ -1,15 +1,18 @@
 package setup
 
 import (
+	"context"
 	"planning-poker/internal/application/lock"
 	"planning-poker/internal/application/planningpoker/metric"
 	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/config"
 	"planning-poker/internal/domain"
-	"planning-poker/internal/infra/boundaries/bus/inmemory"
+	"planning-poker/internal/infra/boundaries/bus/redis"
 	"planning-poker/internal/infra/boundaries/http"
 	"planning-poker/internal/infra/decorators/usecasedecorators"
 	infralock "planning-poker/internal/infra/lock"
+
+	"github.com/bruno303/go-toolkit/pkg/log"
 )
 
 type (
@@ -22,11 +25,24 @@ type (
 		LockManager lock.LockManager
 		Usecases    usecase.UseCasesFacade
 		API         APIContainer
+		logger      log.Logger
 	}
 )
 
 func NewContainer(cfg *config.Config) *Container {
-	hub := inmemory.NewHub()
+	logger := log.NewLogger("setup.container")
+	ctx := context.Background()
+
+	redisClient, err := NewRedisClient(cfg)
+	if err != nil {
+		panic("Failed to initialize Redis client: " + err.Error())
+	}
+
+	hub, err := redis.NewRedisHub(ctx, redisClient)
+	if err != nil {
+		panic("Failed to initialize Redis hub: " + err.Error())
+	}
+
 	lockManager := infralock.NewInMemoryLockManager()
 	planningPokerMetric := metric.NewPlanningPokerMetric()
 	usecases := newUsecases(hub, lockManager, planningPokerMetric)
@@ -36,6 +52,7 @@ func NewContainer(cfg *config.Config) *Container {
 		LockManager: lockManager,
 		API:         newAPIContainer(cfg, hub, usecases, hub),
 		Usecases:    usecases,
+		logger:      logger,
 	}
 }
 
