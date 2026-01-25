@@ -1,5 +1,3 @@
-GO_TOOLS_INSTALL=xargs -I {} go install {} < "tools/tools.txt"
-JS_TOOLS_INSTALL=xargs -I {} npm install -g {} < "tools/tools-js.txt"
 API_OUTPUT=./tmp/api
 
 init:
@@ -19,10 +17,12 @@ debug-api:
 run-api-live:
 	air -c .air.toml
 
-deps:
-	@$(GO_TOOLS_INSTALL)
-	@$(JS_TOOLS_INSTALL)
+vendor:
 	@go mod vendor
+	@go mod tidy -e -v
+
+download:
+	@go mod download
 	@go mod tidy -e -v
 
 docker-up-infra:

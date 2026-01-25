@@ -1,4 +1,4 @@
-package main
+package setup
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka/handlers"
 	"github.com/bruno303/study-topics/go-study/internal/infra/observability/otel/tracedecorator"
 	"github.com/bruno303/study-topics/go-study/internal/infra/repository"
-	"github.com/bruno303/study-topics/go-study/internal/infra/repository/transactionaldecorator"
 	"github.com/bruno303/study-topics/go-study/internal/infra/worker"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,21 +42,15 @@ type MessageHandlersContainer struct {
 }
 
 type RepositoryContainer struct {
-	HelloRepository             repository.HelloRepository
-	TransactionManager          repository.TransactionManager
-	OptimizedTransactionManager repository.OptimizedTransactionManager
-	OptimizedHelloRepository    repository.OptimizedHelloRepository
+	HelloRepository    repository.HelloRepository
+	TransactionManager repository.TransactionManager
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
-	helloService := hello.NewService(repoContainer.HelloRepository)
+	helloService := hello.NewService(repoContainer.HelloRepository, repoContainer.TransactionManager)
 
 	return ServiceContainer{
-		HelloService: tracedecorator.NewTraceableHelloService(
-			transactionaldecorator.NewTransactionalHelloService(
-				helloService, repoContainer.TransactionManager,
-			),
-		),
+		HelloService: tracedecorator.NewTraceableHelloService(helloService),
 	}
 }
 
@@ -69,8 +62,6 @@ func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
 				Pool: pool,
 			},
 		),
-		OptimizedHelloRepository:    repository.NewOptimizedHelloRepository(pool),
-		OptimizedTransactionManager: repository.NewOptimizedTransactionManager(pool),
 	}
 }
 

@@ -6,33 +6,47 @@ import (
 	"testing"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"go.uber.org/mock/gomock"
 )
 
 var (
-	ctrl    *gomock.Controller
-	repo    *MockHelloRepository
-	subject HelloService
+	ctrl      *gomock.Controller
+	repo      *MockHelloRepository
+	txManager *transaction.MockTransactionManager
+	tx        any
+	subject   HelloService
+	opts      transaction.Opts
 )
 
 func beforeEach(t *testing.T) {
 	ctrl = gomock.NewController(t)
 	repo = NewMockHelloRepository(ctrl)
-	subject = NewService(repo)
+	txManager = transaction.NewMockTransactionManager(ctrl)
+	tx = struct{}{}
+	subject = NewService(repo, txManager)
+	opts = transaction.Opts{Transaction: nil, RequiresNew: true}
 }
 
 func TestHello(t *testing.T) {
 	beforeEach(t)
 	expected := models.HelloData{Id: "id", Name: "Bruno id", Age: 18}
 
+	txManager.
+		EXPECT().
+		Execute(gomock.Any(), gomock.Eq(opts), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, opts transaction.Opts, fn transaction.TransactionalFunc) (any, error) {
+			return fn(ctx, tx)
+		}).Times(1)
+
 	repo.
 		EXPECT().
-		Save(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, entity *models.HelloData) (*models.HelloData, error) {
+		Save(gomock.Any(), gomock.Any(), gomock.Eq(tx)).
+		DoAndReturn(func(ctx context.Context, entity *models.HelloData, tx transaction.Transaction) (*models.HelloData, error) {
 			return entity, nil
 		}).Times(2)
 
-	result, err := subject.Hello(context.Background(), HelloInput{Id: "id", Age: 18})
+	result, err := subject.Hello(t.Context(), HelloInput{Id: "id", Age: 18})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 		return
@@ -46,9 +60,16 @@ func TestHelloWithError(t *testing.T) {
 	beforeEach(t)
 	errorStr := "error xpto"
 
-	repo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil, errors.New(errorStr)).Times(1)
+	txManager.
+		EXPECT().
+		Execute(gomock.Any(), gomock.Eq(opts), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, opts transaction.Opts, fn transaction.TransactionalFunc) (any, error) {
+			return fn(ctx, tx)
+		}).Times(1)
 
-	_, err := subject.Hello(context.Background(), HelloInput{Id: "id", Age: 18})
+	repo.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Eq(tx)).Return(nil, errors.New(errorStr)).Times(1)
+
+	_, err := subject.Hello(t.Context(), HelloInput{Id: "id", Age: 18})
 	if err == nil {
 		t.Errorf("Expected error didn't occur: %v", err)
 		return

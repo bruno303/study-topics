@@ -7,6 +7,7 @@ import (
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 
+	cfgconfig "github.com/bruno303/study-topics/go-study/config"
 	envconfig "github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
 )
@@ -77,7 +78,13 @@ type HelloProducerConfig struct {
 
 func LoadConfig() *Config {
 	cfg := &Config{}
-	file, err := os.Open("config/config.yaml")
+
+	cfgFile := "config.yaml"
+	if os.Getenv("CONFIG_FILE") != "" {
+		cfgFile = os.Getenv("CONFIG_FILE")
+	}
+
+	file, err := cfgconfig.ConfigFS.Open(cfgFile)
 	if err != nil {
 		panic(err)
 	}

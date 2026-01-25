@@ -16,58 +16,6 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockTransaction is a mock of Transaction interface.
-type MockTransaction struct {
-	ctrl     *gomock.Controller
-	recorder *MockTransactionMockRecorder
-	isgomock struct{}
-}
-
-// MockTransactionMockRecorder is the mock recorder for MockTransaction.
-type MockTransactionMockRecorder struct {
-	mock *MockTransaction
-}
-
-// NewMockTransaction creates a new mock instance.
-func NewMockTransaction(ctrl *gomock.Controller) *MockTransaction {
-	mock := &MockTransaction{ctrl: ctrl}
-	mock.recorder = &MockTransactionMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTransaction) EXPECT() *MockTransactionMockRecorder {
-	return m.recorder
-}
-
-// Commit mocks base method.
-func (m *MockTransaction) Commit(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Commit indicates an expected call of Commit.
-func (mr *MockTransactionMockRecorder) Commit(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockTransaction)(nil).Commit), ctx)
-}
-
-// Rollback mocks base method.
-func (m *MockTransaction) Rollback(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rollback", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Rollback indicates an expected call of Rollback.
-func (mr *MockTransactionMockRecorder) Rollback(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockTransaction)(nil).Rollback), ctx)
-}
-
 // MockTransactionManager is a mock of TransactionManager interface.
 type MockTransactionManager struct {
 	ctrl     *gomock.Controller
@@ -93,16 +41,16 @@ func (m *MockTransactionManager) EXPECT() *MockTransactionManagerMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockTransactionManager) Execute(arg0 context.Context, arg1 func(context.Context) (any, error)) (any, error) {
+func (m *MockTransactionManager) Execute(arg0 context.Context, arg1 Opts, arg2 TransactionalFunc) (any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
+	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2)
 	ret0, _ := ret[0].(any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockTransactionManagerMockRecorder) Execute(arg0, arg1 any) *gomock.Call {
+func (mr *MockTransactionManagerMockRecorder) Execute(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockTransactionManager)(nil).Execute), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockTransactionManager)(nil).Execute), arg0, arg1, arg2)
 }

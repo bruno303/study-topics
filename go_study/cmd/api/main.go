@@ -14,6 +14,7 @@ import (
 	"github.com/bruno303/study-topics/go-study/internal/infra/observability/otel"
 	"github.com/bruno303/study-topics/go-study/internal/infra/observability/slog"
 	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
+	"github.com/bruno303/study-topics/go-study/internal/setup"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -31,7 +32,7 @@ func initialize(ctx context.Context) {
 		otelShutdown(context.Background())
 	})
 
-	container := NewContainer(ctx, cfg)
+	container := setup.NewContainer(ctx, cfg)
 
 	startKafkaConsumers(container)
 	startProducer(container)
@@ -76,7 +77,7 @@ func configureObservability(ctx context.Context, cfg *config.Config) func(contex
 	return otelShutdown
 }
 
-func startApi(ctx context.Context, cfg *config.Config, container *Container) {
+func startApi(ctx context.Context, cfg *config.Config, container *setup.Container) {
 	router := http.NewServeMux()
 	hello.SetupApi(cfg, router, container.Services.HelloService)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Application.Port), Handler: otelhttp.NewHandler(router, "/")}
@@ -97,7 +98,7 @@ func startApi(ctx context.Context, cfg *config.Config, container *Container) {
 	}()
 }
 
-func startKafkaConsumers(container *Container) {
+func startKafkaConsumers(container *setup.Container) {
 	for _, cons := range container.Kafka.Consumers {
 		if err := cons.Start(); err != nil {
 			panic(err)
@@ -105,7 +106,7 @@ func startKafkaConsumers(container *Container) {
 	}
 }
 
-func startProducer(container *Container) {
+func startProducer(container *setup.Container) {
 	container.Workers.HelloProducerWorker.Start()
 }
 

@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 )
 
-//go:generate mockgen -source=hello-producer.go -destination=mocks.go -package worker
+//go:generate go tool mockgen -source=hello-producer.go -destination=mocks.go -package worker
 
 type Producer interface {
 	Produce(ctx context.Context, msg string, topic string) error

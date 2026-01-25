@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace/attr"
 
@@ -15,12 +16,6 @@ type HelloRepository struct {
 	pool *pgxpool.Pool
 }
 
-type transactionKey struct {
-	name string
-}
-
-var txKey = transactionKey{name: "db-transaction"}
-
 const traceName = "HelloRepository"
 
 func NewHelloPgxRepository(pool *pgxpool.Pool) HelloRepository {
@@ -29,21 +24,21 @@ func NewHelloPgxRepository(pool *pgxpool.Pool) HelloRepository {
 	}
 }
 
-func (r HelloRepository) Save(ctx context.Context, entity *models.HelloData) (*models.HelloData, error) {
+func (r HelloRepository) Save(ctx context.Context, entity *models.HelloData, tx transaction.Transaction) (*models.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "Save"))
 	defer end()
 
 	trace.InjectAttributes(ctx, attr.New("id", entity.Id))
 
 	const sql = "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)"
-	var err error = nil
+	var err error
 	var params = []any{entity.Id, entity.Name, entity.Age}
 
-	tx := r.getTransactionOrNil(ctx)
-	if tx == nil {
+	pgTx := r.getTransactionOrNil(tx)
+	if pgTx == nil {
 		_, err = r.pool.Exec(ctx, sql, params...)
 	} else {
-		_, err = (*tx).Exec(ctx, sql, params...)
+		_, err = pgTx.Exec(ctx, sql, params...)
 	}
 
 	if err != nil {
@@ -53,37 +48,37 @@ func (r HelloRepository) Save(ctx context.Context, entity *models.HelloData) (*m
 	return entity, nil
 }
 
-func (r HelloRepository) FindById(ctx context.Context, id any) (*models.HelloData, error) {
+func (r HelloRepository) FindById(ctx context.Context, id any, tx transaction.Transaction) (*models.HelloData, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "FindById"))
 	defer end()
 
 	strId := id.(string)
 	trace.InjectAttributes(ctx, attr.New("id", strId))
 	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA WHERE ID = $1"
-	tx := r.getTransactionOrNil(ctx)
+	pgTx := r.getTransactionOrNil(tx)
 
-	if tx == nil {
+	if pgTx == nil {
 		row := r.pool.QueryRow(ctx, sql, strId)
 		return r.mapRow(&row)
 	} else {
-		row := (*tx).QueryRow(ctx, sql, strId)
+		row := pgTx.QueryRow(ctx, sql, strId)
 		return r.mapRow(&row)
 	}
 }
 
-func (r HelloRepository) ListAll(ctx context.Context) []models.HelloData {
+func (r HelloRepository) ListAll(ctx context.Context, tx transaction.Transaction) []models.HelloData {
 	ctx, end := trace.Trace(ctx, trace.NameConfig(traceName, "ListAll"))
 	defer end()
 
 	const sql = "SELECT ID, NAME, AGE FROM HELLO_DATA"
 	var rows pgx.Rows = nil
-	var err error = nil
+	var err error
 
-	tx := r.getTransactionOrNil(ctx)
+	pgTx := r.getTransactionOrNil(tx)
 	if tx == nil {
 		rows, err = r.pool.Query(ctx, sql)
 	} else {
-		rows, err = (*tx).Query(ctx, sql)
+		rows, err = pgTx.Query(ctx, sql)
 	}
 
 	if err != nil {
@@ -103,25 +98,12 @@ func (r HelloRepository) ListAll(ctx context.Context) []models.HelloData {
 	return result
 }
 
-func (r HelloRepository) BeginTransactionWithContext(ctx context.Context) (context.Context, error) {
-	// save context in a new variable to avoid returning this span up in the chain
-	sCtx, end := trace.Trace(ctx, trace.NameConfig(traceName, "BeginTransactionWithContext"))
-	defer end()
-
-	tx, err := r.pool.BeginTx(sCtx, pgx.TxOptions{})
-	if err != nil {
-		trace.InjectError(sCtx, err)
-		return nil, err
+func (r HelloRepository) getTransactionOrNil(tx transaction.Transaction) pgx.Tx {
+	appTx, ok := tx.(pgx.Tx)
+	if !ok {
+		return nil
 	}
-	return context.WithValue(ctx, txKey, &tx), nil
-}
-
-func (r HelloRepository) getTransactionOrNil(ctx context.Context) *pgx.Tx {
-	appTx := GetTransactionOrNil(ctx)
-	if appTx != nil {
-		return appTx.postgreTransaction
-	}
-	return nil
+	return appTx
 }
 
 func (r HelloRepository) mapRow(row *pgx.Row) (*models.HelloData, error) {

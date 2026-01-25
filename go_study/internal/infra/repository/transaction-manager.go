@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -13,92 +14,84 @@ type (
 	TransactionManager struct {
 		config *TransactionConfig
 	}
-	ApplicationTransaction struct {
-		postgreTransaction *pgx.Tx
-	}
 	TransactionConfig struct {
 		Pool *pgxpool.Pool
 	}
 	txCtxKeyType string
 )
 
-var _ transaction.TransactionManager = (*TransactionManager)(nil)
-var _ transaction.Transaction = (*ApplicationTransaction)(nil)
+var (
+	_ transaction.TransactionManager = (*TransactionManager)(nil)
+)
 
-var txCtxKey txCtxKeyType = txCtxKeyType("transaction-key")
+var (
+	txCtxKey                  txCtxKeyType = txCtxKeyType("transaction-key")
+	InvalidTransactionTypeErr              = errors.New("invalid transaction type")
+)
 
 func NewTransactionManager(cfg *TransactionConfig) TransactionManager {
 	return TransactionManager{cfg}
 }
 
-func (tm TransactionManager) Execute(ctx context.Context, callback func(txCtx context.Context) (any, error)) (any, error) {
-	var result any
+func (tm TransactionManager) Execute(ctx context.Context, opts transaction.Opts, callback transaction.TransactionalFunc) (any, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "Execute"))
 	defer end()
 
-	ctx, err := tm.BeginTransaction(ctx)
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return result, err
-	}
-	cbResult, err := callback(ctx)
-	tx := GetTransactionOrNil(ctx)
+	var (
+		empty any
+		tx    pgx.Tx
+		err   error
+	)
 
-	if tx != nil {
+	// If RequiresNew is true, always create a new transaction
+	// If RequiresNew is false and a transaction is provided, use it
+	// Otherwise, create a new transaction
+	if opts.RequiresNew {
+		tx, err = tm.beginTransaction(ctx)
 		if err != nil {
-			err = tx.Rollback(ctx)
-		} else {
-			err = tx.Commit(ctx)
+			trace.InjectError(ctx, err)
+			return empty, err
+		}
+	} else if opts.Transaction != nil {
+		var ok bool
+		tx, ok = opts.Transaction.(pgx.Tx)
+		if !ok {
+			trace.InjectError(ctx, InvalidTransactionTypeErr)
+			return empty, InvalidTransactionTypeErr
+		}
+	} else {
+		tx, err = tm.beginTransaction(ctx)
+		if err != nil {
+			trace.InjectError(ctx, err)
+			return empty, err
 		}
 	}
 
+	ctx = context.WithValue(ctx, txCtxKey, tx)
+	cbResult, err := callback(ctx, tx)
+
 	if err != nil {
 		trace.InjectError(ctx, err)
-		return result, err
+
+		txErr := tx.Rollback(ctx)
+		if txErr != nil {
+			trace.InjectError(ctx, txErr)
+		}
+		return empty, err
 	}
+
+	txErr := tx.Commit(ctx)
+	if txErr != nil {
+		trace.InjectError(ctx, txErr)
+		return empty, txErr
+	}
+
 	return cbResult, nil
 }
 
-func (tm TransactionManager) BeginTransaction(ctx context.Context) (context.Context, error) {
+func (tm TransactionManager) beginTransaction(ctx context.Context) (pgx.Tx, error) {
 	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "BeginTransaction"))
 	defer end()
 
-	tx, err := tm.config.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		trace.InjectError(ctx, err)
-		return ctx, err
-	}
-	return context.WithValue(ctx, txCtxKey, &ApplicationTransaction{&tx}), nil
-}
-
-func GetTransactionOrNil(ctx context.Context) *ApplicationTransaction {
-	value := ctx.Value(txCtxKey)
-	if appTx, ok := value.(*ApplicationTransaction); ok {
-		return appTx
-	}
-	return nil
-}
-
-func (t *ApplicationTransaction) Commit(ctx context.Context) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "Commit"))
-	defer end()
-	if t.postgreTransaction != nil {
-		if err := (*t.postgreTransaction).Commit(ctx); err != nil {
-			trace.InjectError(ctx, err)
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *ApplicationTransaction) Rollback(ctx context.Context) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("TransactionManager", "Rollback"))
-	defer end()
-	if t.postgreTransaction != nil {
-		if err := (*t.postgreTransaction).Rollback(ctx); err != nil {
-			trace.InjectError(ctx, err)
-			return err
-		}
-	}
-	return nil
+	return tm.config.Pool.Begin(ctx)
 }
