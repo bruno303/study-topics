@@ -93,6 +93,11 @@ func (h *InMemoryHub) RemoveClient(ctx context.Context, clientID string, roomID 
 	return err
 }
 
+func (h *InMemoryHub) SaveRoom(ctx context.Context, room *entity.Room) error {
+	// In-memory hub doesn't need to persist
+	return nil
+}
+
 func (h *InMemoryHub) BroadcastToRoom(ctx context.Context, roomID string, message any) error {
 	_, err := trace.Trace(ctx, trace.NameConfig("InMemoryHub", "BroadcastToRoom"), func(ctx context.Context) (any, error) {
 

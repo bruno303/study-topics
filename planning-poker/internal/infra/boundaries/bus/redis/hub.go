@@ -127,6 +127,13 @@ func (h *RedisHub) AddClient(c *entity.Client) {
 
 	if err := h.client.Set(ctx, key, c.Room().ID, 24*time.Hour).Err(); err != nil {
 		h.logger.Error(ctx, fmt.Sprintf("Failed to save client %s to Redis", c.ID), err)
+		return
+	}
+
+	// Save the updated room state to Redis after adding the client
+	room := c.Room()
+	if err := h.saveRoom(ctx, room); err != nil {
+		h.logger.Error(ctx, fmt.Sprintf("Failed to save room %s after adding client %s", room.ID, c.ID), err)
 	}
 }
 
@@ -227,6 +234,10 @@ func (h *RedisHub) GetRooms() []*entity.Room {
 	return rooms
 }
 
+func (h *RedisHub) SaveRoom(ctx context.Context, room *entity.Room) error {
+	return h.saveRoom(ctx, room)
+}
+
 func (h *RedisHub) saveRoom(ctx context.Context, room *entity.Room) error {
 	data, err := SerializeRoom(room)
 	if err != nil {
@@ -282,13 +293,13 @@ func (h *RedisHub) listenToPubSub(ctx context.Context) {
 }
 
 func (h *RedisHub) forwardToLocalClients(ctx context.Context, roomID string, message any) {
+	h.busMux.RLock()
+	defer h.busMux.RUnlock()
+
 	room, ok := h.GetRoom(ctx, roomID)
 	if !ok {
 		return
 	}
-
-	h.busMux.RLock()
-	defer h.busMux.RUnlock()
 
 	for _, client := range room.Clients.Values() {
 		bus, ok := h.buses[client.ID]
