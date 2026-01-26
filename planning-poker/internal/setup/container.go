@@ -43,7 +43,7 @@ func NewContainer(cfg *config.Config) *Container {
 		panic("Failed to initialize Redis hub: " + err.Error())
 	}
 
-	lockManager := infralock.NewInMemoryLockManager()
+	lockManager := infralock.NewRedisLockManager(redisClient)
 	planningPokerMetric := metric.NewPlanningPokerMetric()
 	usecases := newUsecases(hub, lockManager, planningPokerMetric)
 

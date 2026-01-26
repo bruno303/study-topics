@@ -41,13 +41,17 @@ run-frontend:
 build:
 	go build -o bin/api ./cmd/api
 
+.PHONY: tests
+tests: lint fmt
+	go test -timeout 30s ./...
+
 .PHONY: test-unit
 test-unit: lint fmt
-	go test -v -timeout 30s ./internal/...
+	go test -timeout 30s ./internal/...
 
 .PHONY: test-integration
 test-integration: lint fmt
-	go test -v -timeout 30s ./test/integration/...
+	go test -timeout 30s ./test/integration/...
 
 .PHONY: test-coverage
 test-coverage:
