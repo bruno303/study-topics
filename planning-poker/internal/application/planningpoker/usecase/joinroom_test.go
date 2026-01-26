@@ -58,6 +58,7 @@ func TestJoinRoomUseCase_Execute_Success(t *testing.T) {
 	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any())
 
 	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(nil)
+	mockHub.EXPECT().BroadcastToRoom(ctx, roomID, gomock.Any()).Return(nil)
 
 	busFactory := func(clientID string) domain.Bus {
 		return mockBus
