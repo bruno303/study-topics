@@ -26,6 +26,18 @@ jobs:
   tests-and-coverage:
     name: Tests and Coverage
     runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -47,6 +59,10 @@ jobs:
 
       - name: Run Tests
         working-directory: ${{ env.APP_DIR }}
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_DB: 0
         run: go test -timeout 30s -coverprofile=coverage.out ./...
 
       - name: Generate Coverage Report
