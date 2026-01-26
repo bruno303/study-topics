@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"planning-poker/internal/domain"
 	"planning-poker/internal/domain/entity"
@@ -18,7 +19,6 @@ import (
 const (
 	roomKeyPrefix   = "planning-poker:room:"
 	clientKeyPrefix = "planning-poker:client:"
-	busKeyPrefix    = "planning-poker:bus:"
 	pubsubChannel   = "planning-poker:updates:"
 )
 
@@ -81,7 +81,7 @@ func (h *RedisHub) NewRoom(ctx context.Context, owner string) *entity.Room {
 func (h *RedisHub) GetRoom(ctx context.Context, roomID string) (*entity.Room, bool) {
 	room, err := h.loadRoom(ctx, roomID)
 	if err != nil {
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			h.logger.Error(ctx, fmt.Sprintf("Failed to load room %s from Redis", roomID), err)
 		}
 		return nil, false
@@ -103,7 +103,7 @@ func (h *RedisHub) FindClientByID(clientID string) (*entity.Client, bool) {
 
 	roomID, err := h.client.Get(ctx, key).Result()
 	if err != nil {
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			h.logger.Error(ctx, fmt.Sprintf("Failed to find client %s in Redis", clientID), err)
 		}
 		return nil, false

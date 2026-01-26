@@ -11,8 +11,6 @@ import (
 	"planning-poker/internal/infra/boundaries/http"
 	"planning-poker/internal/infra/decorators/usecasedecorators"
 	infralock "planning-poker/internal/infra/lock"
-
-	"github.com/bruno303/go-toolkit/pkg/log"
 )
 
 type (
@@ -25,22 +23,20 @@ type (
 		LockManager lock.LockManager
 		Usecases    usecase.UseCasesFacade
 		API         APIContainer
-		logger      log.Logger
 	}
 )
 
 func NewContainer(cfg *config.Config) *Container {
-	logger := log.NewLogger("setup.container")
 	ctx := context.Background()
 
 	redisClient, err := NewRedisClient(cfg)
 	if err != nil {
-		panic("Failed to initialize Redis client: " + err.Error())
+		panic("Failed to initialize Redis client (check REDIS_HOST and REDIS_PORT configuration and Redis connectivity): " + err.Error())
 	}
 
 	hub, err := redis.NewRedisHub(ctx, redisClient)
 	if err != nil {
-		panic("Failed to initialize Redis hub: " + err.Error())
+		panic("Failed to initialize Redis hub (ensure Redis is running and accessible): " + err.Error())
 	}
 
 	lockManager := infralock.NewRedisLockManager(redisClient)
@@ -52,7 +48,6 @@ func NewContainer(cfg *config.Config) *Container {
 		LockManager: lockManager,
 		API:         newAPIContainer(cfg, hub, usecases, hub),
 		Usecases:    usecases,
-		logger:      logger,
 	}
 }
 
