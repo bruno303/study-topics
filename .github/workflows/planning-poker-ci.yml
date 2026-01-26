@@ -63,7 +63,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           REDIS_DB: 0
-        run: go test -timeout 30s -coverprofile=coverage.out ./...
+        run: go test -timeout 30s -coverpkg=./internal/... -coverprofile=coverage.out ./...
 
       - name: Generate Coverage Report
         working-directory: ${{ env.APP_DIR }}
