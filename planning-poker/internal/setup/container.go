@@ -31,7 +31,7 @@ func NewContainer(cfg *config.Config) *Container {
 
 	redisClient, err := NewRedisClient(cfg)
 	if err != nil {
-		panic("Failed to initialize Redis client (check REDIS_HOST and REDIS_PORT configuration and Redis connectivity): " + err.Error())
+		panic("Failed to initialize Redis client (check redis configuration and connectivity): " + err.Error())
 	}
 
 	hub, err := redis.NewRedisHub(ctx, redisClient)

@@ -20,6 +20,8 @@ const (
 	roomKeyPrefix   = "planning-poker:room:"
 	clientKeyPrefix = "planning-poker:client:"
 	pubsubChannel   = "planning-poker:updates:"
+	twentyFourHours = 24 * time.Hour
+	cursorSize      = 100
 )
 
 type (
@@ -125,7 +127,7 @@ func (h *RedisHub) AddClient(c *entity.Client) {
 	ctx := context.Background()
 	key := clientKeyPrefix + c.ID
 
-	if err := h.client.Set(ctx, key, c.Room().ID, 24*time.Hour).Err(); err != nil {
+	if err := h.client.Set(ctx, key, c.Room().ID, twentyFourHours).Err(); err != nil {
 		h.logger.Error(ctx, fmt.Sprintf("Failed to save client %s to Redis", c.ID), err)
 		return
 	}
@@ -216,7 +218,7 @@ func (h *RedisHub) GetRooms() []*entity.Room {
 	pattern := roomKeyPrefix + "*"
 
 	var rooms []*entity.Room
-	iter := h.client.Scan(ctx, 0, pattern, 0).Iterator()
+	iter := h.client.Scan(ctx, cursorSize, pattern, 0).Iterator()
 	for iter.Next(ctx) {
 		roomKey := iter.Val()
 		roomID := roomKey[len(roomKeyPrefix):]
@@ -245,7 +247,7 @@ func (h *RedisHub) saveRoom(ctx context.Context, room *entity.Room) error {
 	}
 
 	key := roomKeyPrefix + room.ID
-	if err := h.client.Set(ctx, key, data, 24*time.Hour).Err(); err != nil {
+	if err := h.client.Set(ctx, key, data, twentyFourHours).Err(); err != nil {
 		return fmt.Errorf("failed to save room to Redis: %w", err)
 	}
 

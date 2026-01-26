@@ -102,7 +102,7 @@ func (m *RedisLockManager) WithLock(
 		}
 
 		defer func() {
-			if releaseErr := m.releaseLock(context.Background(), key, lockValue); releaseErr != nil {
+			if releaseErr := m.releaseLock(ctx, key, lockValue); releaseErr != nil {
 				m.logger.Error(ctx, fmt.Sprintf("Failed to release lock for key '%s'", key), releaseErr)
 			}
 		}()
@@ -123,7 +123,7 @@ func (m *RedisLockManager) ExecuteWithLock(
 		}
 
 		defer func() {
-			if releaseErr := m.releaseLock(context.Background(), key, lockValue); releaseErr != nil {
+			if releaseErr := m.releaseLock(ctx, key, lockValue); releaseErr != nil {
 				m.logger.Error(ctx, fmt.Sprintf("Failed to release lock for key '%s'", key), releaseErr)
 			}
 		}()
