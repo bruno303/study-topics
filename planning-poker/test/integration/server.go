@@ -1,12 +1,14 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"planning-poker/internal/config"
+	"planning-poker/internal/infra/boundaries/bus/redis"
 	"planning-poker/internal/setup"
 	"testing"
 
@@ -23,6 +25,9 @@ func NewTestServer(t *testing.T) *TestServer {
 	t.Helper()
 	cfg := getTestConfig()
 	setup.ConfigureLogging(cfg)
+
+	cleanRedis(t, cfg)
+
 	container := setup.NewContainer(cfg)
 
 	r := mux.NewRouter()
@@ -38,6 +43,23 @@ func NewTestServer(t *testing.T) *TestServer {
 
 func (ts *TestServer) Close() {
 	ts.Server.Close()
+	if hub, ok := ts.Container.Hub.(*redis.RedisHub); ok {
+		_ = hub.Close()
+	}
+}
+
+func cleanRedis(t *testing.T, cfg *config.Config) {
+	t.Helper()
+
+	redisClient, err := setup.NewRedisClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create redis client for cleanup: %v", err)
+	}
+	defer func() { _ = redisClient.Close() }()
+
+	if err := redisClient.FlushDB(context.Background()).Err(); err != nil {
+		t.Fatalf("failed to flush redis: %v", err)
+	}
 }
 
 func (ts *TestServer) GetJSON(t *testing.T, path string, target any) (*http.Response, error) {
