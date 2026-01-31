@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: pdfding
-        image: mrmn/pdfding:latest
+        image: mrmn/pdfding:v1.5.0
         ports:
         - containerPort: 8000
         env:
@@ -35,7 +35,7 @@ spec:
         - name: CSRF_COOKIE_SECURE
           value: "TRUE"
         - name: SESSION_COOKIE_SECURE
-          value: "$TRUE"
+          value: "TRUE"
         - name: DISABLE_USER_SIGNUP
           value: "TRUE"
         resources:
