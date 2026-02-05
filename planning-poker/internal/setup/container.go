@@ -11,6 +11,8 @@ import (
 	"planning-poker/internal/infra/boundaries/http"
 	"planning-poker/internal/infra/decorators/usecasedecorators"
 	infralock "planning-poker/internal/infra/lock"
+
+	redislib "github.com/redis/go-redis/v9"
 )
 
 type (
@@ -46,12 +48,16 @@ func NewContainer(cfg *config.Config) *Container {
 	return &Container{
 		Hub:         hub,
 		LockManager: lockManager,
-		API:         newAPIContainer(cfg, hub, usecases, hub),
+		API:         newAPIContainer(cfg, hub, usecases, hub, redisClient),
 		Usecases:    usecases,
 	}
 }
 
-func newAPIContainer(cfg *config.Config, hub domain.Hub, usecases usecase.UseCasesFacade, adminHub domain.AdminHub) APIContainer {
+func newAPIContainer(cfg *config.Config, hub domain.Hub, usecases usecase.UseCasesFacade, adminHub domain.AdminHub, redisClient *redislib.Client) APIContainer {
+	healthCheckers := []http.HealthChecker{
+		http.NewRedisHealthChecker(redisClient, "redis"),
+	}
+
 	return APIContainer{
 		APIs: []http.API{
 			http.NewWebsocketAPI(hub, usecases, http.WebSocketConfig{
@@ -61,7 +67,7 @@ func newAPIContainer(cfg *config.Config, hub domain.Hub, usecases usecase.UseCas
 			}),
 			http.NewGetRoomAPI(hub),
 			http.NewCreateRoomAPI(usecases.CreateRoom),
-			http.NewHealthcheckAPI(),
+			http.NewHealthcheckAPI(healthCheckers...),
 			http.NewGetAllRoomsStateAPI(adminHub, cfg.API.Admin.APIKey),
 		},
 	}
