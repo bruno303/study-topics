@@ -19,14 +19,13 @@ type TestServer struct {
 	Server    *httptest.Server
 	Router    *mux.Router
 	Container *setup.Container
+	config    *config.Config
 }
 
 func NewTestServer(t *testing.T) *TestServer {
 	t.Helper()
 	cfg := getTestConfig()
 	setup.ConfigureLogging(cfg)
-
-	cleanRedis(t, cfg)
 
 	container := setup.NewContainer(cfg)
 
@@ -38,6 +37,7 @@ func NewTestServer(t *testing.T) *TestServer {
 		Server:    ts,
 		Router:    r,
 		Container: container,
+		config:    cfg,
 	}
 }
 
@@ -46,19 +46,13 @@ func (ts *TestServer) Close() {
 	if hub, ok := ts.Container.Hub.(*redis.RedisHub); ok {
 		_ = hub.Close()
 	}
+
+	ts.cleanRedis()
 }
 
-func cleanRedis(t *testing.T, cfg *config.Config) {
-	t.Helper()
-
-	redisClient, err := setup.NewRedisClient(cfg)
-	if err != nil {
-		t.Fatalf("failed to create redis client for cleanup: %v", err)
-	}
-	defer func() { _ = redisClient.Close() }()
-
-	if err := redisClient.FlushDB(context.Background()).Err(); err != nil {
-		t.Fatalf("failed to flush redis: %v", err)
+func (ts *TestServer) cleanRedis() {
+	if err := ts.Container.Infra.RedisClient.FlushDB(context.Background()).Err(); err != nil {
+		panic(fmt.Sprintf("failed to flush redis: %v", err))
 	}
 }
 

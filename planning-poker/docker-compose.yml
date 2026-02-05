@@ -16,8 +16,8 @@ services:
     build:
       context: ./frontend/planning-poker-front
       args:
-        - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-        - NEXT_PUBLIC_WEB_SOCKET_URL=ws://localhost:8080
+        - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
+        - NEXT_PUBLIC_WEB_SOCKET_URL=ws://backend:8080
     container_name: planning-poker-frontend
     ports:
       - "3000:3000"

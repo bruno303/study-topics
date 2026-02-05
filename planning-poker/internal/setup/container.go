@@ -19,38 +19,53 @@ type (
 	APIContainer struct {
 		APIs []http.API
 	}
+	InfraContainer struct {
+		RedisClient *redislib.Client
+	}
 
 	Container struct {
 		Hub         domain.Hub
 		LockManager lock.LockManager
 		Usecases    usecase.UseCasesFacade
 		API         APIContainer
+		Infra       InfraContainer
 	}
 )
 
 func NewContainer(cfg *config.Config) *Container {
 	ctx := context.Background()
-
-	redisClient, err := NewRedisClient(cfg)
+	infra, err := newInfraContainer(cfg)
 	if err != nil {
-		panic("Failed to initialize Redis client (check redis configuration and connectivity): " + err.Error())
+		panic("Failed to initialize infrastructure: " + err.Error())
 	}
 
-	hub, err := redis.NewRedisHub(ctx, redisClient)
+	hub, err := redis.NewRedisHub(ctx, infra.RedisClient)
 	if err != nil {
 		panic("Failed to initialize Redis hub (ensure Redis is running and accessible): " + err.Error())
 	}
 
-	lockManager := infralock.NewRedisLockManager(redisClient)
+	lockManager := infralock.NewRedisLockManager(infra.RedisClient)
 	planningPokerMetric := metric.NewPlanningPokerMetric()
 	usecases := newUsecases(hub, lockManager, planningPokerMetric)
 
 	return &Container{
 		Hub:         hub,
 		LockManager: lockManager,
-		API:         newAPIContainer(cfg, hub, usecases, hub, redisClient),
+		API:         newAPIContainer(cfg, hub, usecases, hub, infra.RedisClient),
 		Usecases:    usecases,
+		Infra:       infra,
 	}
+}
+
+func newInfraContainer(cfg *config.Config) (InfraContainer, error) {
+	redisClient, err := NewRedisClient(cfg)
+	if err != nil {
+		return InfraContainer{}, err
+	}
+
+	return InfraContainer{
+		RedisClient: redisClient,
+	}, nil
 }
 
 func newAPIContainer(cfg *config.Config, hub domain.Hub, usecases usecase.UseCasesFacade, adminHub domain.AdminHub, redisClient *redislib.Client) APIContainer {
