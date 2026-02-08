@@ -144,7 +144,7 @@ func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) 
 
 	roomID := bus.RoomID()
 	if roomID == "" {
-		h.logger.Warn(ctx, fmt.Sprintf("Bus for client %s has empty RoomID", clientID))
+		h.logger.Warn(ctx, "Bus for client %s has empty RoomID", clientID)
 		return
 	}
 	if _, exists := h.roomSubs.Load(roomID); !exists {
@@ -341,7 +341,7 @@ func (h *RedisHub) forwardToLocalClients(ctx context.Context, roomID string, mes
 			continue
 		}
 		if err := bus.Send(ctx, message); err != nil {
-			h.logger.Warn(ctx, fmt.Sprintf("Failed to send message to client %s: %v", client.ID, err))
+			h.logger.Warn(ctx, "Failed to send message to client %s: %v", client.ID, err)
 		}
 	}
 }

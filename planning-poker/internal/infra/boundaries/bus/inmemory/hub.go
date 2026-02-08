@@ -41,7 +41,7 @@ func (h *InMemoryHub) NewRoom(ctx context.Context, owner string) *entity.Room {
 	return room.(*entity.Room)
 }
 
-func (h *InMemoryHub) GetRoom(ctx context.Context, roomID string) (*entity.Room, bool) {
+func (h *InMemoryHub) GetRoom(_ context.Context, roomID string) (*entity.Room, bool) {
 	room, ok := h.Rooms[roomID]
 	return room, ok
 }
@@ -59,7 +59,7 @@ func (h *InMemoryHub) AddClient(c *entity.Client) {
 	h.Clients[c.ID] = c
 }
 
-func (h *InMemoryHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) {
+func (h *InMemoryHub) AddBus(_ context.Context, clientID string, bus domain.Bus) {
 	h.Buses[clientID] = bus
 }
 
@@ -68,7 +68,7 @@ func (h *InMemoryHub) GetBus(clientID string) (domain.Bus, bool) {
 	return bus, ok
 }
 
-func (h *InMemoryHub) RemoveBus(ctx context.Context, clientID string) {
+func (h *InMemoryHub) RemoveBus(_ context.Context, clientID string) {
 	delete(h.Buses, clientID)
 }
 
@@ -93,7 +93,7 @@ func (h *InMemoryHub) RemoveClient(ctx context.Context, clientID string, roomID 
 	return err
 }
 
-func (h *InMemoryHub) SaveRoom(ctx context.Context, room *entity.Room) error {
+func (h *InMemoryHub) SaveRoom(_ context.Context, room *entity.Room) error {
 	// In-memory hub doesn't need to persist
 	return nil
 }
