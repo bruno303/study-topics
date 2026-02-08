@@ -151,7 +151,7 @@ func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) 
 		sub := h.client.Subscribe(ctx, pubsubChannel+roomID)
 		h.roomSubs.Store(roomID, sub)
 		go h.listenToRoomPubSub(ctx, roomID, sub)
-		h.logger.Info(ctx, "Subscribed to pub/sub for room", roomID)
+		h.logger.Info(ctx, "Subscribed to pub/sub for room %s", roomID)
 	}
 }
 
@@ -186,7 +186,7 @@ func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 				h.roomSubs.Delete(roomID)
 				go func() {
 					_ = sub.Close()
-					h.logger.Info(ctx, "Unsubscribed from pub/sub for room", roomID)
+					h.logger.Info(ctx, "Unsubscribed from pub/sub for room %s", roomID)
 				}()
 			}
 		}
@@ -197,9 +197,10 @@ func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *r
 	ch := sub.Channel()
 	for {
 		select {
-		case msg := <-ch:
-			if msg == nil {
-				continue
+		case msg, ok := <-ch:
+			if !ok {
+				h.logger.Info(ctx, "Pub/Sub channel closed for room %s", roomID)
+				return
 			}
 			var broadcastMsg BroadcastMessage
 			if err := json.Unmarshal([]byte(msg.Payload), &broadcastMsg); err != nil {
@@ -208,7 +209,7 @@ func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *r
 			}
 			h.forwardToLocalClients(ctx, broadcastMsg.RoomID, broadcastMsg.Payload)
 		case <-h.closeCh:
-			h.logger.Info(ctx, "Stopping pub/sub listener for room", roomID)
+			h.logger.Info(ctx, "Stopping pub/sub listener for room %s", roomID)
 			return
 		}
 	}
