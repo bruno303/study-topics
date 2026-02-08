@@ -26,13 +26,14 @@ const (
 
 type (
 	RedisHub struct {
-		client   *redis.Client
-		logger   log.Logger
-		buses    map[string]domain.Bus
-		busMux   sync.RWMutex
-		pubsub   *redis.PubSub
-		closeCh  chan struct{}
-		roomSubs sync.Map
+		client           *redis.Client
+		logger           log.Logger
+		buses            map[string]domain.Bus
+		busMux           sync.RWMutex
+		pubsub           *redis.PubSub
+		closeCh          chan struct{}
+		roomSubs         sync.Map
+		roomClientCounts map[string]int
 	}
 	BroadcastMessage struct {
 		RoomID  string `json:"roomId"`
@@ -47,10 +48,11 @@ var (
 
 func NewRedisHub(ctx context.Context, redisClient *redis.Client) (*RedisHub, error) {
 	hub := &RedisHub{
-		client:  redisClient,
-		logger:  log.NewLogger("redis.hub"),
-		buses:   make(map[string]domain.Bus),
-		closeCh: make(chan struct{}),
+		client:           redisClient,
+		logger:           log.NewLogger("redis.hub"),
+		buses:            make(map[string]domain.Bus),
+		closeCh:          make(chan struct{}),
+		roomClientCounts: make(map[string]int),
 	}
 	hub.logger.Info(ctx, "RedisHub initialized")
 	return hub, nil
@@ -147,6 +149,7 @@ func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) 
 		h.logger.Warn(ctx, "Bus for client %s has empty RoomID", clientID)
 		return
 	}
+	h.roomClientCounts[roomID]++
 	if _, exists := h.roomSubs.Load(roomID); !exists {
 		sub := h.client.Subscribe(ctx, pubsubChannel+roomID)
 		h.roomSubs.Store(roomID, sub)
@@ -173,14 +176,12 @@ func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 	delete(h.buses, clientID)
 
 	if roomID != "" {
-		last := true
-		for _, b := range h.buses {
-			if b.RoomID() == roomID {
-				last = false
-				break
-			}
+		if h.roomClientCounts[roomID] > 0 {
+			h.roomClientCounts[roomID]--
 		}
+		last := h.roomClientCounts[roomID] == 0
 		if last {
+			delete(h.roomClientCounts, roomID)
 			if subVal, exists := h.roomSubs.Load(roomID); exists {
 				sub := subVal.(*redis.PubSub)
 				h.roomSubs.Delete(roomID)

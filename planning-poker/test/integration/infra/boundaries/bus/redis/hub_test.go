@@ -13,11 +13,15 @@ import (
 
 func setupRedisClient() *redis.Client {
 	addr := os.Getenv("REDIS_HOST")
+	port := os.Getenv("REDIS_PORT")
+	if port == "" {
+		port = "6379"
+	}
 	if addr == "" {
-		addr = "localhost:6379"
+		addr = "localhost"
 	}
 	return redis.NewClient(&redis.Options{
-		Addr: addr,
+		Addr: addr + ":" + port,
 		DB:   1,
 	})
 }
