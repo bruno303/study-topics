@@ -16,6 +16,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type RedisClient interface {
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Publish(ctx context.Context, channel string, message any) *redis.IntCmd
+	Subscribe(ctx context.Context, channels ...string) *redis.PubSub
+	Scan(ctx context.Context, count uint64, match string, cursor int64) *redis.ScanCmd
+}
+
 const (
 	roomKeyPrefix   = "planning-poker:room:"
 	clientKeyPrefix = "planning-poker:client:"
@@ -26,7 +35,7 @@ const (
 
 type (
 	RedisHub struct {
-		client           *redis.Client
+		client           RedisClient
 		logger           log.Logger
 		buses            map[string]domain.Bus
 		busMux           sync.RWMutex
@@ -46,7 +55,7 @@ var (
 	_ domain.AdminHub = (*RedisHub)(nil)
 )
 
-func NewRedisHub(ctx context.Context, redisClient *redis.Client) (*RedisHub, error) {
+func NewRedisHub(ctx context.Context, redisClient RedisClient) (*RedisHub, error) {
 	hub := &RedisHub{
 		client:           redisClient,
 		logger:           log.NewLogger("redis.hub"),
