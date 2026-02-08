@@ -36,6 +36,7 @@ type (
 		logger log.Logger
 		cfg    WebSocketConfig
 		calls  map[string]useCaseCall
+		roomID string
 	}
 
 	WebSocketConfig struct {
@@ -130,7 +131,21 @@ func NewWebsocketBus(
 		cfg:    websocketCfg,
 		logger: log.NewLogger("websocket.client"),
 		calls:  mapUsecases(usecases),
+		roomID: hubRoomID(hub, id),
 	}
+}
+
+func hubRoomID(hub domain.Hub, clientID string) string {
+	if c, ok := hub.FindClientByID(clientID); ok {
+		if c.Room() != nil {
+			return c.Room().ID
+		}
+	}
+	return ""
+}
+
+func (c *WebsocketBus) RoomID() string {
+	return c.roomID
 }
 
 func (c *WebsocketBus) Close() error {
