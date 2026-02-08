@@ -142,8 +142,11 @@ func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) 
 	defer h.busMux.Unlock()
 	h.buses[clientID] = bus
 
-	// Subscribe to room pub-sub if this is the first client for the room
 	roomID := bus.RoomID()
+	if roomID == "" {
+		h.logger.Warn(ctx, fmt.Sprintf("Bus for client %s has empty RoomID", clientID))
+		return
+	}
 	if _, exists := h.roomSubs.Load(roomID); !exists {
 		sub := h.client.Subscribe(ctx, pubsubChannel+roomID)
 		h.roomSubs.Store(roomID, sub)
@@ -169,7 +172,6 @@ func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 	}
 	delete(h.buses, clientID)
 
-	// Unsubscribe from room pub-sub if this was the last client for the room
 	if roomID != "" {
 		last := true
 		for _, b := range h.buses {
@@ -181,9 +183,11 @@ func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 		if last {
 			if subVal, exists := h.roomSubs.Load(roomID); exists {
 				sub := subVal.(*redis.PubSub)
-				_ = sub.Close()
 				h.roomSubs.Delete(roomID)
-				h.logger.Info(ctx, "Unsubscribed from pub/sub for room", roomID)
+				go func() {
+					_ = sub.Close()
+					h.logger.Info(ctx, "Unsubscribed from pub/sub for room", roomID)
+				}()
 			}
 		}
 	}
