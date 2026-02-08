@@ -32,6 +32,7 @@ type (
 		busMux  sync.RWMutex
 		pubsub  *redis.PubSub
 		closeCh chan struct{}
+		roomSubs sync.Map
 	}
 	BroadcastMessage struct {
 		RoomID  string `json:"roomId"`
@@ -51,10 +52,7 @@ func NewRedisHub(ctx context.Context, redisClient *redis.Client) (*RedisHub, err
 		buses:   make(map[string]domain.Bus),
 		closeCh: make(chan struct{}),
 	}
-	hub.pubsub = redisClient.PSubscribe(ctx, pubsubChannel+"*")
-	go hub.listenToPubSub(ctx)
-
-	hub.logger.Info(ctx, "RedisHub initialized and listening to pub/sub")
+	hub.logger.Info(ctx, "RedisHub initialized")
 	return hub, nil
 }
 
@@ -139,10 +137,19 @@ func (h *RedisHub) AddClient(c *entity.Client) {
 	}
 }
 
-func (h *RedisHub) AddBus(clientID string, bus domain.Bus) {
+func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) {
 	h.busMux.Lock()
 	defer h.busMux.Unlock()
 	h.buses[clientID] = bus
+
+	// Subscribe to room pub-sub if this is the first client for the room
+	roomID := bus.RoomID()
+	if _, exists := h.roomSubs.Load(roomID); !exists {
+		sub := h.client.Subscribe(ctx, pubsubChannel+roomID)
+		h.roomSubs.Store(roomID, sub)
+		go h.listenToRoomPubSub(ctx, roomID, sub)
+		h.logger.Info(ctx, "Subscribed to pub/sub for room", roomID)
+	}
 }
 
 func (h *RedisHub) GetBus(clientID string) (domain.Bus, bool) {
@@ -152,10 +159,55 @@ func (h *RedisHub) GetBus(clientID string) (domain.Bus, bool) {
 	return bus, ok
 }
 
-func (h *RedisHub) RemoveBus(clientID string) {
+func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 	h.busMux.Lock()
 	defer h.busMux.Unlock()
+	bus, ok := h.buses[clientID]
+	var roomID string
+	if ok {
+		roomID = bus.RoomID()
+	}
 	delete(h.buses, clientID)
+
+	// Unsubscribe from room pub-sub if this was the last client for the room
+	if roomID != "" {
+		last := true
+		for _, b := range h.buses {
+			if b.RoomID() == roomID {
+				last = false
+				break
+			}
+		}
+		if last {
+			if subVal, exists := h.roomSubs.Load(roomID); exists {
+				sub := subVal.(*redis.PubSub)
+				_ = sub.Close()
+				h.roomSubs.Delete(roomID)
+				h.logger.Info(ctx, "Unsubscribed from pub/sub for room", roomID)
+			}
+		}
+	}
+
+func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *redis.PubSub) {
+	ch := sub.Channel()
+	for {
+		select {
+		case msg := <-ch:
+			if msg == nil {
+				continue
+			}
+			var broadcastMsg BroadcastMessage
+			if err := json.Unmarshal([]byte(msg.Payload), &broadcastMsg); err != nil {
+				h.logger.Error(ctx, "Failed to unmarshal broadcast message", err)
+				continue
+			}
+			h.forwardToLocalClients(ctx, broadcastMsg.RoomID, broadcastMsg.Payload)
+		case <-h.closeCh:
+			h.logger.Info(ctx, "Stopping pub/sub listener for room", roomID)
+			return
+		}
+	}
+}
 }
 
 func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID string) error {
@@ -165,7 +217,7 @@ func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID str
 			h.logger.Error(ctx, fmt.Sprintf("Failed to delete client %s from Redis", clientID), err)
 		}
 
-		h.RemoveBus(clientID)
+				h.RemoveBus(ctx, clientID)
 
 		room, ok := h.GetRoom(ctx, roomID)
 		if !ok {
