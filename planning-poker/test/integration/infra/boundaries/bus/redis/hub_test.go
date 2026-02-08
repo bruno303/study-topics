@@ -80,3 +80,39 @@ func TestIntegration_RoomTTLExpiry(t *testing.T) {
 	_, ok := hub.GetRoom(context.Background(), room.ID)
 	assert.False(t, ok)
 }
+
+func TestIntegration_GetBus(t *testing.T) {
+	client := setupRedisClient()
+	client.FlushDB(context.Background())
+
+	hub, err := redishub.NewRedisHub(context.Background(), client)
+	assert.NoError(t, err)
+
+	room := hub.NewRoom(context.Background(), "owner-getbus")
+	assert.NotNil(t, room)
+
+	client1 := room.NewClient("client-getbus-1")
+	room.Clients.Add(client1)
+	client1.WithRoom(room)
+	hub.AddClient(client1)
+
+	bus := &mockBus{roomID: room.ID}
+	hub.AddBus(context.Background(), client1.ID, bus)
+
+	foundBus, ok := hub.GetBus(client1.ID)
+	assert.True(t, ok)
+	assert.Equal(t, bus, foundBus)
+
+	_, ok = hub.GetBus("nonexistent-client")
+	assert.False(t, ok)
+}
+
+// mockBus implements domain.Bus minimally for test
+type mockBus struct {
+	roomID string
+}
+
+func (m *mockBus) RoomID() string                          { return m.roomID }
+func (m *mockBus) Send(ctx context.Context, msg any) error { return nil }
+func (m *mockBus) Close() error                            { return nil }
+func (m *mockBus) Listen(ctx context.Context)              {}
