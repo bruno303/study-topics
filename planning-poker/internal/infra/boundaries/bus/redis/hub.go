@@ -26,12 +26,12 @@ const (
 
 type (
 	RedisHub struct {
-		client  *redis.Client
-		logger  log.Logger
-		buses   map[string]domain.Bus
-		busMux  sync.RWMutex
-		pubsub  *redis.PubSub
-		closeCh chan struct{}
+		client   *redis.Client
+		logger   log.Logger
+		buses    map[string]domain.Bus
+		busMux   sync.RWMutex
+		pubsub   *redis.PubSub
+		closeCh  chan struct{}
 		roomSubs sync.Map
 	}
 	BroadcastMessage struct {
@@ -187,6 +187,7 @@ func (h *RedisHub) RemoveBus(ctx context.Context, clientID string) {
 			}
 		}
 	}
+}
 
 func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *redis.PubSub) {
 	ch := sub.Channel()
@@ -208,7 +209,6 @@ func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *r
 		}
 	}
 }
-}
 
 func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID string) error {
 	_, err := trace.Trace(ctx, trace.NameConfig("RedisHub", "RemoveClient"), func(ctx context.Context) (any, error) {
@@ -217,7 +217,7 @@ func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID str
 			h.logger.Error(ctx, fmt.Sprintf("Failed to delete client %s from Redis", clientID), err)
 		}
 
-				h.RemoveBus(ctx, clientID)
+		h.RemoveBus(ctx, clientID)
 
 		room, ok := h.GetRoom(ctx, roomID)
 		if !ok {
@@ -319,31 +319,6 @@ func (h *RedisHub) loadRoom(ctx context.Context, roomID string) (*entity.Room, e
 	}
 
 	return room, nil
-}
-
-func (h *RedisHub) listenToPubSub(ctx context.Context) {
-	ch := h.pubsub.Channel()
-
-	for {
-		select {
-		case msg := <-ch:
-			if msg == nil {
-				continue
-			}
-
-			var broadcastMsg BroadcastMessage
-			if err := json.Unmarshal([]byte(msg.Payload), &broadcastMsg); err != nil {
-				h.logger.Error(ctx, "Failed to unmarshal broadcast message", err)
-				continue
-			}
-
-			h.forwardToLocalClients(ctx, broadcastMsg.RoomID, broadcastMsg.Payload)
-
-		case <-h.closeCh:
-			h.logger.Info(ctx, "Stopping pub/sub listener")
-			return
-		}
-	}
 }
 
 func (h *RedisHub) forwardToLocalClients(ctx context.Context, roomID string, message any) {
