@@ -80,6 +80,10 @@ func (h *RedisHub) NewRoom(ctx context.Context, owner string) *entity.Room {
 	return room.(*entity.Room)
 }
 
+func (h *RedisHub) GetClientsOfRoom(roomID string) int {
+	return h.roomClientCounts[roomID]
+}
+
 func (h *RedisHub) GetRoom(ctx context.Context, roomID string) (*entity.Room, bool) {
 	room, err := h.loadRoom(ctx, roomID)
 	if err != nil {

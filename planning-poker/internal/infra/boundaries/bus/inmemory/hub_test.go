@@ -387,3 +387,26 @@ func TestInterfaceCompliance(t *testing.T) {
 	var _ domain.Hub = (*InMemoryHub)(nil)
 	var _ domain.AdminHub = (*InMemoryHub)(nil)
 }
+
+func TestSaveRoom(t *testing.T) {
+	ctx := context.Background()
+	hub := NewHub()
+	owner := "owner-save"
+	room := hub.NewRoom(ctx, owner)
+
+	// Change some state in the room
+	room.Reveal = true
+	err := hub.SaveRoom(ctx, room)
+	if err != nil {
+		t.Fatalf("expected no error from SaveRoom, got %v", err)
+	}
+
+	// Retrieve the room and check the state
+	got, ok := hub.GetRoom(ctx, room.ID)
+	if !ok {
+		t.Fatalf("expected to find room after SaveRoom, got not found")
+	}
+	if !got.Reveal {
+		t.Errorf("expected room.Reveal to be true, got false")
+	}
+}
