@@ -13,12 +13,15 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState('');
   const myParams = React.use(params);
+  const nameInputRef = React.useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (myParams.roomId) {
       setRoomCode(myParams.roomId);
     }
   }, []);
+
+  useEffect(() => { nameInputRef.current?.focus(); }, []);
 
   // Mock API call to create a new room
   const createRoom = async (userName: string) => {
@@ -133,6 +136,7 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
           <div style={styles.inputGroup}>
             <label style={styles.label}>Your Name</label>
             <input
+              ref={nameInputRef}
               type="text"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
