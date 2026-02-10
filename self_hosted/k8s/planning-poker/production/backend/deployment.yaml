@@ -7,7 +7,7 @@ metadata:
     app: planning-poker-backend
     env: production
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: planning-poker-backend
@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: planning-poker-backend
-        image:  bruno303/planning-poker-backend:0.0.27
+        image:  bruno303/planning-poker-backend:0.0.29
         env:
         - name: API_TRACING_ENABLED
           value: "true"
@@ -34,6 +34,14 @@ spec:
           value: https://planning-poker.bsoapp.net
         - name: ENVIRONMENT
           value: production
+        - name: REDIS_HOST
+          value: planning-poker-redis.production.svc.cluster.local
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_DB
+          value: "0"
+        - name: REDIS_PASSWORD
+          value: ""
         - name: ADMIN_API_KEY
           valueFrom:
             secretKeyRef:

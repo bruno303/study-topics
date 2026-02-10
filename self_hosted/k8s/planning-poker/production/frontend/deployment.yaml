@@ -7,7 +7,7 @@ metadata:
     app: planning-poker-frontend
     env: production
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: planning-poker-frontend
