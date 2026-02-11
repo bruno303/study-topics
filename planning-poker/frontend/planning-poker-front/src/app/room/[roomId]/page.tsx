@@ -130,11 +130,11 @@ export default function PlanningPoker() {
     };
 
     socket.current.onopen = () => {
-      pushSuccess('Connected with success');
+      pushSuccess('Connected');
     };
 
     socket.current.onclose = () => {
-      pushError('Disconnected from websocket');
+      pushError('Disconnected');
     };
 
     socket.current.onerror = () => {

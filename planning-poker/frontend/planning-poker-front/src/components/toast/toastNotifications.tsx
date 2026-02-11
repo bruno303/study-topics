@@ -1,12 +1,12 @@
 'use client'
 
 import { CheckCircle, X, XCircle } from 'lucide-react';
-import styles from './toastNotifications.module.css';
 import { useEffect, useState } from 'react';
+import styles from './toastNotifications.module.css';
 
-type ToastVariant = 'error' | 'success';
+export type ToastVariant = 'error' | 'success';
 
-type Toast = {
+export type Toast = {
   id: string;
   message: string;
   variant: ToastVariant;
@@ -50,6 +50,7 @@ export default function ToastNotifications({ toasts, onDismiss }: Props) {
           {iconFor(toast.variant)}
           <div className={styles.message}>{toast.message}</div>
           <button
+            type="button"
             aria-label="Dismiss notification"
             className={`${styles.close} ${prefersLight ? styles.closeLight : ''}`}
             onClick={() => onDismiss(toast.id)}

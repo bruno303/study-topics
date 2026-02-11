@@ -1,15 +1,7 @@
 'use client'
 
+import ToastNotifications, { Toast, ToastVariant } from '@/components/toast/toastNotifications';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import ToastNotifications from '@/components/toast/toastNotifications';
-
-type ToastVariant = 'error' | 'success';
-
-type Toast = {
-  id: string;
-  message: string;
-  variant: ToastVariant;
-};
 
 type ToastContextType = {
   pushError: (message: string) => void;
@@ -25,8 +17,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    if (timeouts.current[id]) {
-      clearTimeout(timeouts.current[id]);
+    const timeoutId = timeouts.current[id];
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
       delete timeouts.current[id];
     }
   }, []);

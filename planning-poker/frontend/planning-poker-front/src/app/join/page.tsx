@@ -53,7 +53,7 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
 
   const handleCreateRoom = async () => {
     if (!userName.trim()) {
-      pushError('Please enter your name');
+      pushError('Name not informed');
       return;
     }
 
@@ -69,7 +69,7 @@ export default function PlanningPokerHome({ params }: { params: Promise<{ roomId
 
   const handleJoinRoom = async () => {
     if (!userName.trim()) {
-      pushError('Name is required');
+      pushError('Name not informed');
       return;
     }
 
