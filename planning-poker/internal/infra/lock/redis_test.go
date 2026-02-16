@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -57,7 +58,7 @@ func TestRedisLockManager_WithLock_Success(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	key := "test-lock-1"
+	key := "test-lock-1" + uuid.NewString()
 	executed := false
 
 	result, err := manager.WithLock(ctx, key, func(ctx context.Context) (any, error) {
@@ -88,7 +89,7 @@ func TestRedisLockManager_WithLock_FunctionError(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	key := "test-lock-2"
+	key := "test-lock-2" + uuid.NewString()
 	expectedError := errors.New("function error")
 
 	_, err := manager.WithLock(ctx, key, func(ctx context.Context) (any, error) {
@@ -115,7 +116,7 @@ func TestRedisLockManager_ExecuteWithLock_Success(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	key := "test-lock-3"
+	key := "test-lock-3" + uuid.NewString()
 	executed := false
 
 	err := manager.ExecuteWithLock(ctx, key, func(ctx context.Context) error {
@@ -143,7 +144,7 @@ func TestRedisLockManager_ExecuteWithLock_FunctionError(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	key := "test-lock-4"
+	key := "test-lock-4" + uuid.NewString()
 	expectedError := errors.New("execution error")
 
 	err := manager.ExecuteWithLock(ctx, key, func(ctx context.Context) error {
@@ -170,8 +171,8 @@ func TestRedisLockManager_ConcurrentAccess(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	key := "test-lock-concurrent"
-	
+	key := "test-lock-concurrent" + uuid.NewString()
+
 	var counter int
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -187,13 +188,13 @@ func TestRedisLockManager_ConcurrentAccess(t *testing.T) {
 				mu.Lock()
 				temp := counter
 				mu.Unlock()
-				
+
 				time.Sleep(10 * time.Millisecond) // Simulate work
-				
+
 				mu.Lock()
 				counter = temp + 1
 				mu.Unlock()
-				
+
 				return nil
 			})
 		}()
@@ -212,9 +213,9 @@ func TestRedisLockManager_ContextCancellation(t *testing.T) {
 
 	// First, acquire a lock that we won't release
 	ctx := context.Background()
-	key := "test-lock-cancel"
+	key := "test-lock-cancel" + uuid.NewString()
 	lockKey := lockKeyPrefix + key
-	
+
 	client.Set(ctx, lockKey, "held", 30*time.Second)
 
 	// Now try to acquire with a context that will be cancelled
@@ -246,7 +247,7 @@ func TestRedisLockManager_LockExpiration(t *testing.T) {
 	manager.lockTimeout = 100 * time.Millisecond
 
 	ctx := context.Background()
-	key := "test-lock-expiration"
+	key := "test-lock-expiration" + uuid.NewString()
 
 	err := manager.ExecuteWithLock(ctx, key, func(ctx context.Context) error {
 		// Sleep longer than lock timeout

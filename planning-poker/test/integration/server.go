@@ -11,6 +11,7 @@ import (
 	"planning-poker/internal/infra/boundaries/bus/redis"
 	"planning-poker/internal/setup"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -48,6 +49,7 @@ func (ts *TestServer) Close() {
 	}
 
 	ts.cleanRedis()
+	time.Sleep(500 * time.Millisecond)
 }
 
 func (ts *TestServer) cleanRedis() {

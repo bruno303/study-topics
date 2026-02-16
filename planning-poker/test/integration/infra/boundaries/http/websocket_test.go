@@ -90,6 +90,12 @@ func sendMessage(t *testing.T, conn *websocket.Conn, msg map[string]any) {
 	}
 }
 
+// Helper to close connection and wait for cleanup
+func closeAndWait(conn *websocket.Conn) {
+	_ = conn.Close()
+	time.Sleep(500 * time.Millisecond)
+}
+
 // Helper to extract client ID from first message
 func getClientID(t *testing.T, conn *websocket.Conn) string {
 	t.Helper()
@@ -120,7 +126,7 @@ func TestWebSocketConnection(t *testing.T) {
 	t.Run("successful connection to existing room", func(t *testing.T) {
 		roomID := createRoom(t, ts)
 		conn := connectWebSocket(t, ts, roomID)
-		defer conn.Close()
+		defer closeAndWait(conn)
 
 		// Should receive update-client-id message
 		msg1 := receiveMessage(t, conn, 2*time.Second)
@@ -142,7 +148,7 @@ func TestWebSocketConnection(t *testing.T) {
 
 		conn, resp, err := dialer.Dial(wsURL, nil)
 		if err == nil {
-			defer conn.Close()
+			defer closeAndWait(conn)
 		}
 
 		if err == nil && resp.StatusCode == http.StatusOK {
@@ -158,7 +164,7 @@ func TestWebSocketUpdateName(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -197,12 +203,12 @@ func TestWebSocketVoting(t *testing.T) {
 
 	// Connect first client (owner)
 	conn1 := connectWebSocket(t, ts, roomID)
-	defer conn1.Close()
+	defer closeAndWait(conn1)
 	clientID1 := getClientID(t, conn1)
 
 	// Connect second client
 	conn2 := connectWebSocket(t, ts, roomID)
-	defer conn2.Close()
+	defer closeAndWait(conn2)
 	clientID2 := getClientID(t, conn2)
 	// Client1 receives broadcast when client2 joins
 	_ = receiveMessage(t, conn1, 2*time.Second)
@@ -266,7 +272,7 @@ func TestWebSocketRevealVotes(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -307,7 +313,7 @@ func TestWebSocketReset(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -350,13 +356,13 @@ func TestWebSocketToggleSpectator(t *testing.T) {
 	// Connect owner
 	conn1 := connectWebSocket(t, ts, roomID)
 
-	defer conn1.Close()
+	defer closeAndWait(conn1)
 	ownerID := getClientID(t, conn1)
 
 	// Connect second client
 	conn2 := connectWebSocket(t, ts, roomID)
 
-	defer conn2.Close()
+	defer closeAndWait(conn2)
 	clientID2 := getClientID(t, conn2)
 	// Client1 receives broadcast when client2 joins
 	_ = receiveMessage(t, conn1, 2*time.Second)
@@ -402,13 +408,13 @@ func TestWebSocketToggleOwner(t *testing.T) {
 	// Connect owner
 	conn1 := connectWebSocket(t, ts, roomID)
 
-	defer conn1.Close()
+	defer closeAndWait(conn1)
 	ownerID := getClientID(t, conn1)
 
 	// Connect second client
 	conn2 := connectWebSocket(t, ts, roomID)
 
-	defer conn2.Close()
+	defer closeAndWait(conn2)
 	clientID2 := getClientID(t, conn2)
 	// Client1 receives broadcast when client2 joins
 	_ = receiveMessage(t, conn1, 2*time.Second)
@@ -452,7 +458,7 @@ func TestWebSocketUpdateStory(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -478,7 +484,7 @@ func TestWebSocketNewVoting(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -535,7 +541,7 @@ func TestWebSocketVoteAgain(t *testing.T) {
 	roomID := createRoom(t, ts)
 	conn := connectWebSocket(t, ts, roomID)
 
-	defer conn.Close()
+	defer closeAndWait(conn)
 
 	clientID := getClientID(t, conn)
 
@@ -579,17 +585,17 @@ func TestWebSocketMultipleClients(t *testing.T) {
 
 	// Connect 3 clients
 	conn1 := connectWebSocket(t, ts, roomID)
-	defer conn1.Close()
+	defer closeAndWait(conn1)
 	clientID1 := getClientID(t, conn1)
 
 	conn2 := connectWebSocket(t, ts, roomID)
-	defer conn2.Close()
+	defer closeAndWait(conn2)
 	clientID2 := getClientID(t, conn2)
 	// Client1 receives broadcast when client2 joins
 	_ = receiveMessage(t, conn1, 2*time.Second)
 
 	conn3 := connectWebSocket(t, ts, roomID)
-	defer conn3.Close()
+	defer closeAndWait(conn3)
 	clientID3 := getClientID(t, conn3)
 	// Client1 and Client2 receive broadcasts when client3 joins
 	_ = receiveMessage(t, conn1, 2*time.Second)
