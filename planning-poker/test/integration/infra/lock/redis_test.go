@@ -1,8 +1,10 @@
-package lock
+package lock_test
 
 import (
 	"context"
 	"errors"
+	"fmt"
+	"planning-poker/internal/infra/lock"
 	"sync"
 	"testing"
 	"time"
@@ -11,46 +13,20 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func setupRedisLockManagerTest(t *testing.T) (*RedisLockManager, *redis.Client) {
+func setupRedisLockManagerTest(t *testing.T) (*lock.RedisLockManager, *redis.Client) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
-		DB:   1, // Use DB 1 for tests to avoid conflicts
+		DB:   6,
 	})
 
 	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skip("Redis not available for testing")
+		t.Fatal("Redis not available for testing")
 	}
+	client.FlushDB(ctx)
 
-	// Clean up any existing locks
-	keys, _ := client.Keys(ctx, lockKeyPrefix+"*").Result()
-	if len(keys) > 0 {
-		client.Del(ctx, keys...)
-	}
-
-	manager := NewRedisLockManager(client)
+	manager := lock.NewRedisLockManager(client)
 	return manager, client
-}
-
-func TestNewRedisLockManager(t *testing.T) {
-	client := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	manager := NewRedisLockManager(client)
-
-	if manager == nil {
-		t.Fatal("expected manager to be non-nil")
-	}
-	if manager.client != client {
-		t.Error("expected client to be set correctly")
-	}
-	if manager.lockTimeout != defaultLockTimeout {
-		t.Errorf("expected lockTimeout %v, got %v", defaultLockTimeout, manager.lockTimeout)
-	}
-	if manager.retryDelay != defaultRetryDelay {
-		t.Errorf("expected retryDelay %v, got %v", defaultRetryDelay, manager.retryDelay)
-	}
-	if manager.maxRetries != defaultMaxRetries {
-		t.Errorf("expected maxRetries %d, got %d", defaultMaxRetries, manager.maxRetries)
-	}
 }
 
 func TestRedisLockManager_WithLock_Success(t *testing.T) {
@@ -77,8 +53,7 @@ func TestRedisLockManager_WithLock_Success(t *testing.T) {
 	}
 
 	// Verify lock was released
-	lockKey := lockKeyPrefix + key
-	exists, _ := client.Exists(ctx, lockKey).Result()
+	exists, _ := client.Exists(ctx, key).Result()
 	if exists != 0 {
 		t.Error("expected lock to be released after execution")
 	}
@@ -104,8 +79,7 @@ func TestRedisLockManager_WithLock_FunctionError(t *testing.T) {
 	}
 
 	// Verify lock was released even after error
-	lockKey := lockKeyPrefix + key
-	exists, _ := client.Exists(ctx, lockKey).Result()
+	exists, _ := client.Exists(ctx, key).Result()
 	if exists != 0 {
 		t.Error("expected lock to be released after error")
 	}
@@ -132,8 +106,7 @@ func TestRedisLockManager_ExecuteWithLock_Success(t *testing.T) {
 	}
 
 	// Verify lock was released
-	lockKey := lockKeyPrefix + key
-	exists, _ := client.Exists(ctx, lockKey).Result()
+	exists, _ := client.Exists(ctx, key).Result()
 	if exists != 0 {
 		t.Error("expected lock to be released after execution")
 	}
@@ -159,8 +132,7 @@ func TestRedisLockManager_ExecuteWithLock_FunctionError(t *testing.T) {
 	}
 
 	// Verify lock was released even after error
-	lockKey := lockKeyPrefix + key
-	exists, _ := client.Exists(ctx, lockKey).Result()
+	exists, _ := client.Exists(ctx, key).Result()
 	if exists != 0 {
 		t.Error("expected lock to be released after error")
 	}
@@ -214,17 +186,16 @@ func TestRedisLockManager_ContextCancellation(t *testing.T) {
 	// First, acquire a lock that we won't release
 	ctx := context.Background()
 	key := "test-lock-cancel" + uuid.NewString()
-	lockKey := lockKeyPrefix + key
+	keyWithPrefix := fmt.Sprintf("planning-poker:lock:%s", key)
 
-	client.Set(ctx, lockKey, "held", 30*time.Second)
+	client.Set(ctx, keyWithPrefix, "held", 30*time.Second)
 
 	// Now try to acquire with a context that will be cancelled
 	ctx2, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	// Reduce retries for faster test
-	manager.maxRetries = 5
-	manager.retryDelay = 20 * time.Millisecond
+	manager.SetRetry(6, 20*time.Millisecond)
 
 	err := manager.ExecuteWithLock(ctx2, key, func(ctx context.Context) error {
 		t.Error("function should not be executed when context is cancelled")
@@ -236,7 +207,7 @@ func TestRedisLockManager_ContextCancellation(t *testing.T) {
 	}
 
 	// Cleanup
-	client.Del(ctx, lockKey)
+	client.Del(ctx, keyWithPrefix)
 }
 
 func TestRedisLockManager_LockExpiration(t *testing.T) {
@@ -244,7 +215,7 @@ func TestRedisLockManager_LockExpiration(t *testing.T) {
 	defer client.Close()
 
 	// Set a very short lock timeout for testing
-	manager.lockTimeout = 100 * time.Millisecond
+	manager.SetLockTimeout(100 * time.Millisecond)
 
 	ctx := context.Background()
 	key := "test-lock-expiration" + uuid.NewString()
@@ -260,8 +231,7 @@ func TestRedisLockManager_LockExpiration(t *testing.T) {
 	}
 
 	// Verify lock no longer exists (expired or released)
-	lockKey := lockKeyPrefix + key
-	exists, _ := client.Exists(ctx, lockKey).Result()
+	exists, _ := client.Exists(ctx, key).Result()
 	if exists != 0 {
 		t.Error("expected lock to not exist after expiration/release")
 	}

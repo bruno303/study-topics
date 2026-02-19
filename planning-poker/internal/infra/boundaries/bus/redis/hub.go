@@ -94,7 +94,7 @@ func (h *RedisHub) Close() error {
 	return nil
 }
 
-func (h *RedisHub) NewRoom(ctx context.Context, owner string) *entity.Room {
+func (h *RedisHub) NewRoom(ctx context.Context) *entity.Room {
 	room, _ := trace.Trace(ctx, trace.NameConfig("RedisHub", "NewRoom"), func(ctx context.Context) (any, error) {
 		room := entity.NewRoom(clientcollection.New())
 		if err := h.saveRoom(ctx, room); err != nil {

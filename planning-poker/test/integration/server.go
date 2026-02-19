@@ -49,7 +49,7 @@ func (ts *TestServer) Close() {
 	}
 
 	ts.cleanRedis()
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (ts *TestServer) cleanRedis() {
