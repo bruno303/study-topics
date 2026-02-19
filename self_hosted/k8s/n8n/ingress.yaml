@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: homepage-ingress
+  name: n8n-ingress
   namespace: production
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
