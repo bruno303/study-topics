@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"planning-poker/internal/config"
 	"planning-poker/internal/infra/boundaries/bus/redis"
 	"planning-poker/internal/setup"
@@ -75,11 +74,7 @@ func (ts *TestServer) GetJSON(t *testing.T, path string, target any) (*http.Resp
 }
 
 func getTestConfig() *config.Config {
-	err := os.Setenv("CONFIG_FILE", "config-test.yaml")
-	if err != nil {
-		panic(fmt.Sprintf("failed to set CONFIG_FILE env: %v", err))
-	}
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadTestConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load test config: %v", err))
 	}
