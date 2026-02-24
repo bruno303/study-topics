@@ -2,8 +2,6 @@ package usecase
 
 import "context"
 
-//go:generate go tool mockgen -destination mocks.go -typed -package application . UseCase,UseCaseR
-
 type (
 	// Represents a Use Case that does not return a result.
 	UseCase[In any] interface {

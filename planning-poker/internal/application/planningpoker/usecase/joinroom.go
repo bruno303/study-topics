@@ -33,6 +33,13 @@ type (
 var _ UseCaseR[JoinRoomCommand, *JoinRoomOutput] = (*JoinRoomUseCase)(nil)
 
 func NewJoinRoomUseCase(hub domain.Hub, lockManager lock.LockManager, metric metric.PlanningPokerMetric) JoinRoomUseCase {
+	if hub == nil {
+		panic("hub cannot be nil")
+	}
+	if lockManager == nil {
+		panic("lockManager cannot be nil")
+	}
+
 	return JoinRoomUseCase{
 		hub:         hub,
 		lockManager: lockManager,

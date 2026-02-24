@@ -7,6 +7,8 @@ import (
 	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/infra/bus"
 
+	"time"
+
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -70,7 +72,7 @@ func (api *WebsocketAPI) Handle() http.Handler {
 			return
 		}
 
-		bus := api.busFactory.NewBus(bus.WebSocketBusFactoryInput{
+		wsBus := api.busFactory.NewBus(bus.WebSocketBusFactoryInput{
 			ClientID: createClientOutput.ClientID,
 			RoomID:   roomID,
 			Socket:   ws,
@@ -79,16 +81,18 @@ func (api *WebsocketAPI) Handle() http.Handler {
 		output, err := api.usecases.JoinRoom.Execute(r.Context(), usecase.JoinRoomCommand{
 			RoomID:   roomID,
 			SenderID: createClientOutput.ClientID,
-			Bus:      bus,
+			Bus:      wsBus,
 		})
 		if err != nil {
 			api.logger.Error(r.Context(), fmt.Sprintf("Error joining room %s", roomID), err)
-			SendJsonErrorMsg(w, http.StatusInternalServerError, fmt.Sprintf("Error joining room %s", roomID))
+			closeMsg := websocket.FormatCloseMessage(websocket.CloseInternalServerErr, fmt.Sprintf("Error joining room %s", roomID))
+			_ = ws.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(time.Second))
+			_ = ws.Close()
 			return
 		}
 
 		api.logger.Info(r.Context(), "New client connected: %v on room: %v", output.Client.ID, output.Room.ID)
 
-		bus.Listen(r.Context())
+		wsBus.Listen(r.Context())
 	})
 }

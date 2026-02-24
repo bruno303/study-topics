@@ -168,3 +168,31 @@ func TestJoinRoomUseCase_Execute_SendError(t *testing.T) {
 		t.Error("expected output to be nil when send fails")
 	}
 }
+
+func TestJoinRoomUseCase_Execute_NilDependencies(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMetric := metric.NewPlanningPokerMetric()
+
+	tests := []struct {
+		name string
+		hub  domain.Hub
+		lock lock.LockManager
+	}{
+		{name: "nil hub", hub: nil, lock: lock.NewMockLockManager(ctrl)},
+		{name: "nil lockmanager", hub: domain.NewMockHub(ctrl), lock: nil},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Fatal("expected panic, but none occurred")
+				}
+			}()
+
+			_ = NewJoinRoomUseCase(tc.hub, tc.lock, mockMetric)
+		})
+	}
+}

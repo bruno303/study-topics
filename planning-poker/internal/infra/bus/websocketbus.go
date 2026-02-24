@@ -88,7 +88,7 @@ func NewWebsocketBus(
 		cfg:      websocketCfg,
 		logger:   log.NewLogger("websocket.client"),
 		usecases: usecases,
-		calls:    mapUsecases(usecases),
+		calls:    mapUsecases(usecases, id, roomID),
 		roomID:   roomID,
 		done:     make(chan struct{}),
 	}
@@ -111,7 +111,7 @@ func (c *WebsocketBus) Close() error {
 }
 
 func (c *WebsocketBus) Send(ctx context.Context, message any) error {
-	_, err := trace.Trace(ctx, trace.NameConfig("WebsocketBus", "receive"), func(ctx context.Context) (any, error) {
+	_, err := trace.Trace(ctx, trace.NameConfig("WebsocketBus", "send"), func(ctx context.Context) (any, error) {
 		if c.closed.Load() {
 			c.logger.Warn(ctx, "Attempted to send message to closed connection for client %v", c.ID)
 			return nil, errors.New("connection closed")
@@ -155,7 +155,7 @@ func (c *WebsocketBus) Listen(ctx context.Context) {
 
 		eventType, ok := msg["type"].(string)
 		if !ok {
-			c.logger.Error(ctx, fmt.Sprintf("Error casting message type to string for client %v", c.ID), err)
+			c.logger.Error(ctx, fmt.Sprintf("Error casting message type to string for client %v", c.ID), errors.New("invalid message format"))
 			continue
 		}
 
@@ -227,65 +227,65 @@ func (c *WebsocketBus) pinger(ctx context.Context) {
 	}
 }
 
-func mapUsecases(usecases usecase.UseCasesFacade) map[string]useCaseCall {
+func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[string]useCaseCall {
 	return map[string]useCaseCall{
 		"update-name": func(ctx context.Context, msg map[string]any) error {
 			return usecases.UpdateName.Execute(ctx, usecase.UpdateNameCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 				Username: msg["username"].(string),
 			})
 		},
 		"vote": func(ctx context.Context, msg map[string]any) error {
 			return usecases.Vote.Execute(ctx, usecase.VoteCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 				Vote:     lo.ToPtr(msg["vote"].(string)),
 			})
 		},
 		"reset": func(ctx context.Context, msg map[string]any) error {
 			return usecases.Reset.Execute(ctx, usecase.ResetCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 			})
 		},
 		"reveal-votes": func(ctx context.Context, msg map[string]any) error {
 			return usecases.Reveal.Execute(ctx, usecase.RevealCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 			})
 		},
 		"toggle-spectator": func(ctx context.Context, msg map[string]any) error {
 			return usecases.ToggleSpectator.Execute(ctx, usecase.ToggleSpectatorCommand{
-				RoomID:         msg["roomId"].(string),
-				SenderID:       msg["clientId"].(string),
+				RoomID:         roomID,
+				SenderID:       clientID,
 				TargetClientID: msg["targetClientId"].(string),
 			})
 		},
 		"toggle-owner": func(ctx context.Context, msg map[string]any) error {
 			return usecases.ToggleOwner.Execute(ctx, usecase.ToggleOwnerCommand{
-				RoomID:         msg["roomId"].(string),
-				SenderID:       msg["clientId"].(string),
+				RoomID:         roomID,
+				SenderID:       clientID,
 				TargetClientID: msg["targetClientId"].(string),
 			})
 		},
 		"update-story": func(ctx context.Context, msg map[string]any) error {
 			return usecases.UpdateStory.Execute(ctx, usecase.UpdateStoryCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 				Story:    msg["story"].(string),
 			})
 		},
 		"new-voting": func(ctx context.Context, msg map[string]any) error {
 			return usecases.NewVoting.Execute(ctx, usecase.NewVotingCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 			})
 		},
 		"vote-again": func(ctx context.Context, msg map[string]any) error {
 			return usecases.VoteAgain.Execute(ctx, usecase.VoteAgainCommand{
-				RoomID:   msg["roomId"].(string),
-				SenderID: msg["clientId"].(string),
+				RoomID:   roomID,
+				SenderID: clientID,
 			})
 		},
 	}
