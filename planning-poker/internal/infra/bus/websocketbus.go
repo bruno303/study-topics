@@ -2,6 +2,7 @@ package bus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -139,7 +140,11 @@ func (c *WebsocketBus) Send(ctx context.Context, message any) error {
 		c.writeMu.Lock()
 		defer c.writeMu.Unlock()
 		_ = c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
-		return nil, c.conn.WriteJSON(message)
+		err := c.conn.WriteJSON(message)
+		if err != nil {
+			c.logger.Error(ctx, fmt.Sprintf("WriteJSON error for client %v: %v", c.ID, err), err)
+		}
+		return nil, err
 	})
 	return err
 }
@@ -225,6 +230,9 @@ func (c *WebsocketBus) pinger(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			_, err := trace.Trace(ctx, trace.NameConfig("WebsocketBus", "pinger"), func(ctx context.Context) (any, error) {
+				if c.closed.Load() {
+					return nil, nil
+				}
 				c.writeMu.Lock()
 				err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteTimeout))
 				if err == nil {
@@ -246,10 +254,25 @@ func (c *WebsocketBus) pinger(ctx context.Context) {
 }
 
 func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[string]useCaseCall {
+	decode := func(payload any, out any) error {
+		if v, ok := payload.(map[string]any); ok {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return err
+			}
+			return json.Unmarshal(b, out)
+		}
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(b, out)
+	}
+
 	return map[string]useCaseCall{
 		"update-name": func(ctx context.Context, msg WebSocketMessage) error {
-			payload, ok := msg.Payload.(UpdateNamePayload)
-			if !ok {
+			var payload UpdateNamePayload
+			if err := decode(msg.Payload, &payload); err != nil {
 				return errors.New("invalid payload")
 			}
 			return usecases.UpdateName.Execute(ctx, usecase.UpdateNameCommand{
@@ -259,8 +282,8 @@ func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[s
 			})
 		},
 		"vote": func(ctx context.Context, msg WebSocketMessage) error {
-			payload, ok := msg.Payload.(VotePayload)
-			if !ok {
+			var payload VotePayload
+			if err := decode(msg.Payload, &payload); err != nil {
 				return errors.New("invalid payload")
 			}
 			return usecases.Vote.Execute(ctx, usecase.VoteCommand{
@@ -282,8 +305,8 @@ func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[s
 			})
 		},
 		"toggle-spectator": func(ctx context.Context, msg WebSocketMessage) error {
-			payload, ok := msg.Payload.(ToggleSpectatorPayload)
-			if !ok {
+			var payload ToggleSpectatorPayload
+			if err := decode(msg.Payload, &payload); err != nil {
 				return errors.New("invalid payload")
 			}
 			return usecases.ToggleSpectator.Execute(ctx, usecase.ToggleSpectatorCommand{
@@ -293,8 +316,8 @@ func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[s
 			})
 		},
 		"toggle-owner": func(ctx context.Context, msg WebSocketMessage) error {
-			payload, ok := msg.Payload.(ToggleOwnerPayload)
-			if !ok {
+			var payload ToggleOwnerPayload
+			if err := decode(msg.Payload, &payload); err != nil {
 				return errors.New("invalid payload")
 			}
 			return usecases.ToggleOwner.Execute(ctx, usecase.ToggleOwnerCommand{
@@ -304,8 +327,8 @@ func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[s
 			})
 		},
 		"update-story": func(ctx context.Context, msg WebSocketMessage) error {
-			payload, ok := msg.Payload.(UpdateStoryPayload)
-			if !ok {
+			var payload UpdateStoryPayload
+			if err := decode(msg.Payload, &payload); err != nil {
 				return errors.New("invalid payload")
 			}
 			return usecases.UpdateStory.Execute(ctx, usecase.UpdateStoryCommand{
