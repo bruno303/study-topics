@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"planning-poker/internal/application/lock"
 	"planning-poker/internal/application/planningpoker/metric"
@@ -50,10 +51,21 @@ func NewJoinRoomUseCase(hub domain.Hub, lockManager lock.LockManager, metric met
 
 func (uc JoinRoomUseCase) Execute(ctx context.Context, cmd JoinRoomCommand) (*JoinRoomOutput, error) {
 	output, err := uc.lockManager.WithLock(ctx, cmd.RoomID, func(ctx context.Context) (any, error) {
+		room, err := uc.hub.LoadRoom(ctx, cmd.RoomID)
+		autoCreated := false
+		if err != nil {
+			if !errors.Is(err, domain.ErrRoomNotFound) {
+				return nil, fmt.Errorf("failed to load room %s: %w", cmd.RoomID, err)
+			}
 
-		room, ok := uc.hub.GetRoom(ctx, cmd.RoomID)
-		if !ok {
-			return nil, fmt.Errorf("room %s not found", cmd.RoomID)
+			room, err = uc.hub.NewRoomWithID(ctx, cmd.RoomID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to auto-create room %s: %w", cmd.RoomID, err)
+			}
+
+			uc.metric.IncrementActiveRoomsCounter(ctx)
+			autoCreated = true
+			uc.logger.Info(ctx, "Room auto-created with ID: %s during join by: %s", room.ID, cmd.SenderID)
 		}
 
 		uc.logger.Debug(ctx, "creating client for room %s", room.ID)
@@ -67,15 +79,32 @@ func (uc JoinRoomUseCase) Execute(ctx context.Context, cmd JoinRoomCommand) (*Jo
 		uc.metric.IncrementActiveUsers(ctx)
 
 		output := &JoinRoomOutput{Client: client, Room: room}
+		rollbackJoin := func(cause error) error {
+			cleanupErr := uc.hub.RemoveClient(ctx, client.ID, room.ID)
+			uc.metric.DecrementActiveUsers(ctx)
+			uc.metric.DecrementUsersTotal(ctx)
+
+			if autoCreated {
+				if _, loadErr := uc.hub.LoadRoom(ctx, room.ID); errors.Is(loadErr, domain.ErrRoomNotFound) {
+					uc.metric.DecrementActiveRoomsCounter(ctx)
+				}
+			}
+
+			if cleanupErr != nil {
+				return fmt.Errorf("%w: rollback join initialization: %w", cause, cleanupErr)
+			}
+
+			return cause
+		}
 
 		uc.logger.Debug(ctx, "sending update client ID command for client %s on room %s", client.ID, room.ID)
 		if err := cmd.Bus.Send(ctx, dto.NewUpdateClientIDCommand(client.ID)); err != nil {
-			return output, fmt.Errorf("failed to send update client ID command: %w", err)
+			return output, rollbackJoin(fmt.Errorf("failed to send update client ID command: %w", err))
 		}
 
 		uc.logger.Debug(ctx, "broadcasting room state for room %s", room.ID)
 		if err := uc.hub.BroadcastToRoom(ctx, room.ID, dto.NewRoomStateCommand(room)); err != nil {
-			return output, fmt.Errorf("failed to broadcast room state: %w", err)
+			return output, rollbackJoin(fmt.Errorf("failed to broadcast room state: %w", err))
 		}
 
 		return output, nil

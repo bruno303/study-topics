@@ -34,6 +34,10 @@ func (m PlanningPokerMetric) IncrementUsersTotal(ctx context.Context) {
 	_ = m.meter.AddCounter(ctx, PlanningPokerUsersTotalMetric, "", "", 1)
 }
 
+func (m PlanningPokerMetric) DecrementUsersTotal(ctx context.Context) {
+	_ = m.meter.AddCounter(ctx, PlanningPokerUsersTotalMetric, "", "", -1)
+}
+
 func (m PlanningPokerMetric) IncrementActiveRoomsCounter(ctx context.Context) {
 	_ = m.meter.AddCounter(ctx, PlanningPokerActiveRoomsMetric, "", "", 1)
 }
