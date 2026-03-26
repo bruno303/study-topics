@@ -6,6 +6,7 @@ on:
 
 jobs:
   review:
+    if: false
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -22,7 +23,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          model: openai/gpt-5.4
+          model: ${{ vars.CODE_REVIEW_MODEL }}
           prompt: |
             Review this pull request as a senior software engineer and pragmatic code reviewer.
 
