@@ -9,9 +9,27 @@ import (
 	"planning-poker/internal/domain/entity"
 	"planning-poker/internal/infra/boundaries/hub/clientcollection"
 	"testing"
+	"time"
 
 	"go.uber.org/mock/gomock"
 )
+
+func assertViableRollbackCleanupContext(t *testing.T, ctx context.Context) {
+	t.Helper()
+
+	if err := ctx.Err(); err != nil {
+		t.Fatalf("expected cleanup context to still be active, got %v", err)
+	}
+
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		t.Fatal("expected cleanup context to have a deadline")
+	}
+
+	if time.Until(deadline) <= 0 {
+		t.Fatal("expected cleanup context deadline to be in the future")
+	}
+}
 
 func TestNewJoinRoomUseCase(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -38,7 +56,7 @@ func TestJoinRoomUseCase_Execute_Success(t *testing.T) {
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "room123"
@@ -83,9 +101,10 @@ func TestJoinRoomUseCase_Execute_Success(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 0 {
-		t.Fatalf("expected no active room increments for existing room, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
+	assertMetricCallSequence(t, calls,
+		expectedMetricCall{name: metric.PlanningPokerUsersTotalMetric, value: 1},
+		expectedMetricCall{name: metric.PlanningPokerActiveUsersMetric, value: 1},
+	)
 }
 
 func TestJoinRoomUseCase_Execute_AutoCreatesMissingRoom(t *testing.T) {
@@ -96,7 +115,7 @@ func TestJoinRoomUseCase_Execute_AutoCreatesMissingRoom(t *testing.T) {
 	mockHub := domain.NewMockHub(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	roomID := "nonexistent"
 	room := &entity.Room{
@@ -143,9 +162,11 @@ func TestJoinRoomUseCase_Execute_AutoCreatesMissingRoom(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 1 {
-		t.Fatalf("expected one active room increment, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
+	assertMetricCallSequence(t, calls,
+		expectedMetricCall{name: metric.PlanningPokerActiveRoomsMetric, value: 1},
+		expectedMetricCall{name: metric.PlanningPokerUsersTotalMetric, value: 1},
+		expectedMetricCall{name: metric.PlanningPokerActiveUsersMetric, value: 1},
+	)
 }
 
 func TestJoinRoomUseCase_Execute_LoadRoomError(t *testing.T) {
@@ -155,7 +176,7 @@ func TestJoinRoomUseCase_Execute_LoadRoomError(t *testing.T) {
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "room123"
@@ -204,7 +225,7 @@ func TestJoinRoomUseCase_Execute_AutoCreateRoomError(t *testing.T) {
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "room123"
@@ -254,7 +275,7 @@ func TestJoinRoomUseCase_Execute_SendError(t *testing.T) {
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "room123"
@@ -275,7 +296,7 @@ func TestJoinRoomUseCase_Execute_SendError(t *testing.T) {
 	mockHub.EXPECT().AddClient(gomock.Any())
 	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
 	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(expectedError)
-	mockHub.EXPECT().RemoveClient(ctx, gomock.Any(), roomID).Return(nil)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(nil)
 
 	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
 	cmd := JoinRoomCommand{
@@ -294,11 +315,8 @@ func TestJoinRoomUseCase_Execute_SendError(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric) != 2 {
-		t.Fatalf("expected users total increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric))
-	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 2 {
-		t.Fatalf("expected active users increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when join fails before completion, got %d calls", len(calls))
 	}
 }
 
@@ -309,7 +327,7 @@ func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_RollsBackJoinInitial
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "auto-created-room"
@@ -330,8 +348,7 @@ func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_RollsBackJoinInitial
 	mockHub.EXPECT().AddClient(gomock.Any())
 	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
 	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(expectedError)
-	mockHub.EXPECT().RemoveClient(ctx, gomock.Any(), roomID).Return(nil)
-	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(nil, domain.ErrRoomNotFound)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(nil)
 
 	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
 	cmd := JoinRoomCommand{
@@ -353,25 +370,19 @@ func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_RollsBackJoinInitial
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 2 {
-		t.Fatalf("expected active room increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
-	if countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric) != 2 {
-		t.Fatalf("expected users total increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric))
-	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 2 {
-		t.Fatalf("expected active users increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when auto-created room join fails before completion, got %d calls", len(calls))
 	}
 }
 
-func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_WhenRollbackRoomCheckFails_DoesNotDecrementActiveRooms(t *testing.T) {
+func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_DoesNotReloadRoomOrEmitMetrics(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 	mockBus := domain.NewMockBus(ctrl)
 
 	roomID := "auto-created-room"
@@ -393,8 +404,7 @@ func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_WhenRollbackRoomChec
 	mockHub.EXPECT().AddClient(gomock.Any())
 	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
 	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(expectedError)
-	mockHub.EXPECT().RemoveClient(ctx, gomock.Any(), roomID).Return(nil)
-	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(nil, loadError)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(nil)
 
 	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
 	cmd := JoinRoomCommand{
@@ -414,16 +424,325 @@ func TestJoinRoomUseCase_Execute_SendErrorOnAutoCreatedRoom_WhenRollbackRoomChec
 	if !errors.Is(err, expectedError) {
 		t.Fatalf("expected error to wrap %v, got %v", expectedError, err)
 	}
+	if errors.Is(err, loadError) {
+		t.Fatalf("expected rollback cleanup to ignore room reload error, got %v", err)
+	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 1 {
-		t.Fatalf("expected only the auto-create active room increment, got %d calls", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when auto-created room join fails before completion, got %d calls", len(calls))
 	}
-	if countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric) != 2 {
-		t.Fatalf("expected users total increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric))
+}
+
+func TestJoinRoomUseCase_Execute_SendErrorWhenRollbackCleanupFails_DoesNotDecrementMetrics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mockHub := domain.NewMockHub(ctrl)
+	mockLockManager := lock.NewMockLockManager(ctrl)
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
+	mockBus := domain.NewMockBus(ctrl)
+
+	roomID := "auto-created-room"
+	room := &entity.Room{
+		ID:      roomID,
+		Clients: clientcollection.New(),
 	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 2 {
-		t.Fatalf("expected active users increment and rollback decrement, got %d calls", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
+	sendErr := errors.New("send failed")
+	removeErr := errors.New("remove client failed")
+
+	mockLockManager.EXPECT().
+		WithLock(gomock.Any(), roomID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, key string, fn func(context.Context) (any, error)) (any, error) {
+			return fn(ctx)
+		})
+
+	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(nil, domain.ErrRoomNotFound)
+	mockHub.EXPECT().NewRoomWithID(ctx, roomID).Return(room, nil)
+	mockHub.EXPECT().AddClient(gomock.Any())
+	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
+	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(sendErr)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(removeErr)
+
+	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
+	cmd := JoinRoomCommand{
+		RoomID:   roomID,
+		SenderID: "sender123",
+		Bus:      mockBus,
+	}
+
+	output, err := uc.Execute(ctx, cmd)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if output != nil {
+		t.Fatal("expected nil output when rollback cleanup fails")
+	}
+	if !errors.Is(err, sendErr) {
+		t.Fatalf("expected error to wrap %v, got %v", sendErr, err)
+	}
+	if !errors.Is(err, removeErr) {
+		t.Fatalf("expected error to wrap %v, got %v", removeErr, err)
+	}
+
+	calls := metricMeter.getCalls()
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when join fails before completion, got %d calls", len(calls))
+	}
+}
+
+func TestJoinRoomUseCase_Execute_BroadcastErrorAfterSend_RollsBackWithoutEmittingMetrics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mockHub := domain.NewMockHub(ctrl)
+	mockLockManager := lock.NewMockLockManager(ctrl)
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
+	mockBus := domain.NewMockBus(ctrl)
+
+	roomID := "room123"
+	room := &entity.Room{
+		ID:      roomID,
+		Clients: clientcollection.New(),
+	}
+	broadcastErr := errors.New("broadcast failed")
+
+	mockLockManager.EXPECT().
+		WithLock(gomock.Any(), roomID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, key string, fn func(context.Context) (any, error)) (any, error) {
+			return fn(ctx)
+		})
+
+	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(room, nil)
+	mockHub.EXPECT().AddClient(gomock.Any())
+	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
+	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(nil)
+	mockHub.EXPECT().BroadcastToRoom(ctx, roomID, gomock.Any()).Return(broadcastErr)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(nil)
+
+	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
+	cmd := JoinRoomCommand{
+		RoomID:   roomID,
+		SenderID: "sender123",
+		Bus:      mockBus,
+	}
+
+	output, err := uc.Execute(ctx, cmd)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if output != nil {
+		t.Fatal("expected nil output when broadcast fails")
+	}
+	if !errors.Is(err, broadcastErr) {
+		t.Fatalf("expected error to wrap %v, got %v", broadcastErr, err)
+	}
+
+	calls := metricMeter.getCalls()
+	if got := countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerActiveRoomsMetric, got)
+	}
+	if got := countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerUsersTotalMetric, got)
+	}
+	if got := countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerActiveUsersMetric, got)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when broadcast fails after send, got %d calls", len(calls))
+	}
+}
+
+func TestJoinRoomUseCase_Execute_BroadcastErrorAfterSendOnAutoCreatedRoom_DoesNotEmitMetrics(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mockHub := domain.NewMockHub(ctrl)
+	mockLockManager := lock.NewMockLockManager(ctrl)
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
+	mockBus := domain.NewMockBus(ctrl)
+
+	roomID := "auto-created-room"
+	room := &entity.Room{
+		ID:      roomID,
+		Clients: clientcollection.New(),
+	}
+	broadcastErr := errors.New("broadcast failed")
+
+	mockLockManager.EXPECT().
+		WithLock(gomock.Any(), roomID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, key string, fn func(context.Context) (any, error)) (any, error) {
+			return fn(ctx)
+		})
+
+	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(nil, domain.ErrRoomNotFound)
+	mockHub.EXPECT().NewRoomWithID(ctx, roomID).Return(room, nil)
+	mockHub.EXPECT().AddClient(gomock.Any())
+	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
+	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).Return(nil)
+	mockHub.EXPECT().BroadcastToRoom(ctx, roomID, gomock.Any()).Return(broadcastErr)
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).Return(nil)
+
+	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
+	cmd := JoinRoomCommand{
+		RoomID:   roomID,
+		SenderID: "sender123",
+		Bus:      mockBus,
+	}
+
+	output, err := uc.Execute(ctx, cmd)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if output != nil {
+		t.Fatal("expected nil output when broadcast fails")
+	}
+	if !errors.Is(err, broadcastErr) {
+		t.Fatalf("expected error to wrap %v, got %v", broadcastErr, err)
+	}
+
+	calls := metricMeter.getCalls()
+	if got := countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerActiveRoomsMetric, got)
+	}
+	if got := countMetricCalls(calls, metric.PlanningPokerUsersTotalMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerUsersTotalMetric, got)
+	}
+	if got := countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric); got != 0 {
+		t.Fatalf("expected no %q metric emissions, got %d", metric.PlanningPokerActiveUsersMetric, got)
+	}
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when auto-created room broadcast fails after send, got %d calls", len(calls))
+	}
+}
+
+func TestJoinRoomUseCase_Execute_SendFailsFromCanceledContext_UsesActiveRollbackCleanupContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	mockHub := domain.NewMockHub(ctrl)
+	mockLockManager := lock.NewMockLockManager(ctrl)
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
+	mockBus := domain.NewMockBus(ctrl)
+
+	roomID := "room123"
+	room := &entity.Room{
+		ID:      roomID,
+		Clients: clientcollection.New(),
+	}
+
+	mockLockManager.EXPECT().
+		WithLock(gomock.Any(), roomID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, key string, fn func(context.Context) (any, error)) (any, error) {
+			return fn(ctx)
+		})
+
+	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(room, nil)
+	mockHub.EXPECT().AddClient(gomock.Any())
+	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
+	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).DoAndReturn(func(sendCtx context.Context, _ any) error {
+		cancel()
+		return sendCtx.Err()
+	})
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).DoAndReturn(func(cleanupCtx context.Context, _ string, _ string) error {
+		assertViableRollbackCleanupContext(t, cleanupCtx)
+		return nil
+	})
+
+	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
+	cmd := JoinRoomCommand{
+		RoomID:   roomID,
+		SenderID: "sender123",
+		Bus:      mockBus,
+	}
+
+	output, err := uc.Execute(ctx, cmd)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if output != nil {
+		t.Fatal("expected nil output when send fails")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected error to wrap %v, got %v", context.Canceled, err)
+	}
+
+	calls := metricMeter.getCalls()
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when join fails before completion, got %d calls", len(calls))
+	}
+}
+
+func TestJoinRoomUseCase_Execute_BroadcastFailsFromCanceledContext_UsesActiveRollbackCleanupContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	mockHub := domain.NewMockHub(ctrl)
+	mockLockManager := lock.NewMockLockManager(ctrl)
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
+	mockBus := domain.NewMockBus(ctrl)
+
+	roomID := "room123"
+	room := &entity.Room{
+		ID:      roomID,
+		Clients: clientcollection.New(),
+	}
+
+	mockLockManager.EXPECT().
+		WithLock(gomock.Any(), roomID, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, key string, fn func(context.Context) (any, error)) (any, error) {
+			return fn(ctx)
+		})
+
+	mockHub.EXPECT().LoadRoom(ctx, roomID).Return(room, nil)
+	mockHub.EXPECT().AddClient(gomock.Any())
+	mockHub.EXPECT().AddBus(gomock.Any(), gomock.Any(), gomock.Any())
+	mockBus.EXPECT().Send(gomock.Any(), gomock.Any()).DoAndReturn(func(context.Context, any) error {
+		cancel()
+		return nil
+	})
+	mockHub.EXPECT().BroadcastToRoom(ctx, roomID, gomock.Any()).DoAndReturn(func(broadcastCtx context.Context, _ string, _ any) error {
+		if !errors.Is(broadcastCtx.Err(), context.Canceled) {
+			t.Fatalf("expected broadcast context to be canceled, got %v", broadcastCtx.Err())
+		}
+		return broadcastCtx.Err()
+	})
+	mockHub.EXPECT().RemoveClient(gomock.Any(), gomock.Any(), roomID).DoAndReturn(func(cleanupCtx context.Context, _ string, _ string) error {
+		assertViableRollbackCleanupContext(t, cleanupCtx)
+		return nil
+	})
+
+	uc := NewJoinRoomUseCase(mockHub, mockLockManager, testMetric)
+	cmd := JoinRoomCommand{
+		RoomID:   roomID,
+		SenderID: "sender123",
+		Bus:      mockBus,
+	}
+
+	output, err := uc.Execute(ctx, cmd)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if output != nil {
+		t.Fatal("expected nil output when broadcast fails")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected error to wrap %v, got %v", context.Canceled, err)
+	}
+
+	calls := metricMeter.getCalls()
+	if len(calls) != 0 {
+		t.Fatalf("expected no metric changes when broadcast fails after send, got %d calls", len(calls))
 	}
 }
 

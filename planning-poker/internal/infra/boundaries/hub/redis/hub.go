@@ -288,12 +288,9 @@ func (h *RedisHub) listenToRoomPubSub(ctx context.Context, roomID string, sub *r
 func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID string) error {
 	h.logger.Debug(ctx, "Removing client %s from room %s", clientID, roomID)
 	_, err := trace.Trace(ctx, trace.NameConfig("RedisHub", "RemoveClient"), func(ctx context.Context) (any, error) {
-		var cleanupErr error
-
 		clientKey := clientKeyPrefix + clientID
 		if err := h.client.Del(ctx, clientKey).Err(); err != nil {
 			h.logger.Error(ctx, fmt.Sprintf("Failed to delete client %s from Redis", clientID), err)
-			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("delete client %s from redis: %w", clientID, err))
 		}
 
 		h.RemoveBus(ctx, clientID)
@@ -301,25 +298,25 @@ func (h *RedisHub) RemoveClient(ctx context.Context, clientID string, roomID str
 		room, err := h.LoadRoom(ctx, roomID)
 		if err != nil {
 			if errors.Is(err, domain.ErrRoomNotFound) {
-				return nil, cleanupErr
+				return nil, nil
 			}
 
-			return nil, errors.Join(cleanupErr, err)
+			return nil, err
 		}
 
 		if err := room.RemoveClient(ctx, clientID); err != nil {
-			return nil, errors.Join(cleanupErr, err)
+			return nil, err
 		}
 
 		if room.IsEmpty() {
 			h.RemoveRoom(room.ID)
 		} else {
 			if err := h.saveRoom(ctx, room); err != nil {
-				return nil, errors.Join(cleanupErr, err)
+				return nil, err
 			}
 		}
 
-		return nil, cleanupErr
+		return nil, nil
 	})
 
 	return err
@@ -361,8 +358,6 @@ func (h *RedisHub) GetRooms() []*entity.Room {
 		room, err := h.LoadRoom(ctx, roomID)
 		if err == nil {
 			rooms = append(rooms, room)
-		} else if !errors.Is(err, domain.ErrRoomNotFound) {
-			h.logger.Error(ctx, fmt.Sprintf("Failed to load room %s from Redis", roomID), err)
 		}
 	}
 

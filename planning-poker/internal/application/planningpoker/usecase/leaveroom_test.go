@@ -38,7 +38,7 @@ func TestLeaveRoomUseCase_Execute_Success_RoomExists(t *testing.T) {
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	roomID := "room123"
 	senderID := "client123"
@@ -70,11 +70,11 @@ func TestLeaveRoomUseCase_Execute_Success_RoomExists(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 1 {
-		t.Fatalf("expected one active user decrement, got %d", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
+	if countMetricCallsWithValue(calls, metric.PlanningPokerActiveUsersMetric, -1) != 1 {
+		t.Fatalf("expected one active user decrement, got %d", countMetricCallsWithValue(calls, metric.PlanningPokerActiveUsersMetric, -1))
 	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 0 {
-		t.Fatalf("expected no active room decrements, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
+	if countMetricCallsWithValue(calls, metric.PlanningPokerActiveRoomsMetric, -1) != 0 {
+		t.Fatalf("expected no active room decrements, got %d", countMetricCallsWithValue(calls, metric.PlanningPokerActiveRoomsMetric, -1))
 	}
 }
 
@@ -85,7 +85,7 @@ func TestLeaveRoomUseCase_Execute_WhenRoomIsMissingAfterRemove_DecrementsRoomMet
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	roomID := "room123"
 	senderID := "client123"
@@ -112,12 +112,10 @@ func TestLeaveRoomUseCase_Execute_WhenRoomIsMissingAfterRemove_DecrementsRoomMet
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 1 {
-		t.Fatalf("expected one active user decrement, got %d", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
-	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 1 {
-		t.Fatalf("expected one active room decrement, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
+	assertMetricCallSequence(t, calls,
+		expectedMetricCall{name: metric.PlanningPokerActiveUsersMetric, value: -1},
+		expectedMetricCall{name: metric.PlanningPokerActiveRoomsMetric, value: -1},
+	)
 }
 
 func TestLeaveRoomUseCase_Execute_RemoveClientError(t *testing.T) {
@@ -208,7 +206,7 @@ func TestLeaveRoomUseCase_Execute_LoadRoomErrorAfterRemove_ReturnsErrorWithoutDe
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
 	mockLockManager := lock.NewMockLockManager(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	roomID := "room123"
 	senderID := "client123"
@@ -236,10 +234,10 @@ func TestLeaveRoomUseCase_Execute_LoadRoomErrorAfterRemove_ReturnsErrorWithoutDe
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric) != 1 {
-		t.Fatalf("expected one active user decrement, got %d", countMetricCalls(calls, metric.PlanningPokerActiveUsersMetric))
+	if countMetricCallsWithValue(calls, metric.PlanningPokerActiveUsersMetric, -1) != 1 {
+		t.Fatalf("expected one active user decrement, got %d", countMetricCallsWithValue(calls, metric.PlanningPokerActiveUsersMetric, -1))
 	}
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 0 {
-		t.Fatalf("expected no active room decrements, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
+	if countMetricCallsWithValue(calls, metric.PlanningPokerActiveRoomsMetric, -1) != 0 {
+		t.Fatalf("expected no active room decrements, got %d", countMetricCallsWithValue(calls, metric.PlanningPokerActiveRoomsMetric, -1))
 	}
 }

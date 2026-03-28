@@ -34,7 +34,7 @@ func TestCreateRoomUseCase_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	expectedRoom := &entity.Room{ID: "room123"}
 	senderID := "user123"
@@ -56,9 +56,7 @@ func TestCreateRoomUseCase_Execute_Success(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 1 {
-		t.Fatalf("expected one active room increment, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
+	assertMetricCallSequence(t, calls, expectedMetricCall{name: metric.PlanningPokerActiveRoomsMetric, value: 1})
 }
 
 func TestCreateRoomUseCase_Execute_WithExplicitRoomID(t *testing.T) {
@@ -67,7 +65,7 @@ func TestCreateRoomUseCase_Execute_WithExplicitRoomID(t *testing.T) {
 
 	ctx := context.Background()
 	mockHub := domain.NewMockHub(ctrl)
-	testMetric, metricMeter := newTestPlanningPokerMetric()
+	testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 
 	expectedRoom := &entity.Room{ID: "room-123"}
 
@@ -88,9 +86,7 @@ func TestCreateRoomUseCase_Execute_WithExplicitRoomID(t *testing.T) {
 	}
 
 	calls := metricMeter.getCalls()
-	if countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric) != 1 {
-		t.Fatalf("expected one active room increment, got %d", countMetricCalls(calls, metric.PlanningPokerActiveRoomsMetric))
-	}
+	assertMetricCallSequence(t, calls, expectedMetricCall{name: metric.PlanningPokerActiveRoomsMetric, value: 1})
 }
 
 func TestCreateRoomUseCase_Execute_RoomCreationError(t *testing.T) {
@@ -123,7 +119,7 @@ func TestCreateRoomUseCase_Execute_RoomCreationError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockHub := domain.NewMockHub(ctrl)
-			testMetric, metricMeter := newTestPlanningPokerMetric()
+			testMetric, metricMeter := newTestPlanningPokerMetric(ctrl)
 			tt.setup(mockHub)
 
 			uc := NewCreateRoomUseCase(mockHub, testMetric)
