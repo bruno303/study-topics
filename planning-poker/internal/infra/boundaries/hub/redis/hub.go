@@ -26,11 +26,12 @@ type RedisClient interface {
 }
 
 const (
-	roomKeyPrefix   = "planning-poker:room:"
-	clientKeyPrefix = "planning-poker:client:"
-	pubsubChannel   = "planning-poker:updates:"
-	twentyFourHours = 24 * time.Hour
-	cursorSize      = 100
+	roomKeyPrefix    = "planning-poker:room:"
+	clientKeyPrefix  = "planning-poker:client:"
+	pubsubChannel    = "planning-poker:updates:"
+	twentyFourHours  = 24 * time.Hour
+	cursorSize       = 100
+	subscribeTimeout = 2 * time.Second
 )
 
 type (
@@ -210,6 +211,11 @@ func (h *RedisHub) AddBus(ctx context.Context, clientID string, bus domain.Bus) 
 	_, exists := h.roomSubs.Load(roomID)
 	if !exists {
 		sub := h.client.Subscribe(h.ctx, pubsubChannel+roomID)
+		subscribeCtx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
+		if _, err := sub.Receive(subscribeCtx); err != nil {
+			h.logger.Error(ctx, fmt.Sprintf("Failed to confirm pub/sub subscription for room %s", roomID), err)
+		}
+		cancel()
 		h.roomSubs.Store(roomID, sub)
 		h.wg.Go(func() {
 			h.listenToRoomPubSub(h.ctx, roomID, sub)
