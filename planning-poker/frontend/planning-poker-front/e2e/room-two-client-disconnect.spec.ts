@@ -29,6 +29,12 @@ const participantsPanel = (page: Page) =>
     .getByRole('heading', { name: 'Participants' })
     .locator('xpath=ancestor::div[2]');
 
+const participantRow = (page: Page, participantName: string) =>
+  participantsPanel(page)
+    .locator('div')
+    .filter({ has: page.getByText(participantName, { exact: true }) })
+    .first();
+
 const createRoom = async (page: Page, baseURL: string | undefined, userName: string) => {
   await page.goto('/join');
   await page.getByPlaceholder('Enter your name').fill(userName);
@@ -61,6 +67,19 @@ const joinRoom = async (page: Page, roomId: string, userName: string) => {
   ]);
 };
 
+const expectAdminControlsVisible = async (page: Page) => {
+  await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reveal Votes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New Voting' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Vote Again' })).toBeVisible();
+};
+
+const expectParticipantAdminTogglesVisible = async (page: Page, participantName: string) => {
+  const row = participantRow(page, participantName);
+  await expect(row.locator('button[title="Make Spectator"]')).toBeVisible();
+  await expect(row.locator('button[title="Remove Admin"]')).toBeVisible();
+};
+
 test('keeps room interactive for remaining client after peer page closes', async ({ browser, baseURL }) => {
   test.setTimeout(60_000);
 
@@ -77,19 +96,21 @@ test('keeps room interactive for remaining client after peer page closes', async
     const roomId = await createRoom(ownerPage, baseURL, ownerName);
     await joinRoom(guestPage, roomId, guestName);
 
-    const ownerParticipants = participantsPanel(ownerPage);
+    const guestParticipants = participantsPanel(guestPage);
 
-    await expect(ownerParticipants.getByText(ownerName, { exact: true })).toBeVisible();
-    await expect(ownerParticipants.getByText(guestName, { exact: true })).toBeVisible();
+    await expect(guestParticipants.getByText(ownerName, { exact: true })).toBeVisible();
+    await expect(guestParticipants.getByText(guestName, { exact: true })).toBeVisible();
 
-    await guestPage.close();
+    await ownerPage.close();
 
-    await expect(ownerParticipants.getByText(guestName, { exact: true })).toHaveCount(0);
+    await expect(guestParticipants.getByText(ownerName, { exact: true })).toHaveCount(0);
+    await expectAdminControlsVisible(guestPage);
+    await expectParticipantAdminTogglesVisible(guestPage, guestName);
 
-    await ownerPage.getByRole('button', { name: '5', exact: true }).click();
+    await guestPage.getByRole('button', { name: '5', exact: true }).click();
 
-    await expect(ownerPage.getByText('1/1', { exact: true })).toBeVisible();
-    await expect(ownerPage.getByText('Results Summary')).toBeVisible();
+    await expect(guestPage.getByText('1/1', { exact: true })).toBeVisible();
+    await expect(guestPage.getByText('Results Summary')).toBeVisible();
   } finally {
     await Promise.allSettled([ownerContext.close(), guestContext.close()]);
   }
