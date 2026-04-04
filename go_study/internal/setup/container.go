@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka"
@@ -42,12 +43,11 @@ type MessageHandlersContainer struct {
 }
 
 type RepositoryContainer struct {
-	HelloRepository    repository.HelloRepository
-	TransactionManager repository.TransactionManager
+	TransactionManager transaction.TransactionManager
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
-	helloService := hello.NewService(repoContainer.HelloRepository, repoContainer.TransactionManager)
+	helloService := hello.NewService(repoContainer.TransactionManager)
 
 	return ServiceContainer{
 		HelloService: tracedecorator.NewTraceableHelloService(helloService),
@@ -55,13 +55,11 @@ func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 }
 
 func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
+	txConfig := &repository.PgxUnitOfWorkConfig{Pool: pool}
+	uowFactory := repository.NewUnitOfWorkFactory(txConfig)
+
 	return RepositoryContainer{
-		HelloRepository: repository.NewHelloPgxRepository(pool),
-		TransactionManager: repository.NewTransactionManager(
-			&repository.TransactionConfig{
-				Pool: pool,
-			},
-		),
+		TransactionManager: uowFactory,
 	}
 }
 

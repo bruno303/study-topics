@@ -14,62 +14,8 @@ import (
 	reflect "reflect"
 
 	models "github.com/bruno303/study-topics/go-study/internal/application/hello/models"
-	transaction "github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	gomock "go.uber.org/mock/gomock"
 )
-
-// MockHelloRepository is a mock of HelloRepository interface.
-type MockHelloRepository struct {
-	ctrl     *gomock.Controller
-	recorder *MockHelloRepositoryMockRecorder
-	isgomock struct{}
-}
-
-// MockHelloRepositoryMockRecorder is the mock recorder for MockHelloRepository.
-type MockHelloRepositoryMockRecorder struct {
-	mock *MockHelloRepository
-}
-
-// NewMockHelloRepository creates a new mock instance.
-func NewMockHelloRepository(ctrl *gomock.Controller) *MockHelloRepository {
-	mock := &MockHelloRepository{ctrl: ctrl}
-	mock.recorder = &MockHelloRepositoryMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockHelloRepository) EXPECT() *MockHelloRepositoryMockRecorder {
-	return m.recorder
-}
-
-// ListAll mocks base method.
-func (m *MockHelloRepository) ListAll(ctx context.Context, tx transaction.Transaction) []models.HelloData {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAll", ctx, tx)
-	ret0, _ := ret[0].([]models.HelloData)
-	return ret0
-}
-
-// ListAll indicates an expected call of ListAll.
-func (mr *MockHelloRepositoryMockRecorder) ListAll(ctx, tx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAll", reflect.TypeOf((*MockHelloRepository)(nil).ListAll), ctx, tx)
-}
-
-// Save mocks base method.
-func (m *MockHelloRepository) Save(ctx context.Context, entity *models.HelloData, tx transaction.Transaction) (*models.HelloData, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", ctx, entity, tx)
-	ret0, _ := ret[0].(*models.HelloData)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Save indicates an expected call of Save.
-func (mr *MockHelloRepositoryMockRecorder) Save(ctx, entity, tx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockHelloRepository)(nil).Save), ctx, entity, tx)
-}
 
 // MockHelloService is a mock of HelloService interface.
 type MockHelloService struct {
