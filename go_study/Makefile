@@ -35,7 +35,7 @@ docker-up-app: docker-up-infra
 	docker compose -f docker-compose.api.yml up --build --force-recreate
 
 test:
-	go test -timeout 30s ./...
+	go test -v -timeout 30s -count=1 ./...
 
 test-watch:
 	nodemon --watch ./ -e go,yml,yaml,json --delay 2 --exec "make test"

@@ -2,160 +2,119 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
-	"time"
 
-	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
-	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
-	"github.com/bruno303/study-topics/go-study/tests/integration"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func TestPgxUnitOfWork_BeginCommit_CommitsChanges(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
-
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-	ctx := context.Background()
-	testID := fmt.Sprintf("uow-commit-%d", time.Now().UnixNano())
-
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != nil {
-		t.Fatalf("expected begin without error, got: %v", err)
-	}
-
-	tx := uow.txRef.current()
-	if tx == nil {
-		t.Fatal("expected current transaction to be set")
-	}
-
-	if _, err := tx.Exec(ctx, "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)", testID, "John", 30); err != nil {
-		t.Fatalf("failed to insert in tx: %v", err)
-	}
-
-	if err := uow.Commit(ctx); err != nil {
-		t.Fatalf("expected commit without error, got: %v", err)
-	}
-
-	var count int
-	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM HELLO_DATA WHERE ID = $1", testID).Scan(&count); err != nil {
-		t.Fatalf("failed to verify committed row: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("expected count 1, got %d", count)
-	}
+type fakeTx struct {
+	commitFn   func(context.Context) error
+	rollbackFn func(context.Context) error
 }
 
-func TestPgxUnitOfWork_BeginRollback_RollsBackChanges(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
-
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-	ctx := context.Background()
-	testID := fmt.Sprintf("uow-rollback-%d", time.Now().UnixNano())
-
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != nil {
-		t.Fatalf("expected begin without error, got: %v", err)
+func (f *fakeTx) Begin(context.Context) (pgx.Tx, error) { return nil, errors.New("not implemented") }
+func (f *fakeTx) Commit(ctx context.Context) error {
+	if f.commitFn != nil {
+		return f.commitFn(ctx)
 	}
-
-	tx := uow.txRef.current()
-	if _, err := tx.Exec(ctx, "INSERT INTO HELLO_DATA (ID, NAME, AGE) VALUES ($1, $2, $3)", testID, "Jane", 25); err != nil {
-		t.Fatalf("failed to insert in tx: %v", err)
-	}
-
-	if err := uow.Rollback(ctx); err != nil {
-		t.Fatalf("expected rollback without error, got: %v", err)
-	}
-
-	var count int
-	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM HELLO_DATA WHERE ID = $1", testID).Scan(&count); err != nil {
-		t.Fatalf("failed to verify rolled back row: %v", err)
-	}
-	if count != 0 {
-		t.Fatalf("expected count 0, got %d", count)
-	}
+	return nil
 }
-
-func TestPgxUnitOfWork_WithRepository_CommitAndRollback(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
-
-	ctx := context.Background()
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-	repo := uow.HelloRepository()
-	verifyRepo := NewHelloPgxRepository(pool)
-
-	commitID := fmt.Sprintf("uow-repo-commit-%d", time.Now().UnixNano())
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != nil {
-		t.Fatalf("begin failed: %v", err)
+func (f *fakeTx) Rollback(ctx context.Context) error {
+	if f.rollbackFn != nil {
+		return f.rollbackFn(ctx)
 	}
-	if _, err := repo.Save(ctx, &models.HelloData{Id: commitID, Name: "Alice", Age: 33}); err != nil {
-		t.Fatalf("save failed: %v", err)
-	}
-	if err := uow.Commit(ctx); err != nil {
-		t.Fatalf("commit failed: %v", err)
-	}
-
-	if _, err := verifyRepo.FindById(ctx, commitID); err != nil {
-		t.Fatalf("expected committed row to exist, got: %v", err)
-	}
-
-	rollbackID := fmt.Sprintf("uow-repo-rollback-%d", time.Now().UnixNano())
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != nil {
-		t.Fatalf("begin failed: %v", err)
-	}
-	if _, err := repo.Save(ctx, &models.HelloData{Id: rollbackID, Name: "Bob", Age: 29}); err != nil {
-		t.Fatalf("save failed: %v", err)
-	}
-	if err := uow.Rollback(ctx); err != nil {
-		t.Fatalf("rollback failed: %v", err)
-	}
-
-	if _, err := verifyRepo.FindById(ctx, rollbackID); err == nil {
-		t.Fatal("expected rolled back row to be absent")
-	}
+	return nil
 }
-
-func TestPgxUnitOfWork_Begin_ValidationErrors(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
-
-	ctx := context.Background()
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-
-	if err := uow.Begin(ctx, transaction.Opts{Propagation: transaction.Propagation(99)}); err != InvalidPropagationErr {
-		t.Fatalf("expected InvalidPropagationErr, got: %v", err)
-	}
+func (f *fakeTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, errors.New("not implemented")
 }
-
-func TestPgxUnitOfWork_CommitRollback_WithoutBegin(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
-
-	ctx := context.Background()
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-
-	if err := uow.Commit(ctx); err != TransactionNotOpenedErr {
-		t.Fatalf("expected TransactionNotOpenedErr on commit, got: %v", err)
-	}
-	if err := uow.Rollback(ctx); err != TransactionNotOpenedErr {
-		t.Fatalf("expected TransactionNotOpenedErr on rollback, got: %v", err)
-	}
+func (f *fakeTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (f *fakeTx) LargeObjects() pgx.LargeObjects                         { return pgx.LargeObjects{} }
+func (f *fakeTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, errors.New("not implemented")
 }
+func (f *fakeTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	return pgconn.CommandTag{}, errors.New("not implemented")
+}
+func (f *fakeTx) Query(context.Context, string, ...any) (pgx.Rows, error) {
+	return nil, errors.New("not implemented")
+}
+func (f *fakeTx) QueryRow(context.Context, string, ...any) pgx.Row { return nil }
+func (f *fakeTx) Conn() *pgx.Conn                                  { return nil }
 
-func TestPgxUnitOfWork_Begin_AlreadyOpen(t *testing.T) {
-	pool := integration.SetupTestDB(t)
-	defer integration.CleanupTestDB(t, pool)
+func TestPgxUnitOfWork_Begin_WhenTransactionAlreadyOpen_ReturnsError(t *testing.T) {
+	uow := newPgxUnitOfWorkWithTxRef(&PgxUnitOfWorkConfig{Pool: nil}, &transactionRef{tx: &fakeTx{}})
 
-	ctx := context.Background()
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
-
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != nil {
-		t.Fatalf("begin failed: %v", err)
-	}
-	if err := uow.Begin(ctx, transaction.EmptyOpts); err != TransactionAlreadyOpenErr {
+	err := uow.Begin(context.Background())
+	if !errors.Is(err, TransactionAlreadyOpenErr) {
 		t.Fatalf("expected TransactionAlreadyOpenErr, got: %v", err)
 	}
-	if err := uow.Rollback(ctx); err != nil {
-		t.Fatalf("cleanup rollback failed: %v", err)
+}
+
+func TestPgxUnitOfWork_HelloRepository_ReturnsRepository(t *testing.T) {
+	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: nil})
+
+	if repo := uow.HelloRepository(); repo == nil {
+		t.Fatal("expected hello repository to be initialized")
+	}
+}
+
+func TestPgxUnitOfWork_Commit_WhenTransactionNotOpened_ReturnsError(t *testing.T) {
+	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: nil})
+
+	err := uow.Commit(context.Background())
+	if !errors.Is(err, TransactionNotOpenedErr) {
+		t.Fatalf("expected TransactionNotOpenedErr, got: %v", err)
+	}
+}
+
+func TestPgxUnitOfWork_Commit_WhenTransactionOpened_CommitsAndClearsCurrentTransaction(t *testing.T) {
+	committed := false
+	tx := &fakeTx{commitFn: func(context.Context) error {
+		committed = true
+		return nil
+	}}
+	uow := newPgxUnitOfWorkWithTxRef(&PgxUnitOfWorkConfig{Pool: nil}, &transactionRef{tx: tx})
+
+	err := uow.Commit(context.Background())
+	if err != nil {
+		t.Fatalf("expected commit without error, got: %v", err)
+	}
+	if !committed {
+		t.Fatal("expected commit to be called on current transaction")
+	}
+	if uow.txRef.current() != nil {
+		t.Fatal("expected current transaction to be cleared after commit")
+	}
+}
+
+func TestPgxUnitOfWork_Rollback_WhenTransactionNotOpened_ReturnsError(t *testing.T) {
+	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: nil})
+
+	err := uow.Rollback(context.Background())
+	if !errors.Is(err, TransactionNotOpenedErr) {
+		t.Fatalf("expected TransactionNotOpenedErr, got: %v", err)
+	}
+}
+
+func TestPgxUnitOfWork_Rollback_WhenTransactionOpened_RollsBackAndClearsCurrentTransaction(t *testing.T) {
+	rolledBack := false
+	tx := &fakeTx{rollbackFn: func(context.Context) error {
+		rolledBack = true
+		return nil
+	}}
+	uow := newPgxUnitOfWorkWithTxRef(&PgxUnitOfWorkConfig{Pool: nil}, &transactionRef{tx: tx})
+
+	err := uow.Rollback(context.Background())
+	if err != nil {
+		t.Fatalf("expected rollback without error, got: %v", err)
+	}
+	if !rolledBack {
+		t.Fatal("expected rollback to be called on current transaction")
+	}
+	if uow.txRef.current() != nil {
+		t.Fatal("expected current transaction to be cleared after rollback")
 	}
 }

@@ -54,12 +54,22 @@ func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	}
 }
 
-func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
-	txConfig := &repository.PgxUnitOfWorkConfig{Pool: pool}
-	uowFactory := repository.NewUnitOfWorkFactory(txConfig)
+func newRepositoryContainer(cfg *config.Config, pool *pgxpool.Pool) RepositoryContainer {
+	var factory repository.UnitOfWorkFactory
+
+	switch cfg.Database.Driver {
+	case config.DatabaseDriverMemDB:
+		sharedMemDbStorage := repository.NewMemDbStorage()
+		factory = repository.NewMemDbUnitOfWorkFactory(sharedMemDbStorage)
+	default:
+		txConfig := &repository.PgxUnitOfWorkConfig{Pool: pool}
+		factory = repository.NewUnitOfWorkFactory(txConfig)
+	}
+
+	transactionManager := repository.NewTransactionManager(factory)
 
 	return RepositoryContainer{
-		TransactionManager: uowFactory,
+		TransactionManager: transactionManager,
 	}
 }
 
@@ -103,9 +113,12 @@ func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContaine
 }
 
 func NewContainer(ctx context.Context, cfg *config.Config) *Container {
-	pool := database.Connect(cfg)
+	var pool *pgxpool.Pool
+	if cfg.Database.Driver == config.DatabaseDriverPGXPool {
+		pool = database.Connect(cfg)
+	}
 
-	repos := newRepositoryContainer(pool)
+	repos := newRepositoryContainer(cfg, pool)
 	services := newServiceContainer(repos)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)

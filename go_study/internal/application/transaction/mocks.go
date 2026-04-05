@@ -42,17 +42,17 @@ func (m *MockUnitOfWork) EXPECT() *MockUnitOfWorkMockRecorder {
 }
 
 // Begin mocks base method.
-func (m *MockUnitOfWork) Begin(arg0 context.Context, arg1 Opts) error {
+func (m *MockUnitOfWork) Begin(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Begin", arg0, arg1)
+	ret := m.ctrl.Call(m, "Begin", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Begin indicates an expected call of Begin.
-func (mr *MockUnitOfWorkMockRecorder) Begin(arg0, arg1 any) *gomock.Call {
+func (mr *MockUnitOfWorkMockRecorder) Begin(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockUnitOfWork)(nil).Begin), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockUnitOfWork)(nil).Begin), arg0)
 }
 
 // Commit mocks base method.
@@ -97,44 +97,6 @@ func (mr *MockUnitOfWorkMockRecorder) Rollback(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockUnitOfWork)(nil).Rollback), arg0)
 }
 
-// MockUnitOfWorkFactory is a mock of UnitOfWorkFactory interface.
-type MockUnitOfWorkFactory struct {
-	ctrl     *gomock.Controller
-	recorder *MockUnitOfWorkFactoryMockRecorder
-	isgomock struct{}
-}
-
-// MockUnitOfWorkFactoryMockRecorder is the mock recorder for MockUnitOfWorkFactory.
-type MockUnitOfWorkFactoryMockRecorder struct {
-	mock *MockUnitOfWorkFactory
-}
-
-// NewMockUnitOfWorkFactory creates a new mock instance.
-func NewMockUnitOfWorkFactory(ctrl *gomock.Controller) *MockUnitOfWorkFactory {
-	mock := &MockUnitOfWorkFactory{ctrl: ctrl}
-	mock.recorder = &MockUnitOfWorkFactoryMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockUnitOfWorkFactory) EXPECT() *MockUnitOfWorkFactoryMockRecorder {
-	return m.recorder
-}
-
-// New mocks base method.
-func (m *MockUnitOfWorkFactory) New() UnitOfWork {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "New")
-	ret0, _ := ret[0].(UnitOfWork)
-	return ret0
-}
-
-// New indicates an expected call of New.
-func (mr *MockUnitOfWorkFactoryMockRecorder) New() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "New", reflect.TypeOf((*MockUnitOfWorkFactory)(nil).New))
-}
-
 // MockTransactionManager is a mock of TransactionManager interface.
 type MockTransactionManager struct {
 	ctrl     *gomock.Controller
@@ -160,15 +122,15 @@ func (m *MockTransactionManager) EXPECT() *MockTransactionManagerMockRecorder {
 }
 
 // WithinTx mocks base method.
-func (m *MockTransactionManager) WithinTx(arg0 context.Context, arg1 Opts, arg2 func(context.Context, UnitOfWork) error) error {
+func (m *MockTransactionManager) WithinTx(arg0 context.Context, arg1 TransactionCallback) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithinTx", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "WithinTx", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WithinTx indicates an expected call of WithinTx.
-func (mr *MockTransactionManagerMockRecorder) WithinTx(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockTransactionManagerMockRecorder) WithinTx(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*MockTransactionManager)(nil).WithinTx), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*MockTransactionManager)(nil).WithinTx), arg0, arg1)
 }

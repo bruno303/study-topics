@@ -36,8 +36,22 @@ func NewService(transactionManager transaction.TransactionManager) helloService 
 func (s helloService) ListAll(ctx context.Context) ([]models.HelloData, error) {
 	var result []models.HelloData
 
-	err := s.transactionManager.WithinTx(ctx, transaction.EmptyOpts, func(txCtx context.Context, uow transaction.UnitOfWork) error {
+	err := s.transactionManager.WithinTx(ctx, func(txCtx context.Context, uow transaction.UnitOfWork) error {
 		list, err := uow.HelloRepository().ListAll(txCtx)
+		if err != nil {
+			return err
+		}
+
+		err = s.transactionManager.WithinTx(txCtx, func(innerCtx context.Context, innerUow transaction.UnitOfWork) error {
+			innerList, err := innerUow.HelloRepository().ListAll(innerCtx)
+			if err != nil {
+				return err
+			}
+			if len(innerList) != len(list) {
+				return fmt.Errorf("expected inner list to have same length as outer list, got %d and %d", len(innerList), len(list))
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -55,7 +69,7 @@ func (s helloService) ListAll(ctx context.Context) ([]models.HelloData, error) {
 func (s helloService) Hello(ctx context.Context, input HelloInput) (models.HelloData, error) {
 	var hello1 models.HelloData
 
-	err := s.transactionManager.WithinTx(ctx, transaction.EmptyOpts, func(txCtx context.Context, uow transaction.UnitOfWork) error {
+	err := s.transactionManager.WithinTx(ctx, func(txCtx context.Context, uow transaction.UnitOfWork) error {
 		hello1 = models.HelloData{Id: input.Id, Name: fmt.Sprintf("Bruno %v", input.Id), Age: input.Age}
 		_, err := uow.HelloRepository().Save(txCtx, &hello1)
 		if err != nil {

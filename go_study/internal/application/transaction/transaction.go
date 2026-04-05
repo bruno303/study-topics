@@ -9,56 +9,16 @@ import (
 //go:generate go tool mockgen -source=transaction.go -destination=mocks.go -package transaction
 
 type (
-	Transaction any
-
 	UnitOfWork interface {
-		Begin(context.Context, Opts) error
+		Begin(context.Context) error
 		Commit(context.Context) error
 		Rollback(context.Context) error
 		HelloRepository() repository.HelloRepository
 	}
 
+	TransactionCallback func(context.Context, UnitOfWork) error
+
 	TransactionManager interface {
-		WithinTx(context.Context, Opts, func(context.Context, UnitOfWork) error) error
-	}
-
-	Propagation uint8
-
-	Opts struct {
-		Propagation Propagation
+		WithinTx(context.Context, TransactionCallback) error
 	}
 )
-
-const (
-	PropagationUnspecified Propagation = iota
-	PropagationJoin
-	PropagationRequiresNew
-	PropagationNested
-)
-
-var EmptyOpts = RequiresNew()
-
-func Join() Opts {
-	return Opts{
-		Propagation: PropagationJoin,
-	}
-}
-
-func RequiresNew() Opts {
-	return Opts{
-		Propagation: PropagationRequiresNew,
-	}
-}
-
-func Nested() Opts {
-	return Opts{
-		Propagation: PropagationNested,
-	}
-}
-
-func (o Opts) EffectivePropagation() Propagation {
-	if o.Propagation != PropagationUnspecified {
-		return o.Propagation
-	}
-	return PropagationJoin
-}

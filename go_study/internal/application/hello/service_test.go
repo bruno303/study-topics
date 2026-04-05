@@ -25,11 +25,8 @@ func TestHello_UsesTransactionManagerAndReturnsFirstSavedEntity(t *testing.T) {
 	txCtx := context.WithValue(baseCtx, contextKey("scope"), "tx")
 
 	txManager.EXPECT().
-		WithinTx(baseCtx, transaction.EmptyOpts, gomock.Any()).
-		DoAndReturn(func(_ context.Context, opts transaction.Opts, fn func(context.Context, transaction.UnitOfWork) error) error {
-			if opts.EffectivePropagation() != transaction.PropagationRequiresNew {
-				t.Fatalf("expected requires-new propagation, got %v", opts.EffectivePropagation())
-			}
+		WithinTx(baseCtx, gomock.Any()).
+		DoAndReturn(func(_ context.Context, fn func(context.Context, transaction.UnitOfWork) error) error {
 			return fn(txCtx, uow)
 		})
 
@@ -65,8 +62,8 @@ func TestHello_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(t 
 	expectedErr := errors.New("save failed")
 
 	txManager.EXPECT().
-		WithinTx(gomock.Any(), transaction.EmptyOpts, gomock.Any()).
-		DoAndReturn(func(ctx context.Context, _ transaction.Opts, fn func(context.Context, transaction.UnitOfWork) error) error {
+		WithinTx(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(context.Context, transaction.UnitOfWork) error) error {
 			return fn(ctx, uow)
 		})
 
@@ -86,7 +83,7 @@ func TestHello_WhenWithinTxFails_PropagatesError(t *testing.T) {
 
 	expectedErr := errors.New("begin tx failed")
 	txManager.EXPECT().
-		WithinTx(gomock.Any(), transaction.EmptyOpts, gomock.Any()).
+		WithinTx(gomock.Any(), gomock.Any()).
 		Return(expectedErr)
 
 	_, err := subject.Hello(t.Context(), HelloInput{Id: "id", Age: 18})
@@ -105,21 +102,38 @@ func TestListAll_UsesTransactionManagerAndReturnsResult(t *testing.T) {
 	expected := []models.HelloData{{Id: "id-1", Name: "Bruno id-1", Age: 18}}
 	baseCtx := context.WithValue(t.Context(), contextKey("scope"), "outer")
 	txCtx := context.WithValue(baseCtx, contextKey("scope"), "tx")
+	innerTxCtx := context.WithValue(txCtx, contextKey("scope"), "inner")
 
-	txManager.EXPECT().
-		WithinTx(baseCtx, transaction.EmptyOpts, gomock.Any()).
-		DoAndReturn(func(_ context.Context, opts transaction.Opts, fn func(context.Context, transaction.UnitOfWork) error) error {
-			if opts.EffectivePropagation() != transaction.PropagationRequiresNew {
-				t.Fatalf("expected requires-new propagation, got %v", opts.EffectivePropagation())
+	gomock.InOrder(
+		txManager.EXPECT().
+			WithinTx(baseCtx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, fn func(context.Context, transaction.UnitOfWork) error) error {
+				return fn(txCtx, uow)
+			}),
+		txManager.EXPECT().
+			WithinTx(txCtx, gomock.Any()).
+			DoAndReturn(func(_ context.Context, fn func(context.Context, transaction.UnitOfWork) error) error {
+				return fn(innerTxCtx, uow)
+			}),
+	)
+
+	uow.EXPECT().HelloRepository().Return(repo).Times(2)
+	callNumber := 0
+	repo.EXPECT().ListAll(gomock.Any()).Times(2).DoAndReturn(func(ctx context.Context) ([]models.HelloData, error) {
+		callNumber++
+		switch callNumber {
+		case 1:
+			if ctx != txCtx {
+				t.Fatalf("expected outer list to use callback context")
 			}
-			return fn(txCtx, uow)
-		})
-
-	uow.EXPECT().HelloRepository().Return(repo)
-	repo.EXPECT().ListAll(gomock.Any()).DoAndReturn(func(ctx context.Context) ([]models.HelloData, error) {
-		if ctx != txCtx {
-			t.Fatalf("expected list to use callback context")
+		case 2:
+			if ctx != innerTxCtx {
+				t.Fatalf("expected inner list to use nested callback context")
+			}
+		default:
+			t.Fatalf("unexpected call number %d", callNumber)
 		}
+
 		return expected, nil
 	})
 
@@ -142,8 +156,8 @@ func TestListAll_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(
 	expectedErr := errors.New("repository list error")
 
 	txManager.EXPECT().
-		WithinTx(gomock.Any(), transaction.EmptyOpts, gomock.Any()).
-		DoAndReturn(func(ctx context.Context, _ transaction.Opts, fn func(context.Context, transaction.UnitOfWork) error) error {
+		WithinTx(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(context.Context, transaction.UnitOfWork) error) error {
 			return fn(ctx, uow)
 		})
 
@@ -166,7 +180,7 @@ func TestListAll_WhenWithinTxFails_PropagatesError(t *testing.T) {
 
 	expectedErr := errors.New("tx manager failed")
 	txManager.EXPECT().
-		WithinTx(gomock.Any(), transaction.EmptyOpts, gomock.Any()).
+		WithinTx(gomock.Any(), gomock.Any()).
 		Return(expectedErr)
 
 	_, err := subject.ListAll(t.Context())
