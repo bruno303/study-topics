@@ -13,20 +13,20 @@ import (
 )
 
 type HelloRepository struct {
-	pool  *pgxpool.Pool
-	txRef *transactionRef
+	pool *pgxpool.Pool
+	tx   pgx.Tx
 }
 
 const traceName = "HelloRepository"
 
 func NewHelloPgxRepository(pool *pgxpool.Pool) HelloRepository {
-	return newHelloPgxRepository(pool, &transactionRef{})
+	return newHelloPgxRepository(pool, nil)
 }
 
-func newHelloPgxRepository(pool *pgxpool.Pool, txRef *transactionRef) HelloRepository {
+func newHelloPgxRepository(pool *pgxpool.Pool, tx pgx.Tx) HelloRepository {
 	return HelloRepository{
-		pool:  pool,
-		txRef: txRef,
+		pool: pool,
+		tx:   tx,
 	}
 }
 
@@ -112,10 +112,7 @@ func (r HelloRepository) ListAll(ctx context.Context) ([]models.HelloData, error
 }
 
 func (r HelloRepository) getTransactionOrNil() pgx.Tx {
-	if r.txRef == nil {
-		return nil
-	}
-	return r.txRef.current()
+	return r.tx
 }
 
 func (r HelloRepository) mapRow(row *pgx.Row) (*models.HelloData, error) {

@@ -43,11 +43,11 @@ type MessageHandlersContainer struct {
 }
 
 type RepositoryContainer struct {
-	TransactionManager transaction.TransactionManager
+	UnitOfWork transaction.UnitOfWork
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
-	helloService := hello.NewService(repoContainer.TransactionManager)
+	helloService := hello.NewService(repoContainer.UnitOfWork)
 
 	return ServiceContainer{
 		HelloService: tracedecorator.NewTraceableHelloService(helloService),
@@ -55,21 +55,19 @@ func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 }
 
 func newRepositoryContainer(cfg *config.Config, pool *pgxpool.Pool) RepositoryContainer {
-	var factory repository.UnitOfWorkFactory
+	var unitOfWork transaction.UnitOfWork
 
 	switch cfg.Database.Driver {
 	case config.DatabaseDriverMemDB:
 		sharedMemDbStorage := repository.NewMemDbStorage()
-		factory = repository.NewMemDbUnitOfWorkFactory(sharedMemDbStorage)
+		unitOfWork = repository.NewMemDbUnitOfWork(sharedMemDbStorage)
 	default:
 		txConfig := &repository.PgxUnitOfWorkConfig{Pool: pool}
-		factory = repository.NewUnitOfWorkFactory(txConfig)
+		unitOfWork = repository.NewPgxUnitOfWork(txConfig)
 	}
 
-	transactionManager := repository.NewTransactionManager(factory)
-
 	return RepositoryContainer{
-		TransactionManager: transactionManager,
+		UnitOfWork: unitOfWork,
 	}
 }
 

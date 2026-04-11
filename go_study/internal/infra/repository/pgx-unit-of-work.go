@@ -5,99 +5,137 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bruno303/study-topics/go-study/internal/application/repository"
+	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type (
-	transactionRef struct {
-		tx pgx.Tx
+	pgxRepositoryAccessor struct {
+		helloRepository applicationRepository.HelloRepository
 	}
+
 	PgxUnitOfWork struct {
-		config          *PgxUnitOfWorkConfig
-		txRef           *transactionRef
-		helloRepository repository.HelloRepository
+		config *PgxUnitOfWorkConfig
 	}
+
 	PgxUnitOfWorkConfig struct {
 		Pool *pgxpool.Pool
 	}
 )
 
-var (
-	InvalidTransactionTypeErr = errors.New("invalid transaction type")
-	InvalidPropagationErr     = errors.New("invalid propagation option")
-	TransactionAlreadyOpenErr = errors.New("transaction already opened")
-	TransactionNotOpenedErr   = errors.New("transaction not opened")
-)
+var _ transaction.UnitOfWork = (*PgxUnitOfWork)(nil)
+var _ transaction.RepositoryAccessor = (*pgxRepositoryAccessor)(nil)
 
 func NewPgxUnitOfWork(cfg *PgxUnitOfWorkConfig) *PgxUnitOfWork {
-	return newPgxUnitOfWorkWithTxRef(cfg, &transactionRef{})
+	return &PgxUnitOfWork{config: cfg}
 }
 
-func newPgxUnitOfWorkWithTxRef(cfg *PgxUnitOfWorkConfig, txRef *transactionRef) *PgxUnitOfWork {
-	return &PgxUnitOfWork{
-		config:          cfg,
-		txRef:           txRef,
-		helloRepository: newHelloPgxRepository(cfg.Pool, txRef),
-	}
-}
-
-func (tm *PgxUnitOfWork) HelloRepository() repository.HelloRepository {
-	return tm.helloRepository
-}
-
-func (tm *PgxUnitOfWork) Begin(ctx context.Context) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "Begin"))
+func (uow *PgxUnitOfWork) WithinTx(ctx context.Context, fn transaction.TransactionCallback) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "WithinTx"))
 	defer end()
 
-	if tm.txRef.current() != nil {
-		err := fmt.Errorf("%w: begin is not allowed for externally scoped transactions", TransactionAlreadyOpenErr)
-		trace.InjectError(ctx, err)
-		return err
-	}
-
-	tx, err := tm.config.Pool.Begin(ctx)
+	tx, err := uow.config.Pool.Begin(ctx)
 	if err != nil {
 		trace.InjectError(ctx, err)
 		return err
 	}
 
-	tm.txRef.set(tx)
+	repos := uow.newRepositoryAccessor(tx)
+	return uow.execute(ctx, tx, repos, fn)
+}
+
+func (uow *PgxUnitOfWork) newRepositoryAccessor(tx pgx.Tx) transaction.RepositoryAccessor {
+	return &pgxRepositoryAccessor{
+		helloRepository: newHelloPgxRepository(uow.config.Pool, tx),
+	}
+}
+
+func (uow *PgxUnitOfWork) execute(ctx context.Context, tx pgx.Tx, repos transaction.RepositoryAccessor, fn transaction.TransactionCallback) error {
+	var callbackPanic any
+	var callbackErr error
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				callbackPanic = recovered
+			}
+		}()
+
+		callbackErr = fn(ctx, repos)
+	}()
+
+	if callbackPanic != nil {
+		uow.rollbackBestEffort(ctx, tx)
+		panic(callbackPanic)
+	}
+
+	if callbackErr != nil {
+		rollbackErr := uow.rollback(ctx, tx)
+		if rollbackErr != nil {
+			joinedErr := combineCallbackAndRollbackErr(callbackErr, rollbackErr)
+			trace.InjectError(ctx, joinedErr)
+			return joinedErr
+		}
+		return callbackErr
+	}
+
+	commitErr := uow.commit(ctx, tx)
+	if commitErr != nil {
+		trace.InjectError(ctx, commitErr)
+		return commitErr
+	}
+
 	return nil
 }
 
-func (uow *PgxUnitOfWork) Commit(ctx context.Context) error {
-	if uow.txRef.current() == nil {
-		return TransactionNotOpenedErr
+func combineCallbackAndRollbackErr(callbackErr, rollbackErr error) error {
+	if rollbackErr == nil {
+		return callbackErr
 	}
-	defer uow.clear()
-	return uow.txRef.current().Commit(ctx)
+	return errors.Join(callbackErr, fmt.Errorf("rollback transaction: %w", rollbackErr))
 }
 
-func (uow *PgxUnitOfWork) Rollback(ctx context.Context) error {
-	if uow.txRef.current() == nil {
-		return TransactionNotOpenedErr
+func (uow *PgxUnitOfWork) commit(ctx context.Context, tx pgx.Tx) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "Commit"))
+	defer end()
+
+	err := tx.Commit(ctx)
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err
 	}
-	defer uow.clear()
-	return uow.txRef.current().Rollback(ctx)
+
+	return nil
 }
 
-func (tm *PgxUnitOfWork) clear() {
-	tm.txRef.set(nil)
+func (uow *PgxUnitOfWork) rollback(ctx context.Context, tx pgx.Tx) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "Rollback"))
+	defer end()
+
+	err := tx.Rollback(ctx)
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err
+	}
+
+	return nil
 }
 
-func (r *transactionRef) current() pgx.Tx {
-	if r == nil {
-		return nil
+func (uow *PgxUnitOfWork) rollbackBestEffort(ctx context.Context, tx pgx.Tx) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			trace.InjectError(ctx, fmt.Errorf("panic during rollback: %v", recovered))
+		}
+	}()
+
+	rollbackErr := uow.rollback(ctx, tx)
+	if rollbackErr != nil {
+		trace.InjectError(ctx, rollbackErr)
 	}
-	return r.tx
 }
 
-func (r *transactionRef) set(tx pgx.Tx) {
-	if r == nil {
-		return
-	}
-	r.tx = tx
+func (a *pgxRepositoryAccessor) HelloRepository() applicationRepository.HelloRepository {
+	return a.helloRepository
 }

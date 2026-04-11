@@ -6,6 +6,7 @@ import (
 	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
 	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
+	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 )
 
@@ -18,6 +19,7 @@ type MemDbUnitOfWork struct {
 }
 
 var _ transaction.UnitOfWork = (*MemDbUnitOfWork)(nil)
+var _ transaction.RepositoryAccessor = (*MemDbUnitOfWork)(nil)
 
 func newMemDbStorage() *memDbStorage {
 	return &memDbStorage{hello: database.NewMemDbRepository[models.HelloData]()}
@@ -37,16 +39,11 @@ func NewMemDbUnitOfWork(storage *memDbStorage) *MemDbUnitOfWork {
 	}
 }
 
-func (uow *MemDbUnitOfWork) Begin(context.Context) error {
-	return nil
-}
+func (uow *MemDbUnitOfWork) WithinTx(ctx context.Context, fn transaction.TransactionCallback) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("MemDbUnitOfWork", "WithinTx"))
+	defer end()
 
-func (uow *MemDbUnitOfWork) Commit(context.Context) error {
-	return nil
-}
-
-func (uow *MemDbUnitOfWork) Rollback(context.Context) error {
-	return nil
+	return fn(ctx, uow)
 }
 
 func (uow *MemDbUnitOfWork) HelloRepository() applicationRepository.HelloRepository {

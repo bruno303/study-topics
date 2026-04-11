@@ -9,16 +9,13 @@ import (
 //go:generate go tool mockgen -source=transaction.go -destination=mocks.go -package transaction
 
 type (
-	UnitOfWork interface {
-		Begin(context.Context) error
-		Commit(context.Context) error
-		Rollback(context.Context) error
+	RepositoryAccessor interface {
 		HelloRepository() repository.HelloRepository
 	}
 
-	TransactionCallback func(context.Context, UnitOfWork) error
+	TransactionCallback func(context.Context, RepositoryAccessor) error
 
-	TransactionManager interface {
+	UnitOfWork interface {
 		WithinTx(context.Context, TransactionCallback) error
 	}
 )
