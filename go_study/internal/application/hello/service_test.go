@@ -117,8 +117,14 @@ func TestListAll_UsesCallbackUnitOfWorkAndReturnsResult(t *testing.T) {
 			return fn(txCtx, uow)
 		})
 
-	uow.EXPECT().HelloRepository().Return(repo)
-	repo.EXPECT().ListAll(txCtx).Return(expected, nil)
+	transactionManager.EXPECT().
+		WithinTx(txCtx, transaction.WithParent(uow), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(txCtx, uow)
+		})
+
+	uow.EXPECT().HelloRepository().Return(repo).Times(2)
+	repo.EXPECT().ListAll(txCtx).Return(expected, nil).Times(2)
 
 	result, err := subject.ListAll(baseCtx)
 	if err != nil {
