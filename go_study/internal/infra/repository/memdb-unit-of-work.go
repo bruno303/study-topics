@@ -14,12 +14,16 @@ type memDbStorage struct {
 	hello *database.MemDbRepository[models.HelloData]
 }
 
-type MemDbUnitOfWork struct {
+type memDbUnitOfWork struct {
 	helloRepository applicationRepository.HelloRepository
 }
 
-var _ transaction.UnitOfWork = (*MemDbUnitOfWork)(nil)
-var _ transaction.RepositoryAccessor = (*MemDbUnitOfWork)(nil)
+type MemDbTransactionManager struct {
+	storage *memDbStorage
+}
+
+var _ transaction.TransactionManager = (*MemDbTransactionManager)(nil)
+var _ transaction.UnitOfWork = (*memDbUnitOfWork)(nil)
 
 func newMemDbStorage() *memDbStorage {
 	return &memDbStorage{hello: database.NewMemDbRepository[models.HelloData]()}
@@ -29,23 +33,31 @@ func NewMemDbStorage() *memDbStorage {
 	return newMemDbStorage()
 }
 
-func NewMemDbUnitOfWork(storage *memDbStorage) *MemDbUnitOfWork {
+func NewMemDbTransactionManager(storage *memDbStorage) *MemDbTransactionManager {
 	if storage == nil {
 		storage = newMemDbStorage()
 	}
 
-	return &MemDbUnitOfWork{
-		helloRepository: NewHelloMemDbRepository(storage.hello),
+	return &MemDbTransactionManager{storage: storage}
+}
+
+func (tm *MemDbTransactionManager) WithinTx(ctx context.Context, opts transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("MemDbTransactionManager", "WithinTx"))
+	defer end()
+
+	if opts.Parent != nil {
+		return fn(ctx, opts.Parent)
+	}
+
+	return fn(ctx, tm.newUnitOfWork())
+}
+
+func (tm *MemDbTransactionManager) newUnitOfWork() transaction.UnitOfWork {
+	return &memDbUnitOfWork{
+		helloRepository: NewHelloMemDbRepository(tm.storage.hello),
 	}
 }
 
-func (uow *MemDbUnitOfWork) WithinTx(ctx context.Context, fn transaction.TransactionCallback) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("MemDbUnitOfWork", "WithinTx"))
-	defer end()
-
-	return fn(ctx, uow)
-}
-
-func (uow *MemDbUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
+func (uow *memDbUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
 	return uow.helloRepository
 }

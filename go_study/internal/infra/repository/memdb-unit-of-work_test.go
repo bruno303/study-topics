@@ -7,22 +7,23 @@ import (
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
+	"go.uber.org/mock/gomock"
 )
 
-func TestMemDbUnitOfWork_WithinTx_UsesProvidedContextAndAccessor(t *testing.T) {
-	uow := NewMemDbUnitOfWork(nil)
+func TestMemDbTransactionManager_WithinTx_UsesProvidedContextAndUnitOfWork(t *testing.T) {
+	tm := NewMemDbTransactionManager(nil)
 	ctx := context.WithValue(t.Context(), "scope", "memdb")
 	callbackCalled := false
 
-	err := uow.WithinTx(ctx, func(gotCtx context.Context, repos transaction.RepositoryAccessor) error {
+	err := tm.WithinTx(ctx, transaction.EmptyOpts(), func(gotCtx context.Context, uow transaction.UnitOfWork) error {
 		callbackCalled = true
 		if gotCtx != ctx {
 			t.Fatalf("expected callback to receive original context")
 		}
-		if repos != uow {
-			t.Fatalf("expected callback to receive unit of work as repository accessor")
+		if uow == nil {
+			t.Fatal("expected callback to receive unit of work")
 		}
-		if repos.HelloRepository() == nil {
+		if uow.HelloRepository() == nil {
 			t.Fatal("expected hello repository to be initialized")
 		}
 		return nil
@@ -35,11 +36,11 @@ func TestMemDbUnitOfWork_WithinTx_UsesProvidedContextAndAccessor(t *testing.T) {
 	}
 }
 
-func TestMemDbUnitOfWork_WithinTx_WhenCallbackReturnsError_PropagatesError(t *testing.T) {
-	uow := NewMemDbUnitOfWork(nil)
+func TestMemDbTransactionManager_WithinTx_WhenCallbackReturnsError_PropagatesError(t *testing.T) {
+	tm := NewMemDbTransactionManager(nil)
 	expectedErr := errors.New("callback failed")
 
-	err := uow.WithinTx(t.Context(), func(context.Context, transaction.RepositoryAccessor) error {
+	err := tm.WithinTx(t.Context(), transaction.EmptyOpts(), func(context.Context, transaction.UnitOfWork) error {
 		return expectedErr
 	})
 	if !errors.Is(err, expectedErr) {
@@ -47,14 +48,39 @@ func TestMemDbUnitOfWork_WithinTx_WhenCallbackReturnsError_PropagatesError(t *te
 	}
 }
 
-func TestNewMemDbUnitOfWork_WhenStorageIsShared_SharesStateAcrossTransactions(t *testing.T) {
+func TestMemDbTransactionManager_WithinTx_WhenParentProvided_ReusesParentUnitOfWork(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	parent := transaction.NewMockUnitOfWork(ctrl)
+	tm := NewMemDbTransactionManager(nil)
+	ctx := context.WithValue(t.Context(), "scope", "parent")
+	callbackCalled := false
+
+	err := tm.WithinTx(ctx, transaction.TransactionOpts{Parent: parent}, func(gotCtx context.Context, uow transaction.UnitOfWork) error {
+		callbackCalled = true
+		if gotCtx != ctx {
+			t.Fatalf("expected callback to receive original context")
+		}
+		if uow != parent {
+			t.Fatalf("expected parent unit of work, got %T", uow)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !callbackCalled {
+		t.Fatal("expected callback to be called")
+	}
+}
+
+func TestNewMemDbTransactionManager_WhenStorageIsShared_SharesStateAcrossTransactions(t *testing.T) {
 	storage := NewMemDbStorage()
-	uow1 := NewMemDbUnitOfWork(storage)
-	uow2 := NewMemDbUnitOfWork(storage)
+	tm1 := NewMemDbTransactionManager(storage)
+	tm2 := NewMemDbTransactionManager(storage)
 	entity := models.HelloData{Id: "shared-id", Name: "Shared", Age: 10}
 
-	err := uow1.WithinTx(context.Background(), func(ctx context.Context, repos transaction.RepositoryAccessor) error {
-		_, err := repos.HelloRepository().Save(ctx, &entity)
+	err := tm1.WithinTx(context.Background(), transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
+		_, err := uow.HelloRepository().Save(ctx, &entity)
 		return err
 	})
 	if err != nil {
@@ -62,9 +88,9 @@ func TestNewMemDbUnitOfWork_WhenStorageIsShared_SharesStateAcrossTransactions(t 
 	}
 
 	var list []models.HelloData
-	err = uow2.WithinTx(context.Background(), func(ctx context.Context, repos transaction.RepositoryAccessor) error {
+	err = tm2.WithinTx(context.Background(), transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
 		var err error
-		list, err = repos.HelloRepository().ListAll(ctx)
+		list, err = uow.HelloRepository().ListAll(ctx)
 		return err
 	})
 	if err != nil {

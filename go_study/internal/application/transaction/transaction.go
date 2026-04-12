@@ -9,13 +9,25 @@ import (
 //go:generate go tool mockgen -source=transaction.go -destination=mocks.go -package transaction
 
 type (
-	RepositoryAccessor interface {
+	UnitOfWork interface {
 		HelloRepository() repository.HelloRepository
 	}
 
-	TransactionCallback func(context.Context, RepositoryAccessor) error
+	TransactionCallback func(context.Context, UnitOfWork) error
 
-	UnitOfWork interface {
-		WithinTx(context.Context, TransactionCallback) error
+	TransactionManager interface {
+		WithinTx(context.Context, TransactionOpts, TransactionCallback) error
+	}
+
+	TransactionOpts struct {
+		Parent UnitOfWork
 	}
 )
+
+func EmptyOpts() TransactionOpts {
+	return TransactionOpts{}
+}
+
+func WithParent(parent UnitOfWork) TransactionOpts {
+	return TransactionOpts{Parent: parent}
+}

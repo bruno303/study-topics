@@ -17,12 +17,12 @@ func TestNewRepositoryContainer_WhenDriverIsMemDb_UsesSharedMemDbPathAcrossTrans
 	repoContainer := newRepositoryContainer(cfg, nil)
 	entity := models.HelloData{Id: "container-memdb-shared", Name: "MemDb", Age: 20}
 
-	if _, ok := repoContainer.UnitOfWork.(*repositoryinfra.MemDbUnitOfWork); !ok {
-		t.Fatalf("expected memdb unit of work, got %T", repoContainer.UnitOfWork)
+	if _, ok := repoContainer.TransactionManager.(*repositoryinfra.MemDbTransactionManager); !ok {
+		t.Fatalf("expected memdb transaction manager, got %T", repoContainer.TransactionManager)
 	}
 
-	err := repoContainer.UnitOfWork.WithinTx(context.Background(), func(ctx context.Context, repos transaction.RepositoryAccessor) error {
-		_, err := repos.HelloRepository().Save(ctx, &entity)
+	err := repoContainer.TransactionManager.WithinTx(context.Background(), transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
+		_, err := uow.HelloRepository().Save(ctx, &entity)
 		return err
 	})
 	if err != nil {
@@ -30,9 +30,9 @@ func TestNewRepositoryContainer_WhenDriverIsMemDb_UsesSharedMemDbPathAcrossTrans
 	}
 
 	var list []models.HelloData
-	err = repoContainer.UnitOfWork.WithinTx(context.Background(), func(ctx context.Context, repos transaction.RepositoryAccessor) error {
+	err = repoContainer.TransactionManager.WithinTx(context.Background(), transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
 		var err error
-		list, err = repos.HelloRepository().ListAll(ctx)
+		list, err = uow.HelloRepository().ListAll(ctx)
 		return err
 	})
 	if err != nil {
@@ -46,13 +46,13 @@ func TestNewRepositoryContainer_WhenDriverIsMemDb_UsesSharedMemDbPathAcrossTrans
 	}
 }
 
-func TestNewRepositoryContainer_WhenDriverIsPgxPool_UsesPgxUnitOfWork(t *testing.T) {
+func TestNewRepositoryContainer_WhenDriverIsPgxPool_UsesPgxTransactionManager(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Database.Driver = config.DatabaseDriverPGXPool
 
 	repoContainer := newRepositoryContainer(cfg, nil)
 
-	if _, ok := repoContainer.UnitOfWork.(*repositoryinfra.PgxUnitOfWork); !ok {
-		t.Fatalf("expected pgx unit of work, got %T", repoContainer.UnitOfWork)
+	if _, ok := repoContainer.TransactionManager.(*repositoryinfra.PgxTransactionManager); !ok {
+		t.Fatalf("expected pgx transaction manager, got %T", repoContainer.TransactionManager)
 	}
 }

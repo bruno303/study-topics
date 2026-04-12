@@ -13,12 +13,12 @@ import (
 
 type contextKey string
 
-func TestHello_UsesUnitOfWorkAndReturnsFirstSavedEntity(t *testing.T) {
+func TestHello_UsesCallbackUnitOfWorkAndReturnsFirstSavedEntity(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
 	uow := transaction.NewMockUnitOfWork(ctrl)
-	repos := transaction.NewMockRepositoryAccessor(ctrl)
 	repo := applicationRepository.NewMockHelloRepository(ctrl)
-	subject := NewService(uow)
+	subject := NewService(transactionManager)
 
 	input := HelloInput{Id: "id", Age: 18}
 	baseCtx := context.WithValue(t.Context(), contextKey("scope"), "outer")
@@ -26,13 +26,13 @@ func TestHello_UsesUnitOfWorkAndReturnsFirstSavedEntity(t *testing.T) {
 
 	savedEntities := make([]models.HelloData, 0, 2)
 
-	uow.EXPECT().
-		WithinTx(baseCtx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, fn transaction.TransactionCallback) error {
-			return fn(txCtx, repos)
+	transactionManager.EXPECT().
+		WithinTx(baseCtx, transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(txCtx, uow)
 		})
 
-	repos.EXPECT().HelloRepository().Return(repo).Times(2)
+	uow.EXPECT().HelloRepository().Return(repo).Times(2)
 	repo.EXPECT().Save(txCtx, gomock.AssignableToTypeOf(&models.HelloData{})).DoAndReturn(
 		func(ctx context.Context, entity *models.HelloData) (*models.HelloData, error) {
 			if ctx != txCtx {
@@ -60,22 +60,22 @@ func TestHello_UsesUnitOfWorkAndReturnsFirstSavedEntity(t *testing.T) {
 	}
 }
 
-func TestHello_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(t *testing.T) {
+func TestHello_WhenRepositoryReturnsError_PropagatesErrorFromCallback(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
 	uow := transaction.NewMockUnitOfWork(ctrl)
-	repos := transaction.NewMockRepositoryAccessor(ctrl)
 	repo := applicationRepository.NewMockHelloRepository(ctrl)
-	subject := NewService(uow)
+	subject := NewService(transactionManager)
 
 	expectedErr := errors.New("save failed")
 
-	uow.EXPECT().
-		WithinTx(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, fn transaction.TransactionCallback) error {
-			return fn(ctx, repos)
+	transactionManager.EXPECT().
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(ctx, uow)
 		})
 
-	repos.EXPECT().HelloRepository().Return(repo)
+	uow.EXPECT().HelloRepository().Return(repo)
 	repo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 
 	_, err := subject.Hello(t.Context(), HelloInput{Id: "id", Age: 18})
@@ -86,12 +86,12 @@ func TestHello_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(t 
 
 func TestHello_WhenWithinTxFails_PropagatesError(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	uow := transaction.NewMockUnitOfWork(ctrl)
-	subject := NewService(uow)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
+	subject := NewService(transactionManager)
 
 	expectedErr := errors.New("begin tx failed")
-	uow.EXPECT().
-		WithinTx(gomock.Any(), gomock.Any()).
+	transactionManager.EXPECT().
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
 		Return(expectedErr)
 
 	_, err := subject.Hello(t.Context(), HelloInput{Id: "id", Age: 18})
@@ -100,24 +100,24 @@ func TestHello_WhenWithinTxFails_PropagatesError(t *testing.T) {
 	}
 }
 
-func TestListAll_UsesUnitOfWorkAndReturnsResult(t *testing.T) {
+func TestListAll_UsesCallbackUnitOfWorkAndReturnsResult(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
 	uow := transaction.NewMockUnitOfWork(ctrl)
-	repos := transaction.NewMockRepositoryAccessor(ctrl)
 	repo := applicationRepository.NewMockHelloRepository(ctrl)
-	subject := NewService(uow)
+	subject := NewService(transactionManager)
 
 	expected := []models.HelloData{{Id: "id-1", Name: "Bruno id-1", Age: 18}}
 	baseCtx := context.WithValue(t.Context(), contextKey("scope"), "outer")
 	txCtx := context.WithValue(baseCtx, contextKey("scope"), "tx")
 
-	uow.EXPECT().
-		WithinTx(baseCtx, gomock.Any()).
-		DoAndReturn(func(_ context.Context, fn transaction.TransactionCallback) error {
-			return fn(txCtx, repos)
+	transactionManager.EXPECT().
+		WithinTx(baseCtx, transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(txCtx, uow)
 		})
 
-	repos.EXPECT().HelloRepository().Return(repo)
+	uow.EXPECT().HelloRepository().Return(repo)
 	repo.EXPECT().ListAll(txCtx).Return(expected, nil)
 
 	result, err := subject.ListAll(baseCtx)
@@ -129,22 +129,22 @@ func TestListAll_UsesUnitOfWorkAndReturnsResult(t *testing.T) {
 	}
 }
 
-func TestListAll_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(t *testing.T) {
+func TestListAll_WhenRepositoryReturnsError_PropagatesErrorFromCallback(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
 	uow := transaction.NewMockUnitOfWork(ctrl)
-	repos := transaction.NewMockRepositoryAccessor(ctrl)
 	repo := applicationRepository.NewMockHelloRepository(ctrl)
-	subject := NewService(uow)
+	subject := NewService(transactionManager)
 
 	expectedErr := errors.New("repository list error")
 
-	uow.EXPECT().
-		WithinTx(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, fn transaction.TransactionCallback) error {
-			return fn(ctx, repos)
+	transactionManager.EXPECT().
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(ctx, uow)
 		})
 
-	repos.EXPECT().HelloRepository().Return(repo)
+	uow.EXPECT().HelloRepository().Return(repo)
 	repo.EXPECT().ListAll(gomock.Any()).Return(nil, expectedErr)
 
 	result, err := subject.ListAll(t.Context())
@@ -158,12 +158,12 @@ func TestListAll_WhenRepositoryReturnsError_PropagatesErrorFromWithinTxCallback(
 
 func TestListAll_WhenWithinTxFails_PropagatesError(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	uow := transaction.NewMockUnitOfWork(ctrl)
-	subject := NewService(uow)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
+	subject := NewService(transactionManager)
 
 	expectedErr := errors.New("tx manager failed")
-	uow.EXPECT().
-		WithinTx(gomock.Any(), gomock.Any()).
+	transactionManager.EXPECT().
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
 		Return(expectedErr)
 
 	_, err := subject.ListAll(t.Context())

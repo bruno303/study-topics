@@ -9,11 +9,11 @@ import (
 	"time"
 
 	applicationModels "github.com/bruno303/study-topics/go-study/internal/application/hello/models"
-	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/tests/integration"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/mock/gomock"
 )
 
 type fakeTx struct {
@@ -21,10 +21,6 @@ type fakeTx struct {
 	rollbackFn    func(context.Context) error
 	commitCalls   int
 	rollbackCalls int
-}
-
-type fakeRepositoryAccessor struct {
-	helloRepository applicationRepository.HelloRepository
 }
 
 type fakeHelloRepository struct{}
@@ -61,10 +57,6 @@ func (f *fakeTx) Query(context.Context, string, ...any) (pgx.Rows, error) {
 func (f *fakeTx) QueryRow(context.Context, string, ...any) pgx.Row { return nil }
 func (f *fakeTx) Conn() *pgx.Conn                                  { return nil }
 
-func (f fakeRepositoryAccessor) HelloRepository() applicationRepository.HelloRepository {
-	return f.helloRepository
-}
-
 func (fakeHelloRepository) Save(context.Context, *applicationModels.HelloData) (*applicationModels.HelloData, error) {
 	return nil, nil
 }
@@ -73,15 +65,15 @@ func (fakeHelloRepository) ListAll(context.Context) ([]applicationModels.HelloDa
 	return nil, nil
 }
 
-func TestPgxUnitOfWork_WithinTx_WhenBeginFails_DoesNotInvokeCallback(t *testing.T) {
+func TestPgxTransactionManager_WithinTx_WhenBeginFails_DoesNotInvokeCallback(t *testing.T) {
 	pool := integration.SetupTestDB(t)
 	defer integration.CleanupTestDB(t, pool)
 	pool.Close()
 
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{Pool: pool})
 	callbackCalled := false
 
-	err := uow.WithinTx(t.Context(), func(context.Context, transaction.RepositoryAccessor) error {
+	err := tm.WithinTx(t.Context(), transaction.EmptyOpts(), func(context.Context, transaction.UnitOfWork) error {
 		callbackCalled = true
 		return nil
 	})
@@ -94,24 +86,24 @@ func TestPgxUnitOfWork_WithinTx_WhenBeginFails_DoesNotInvokeCallback(t *testing.
 	}
 }
 
-func TestPgxUnitOfWork_WithinTx_WhenBeginSucceeds_PassesContextAndRepositoryAccessor(t *testing.T) {
+func TestPgxTransactionManager_WithinTx_WhenBeginSucceeds_PassesContextAndUnitOfWork(t *testing.T) {
 	pool := integration.SetupTestDB(t)
 	defer integration.CleanupTestDB(t, pool)
 
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{Pool: pool})
 	ctx := context.WithValue(t.Context(), struct{}{}, "pgx")
 	entityID := fmt.Sprintf("uow-commit-%d", time.Now().UnixNano())
 	callbackCalled := false
 
-	err := uow.WithinTx(ctx, func(gotCtx context.Context, repos transaction.RepositoryAccessor) error {
+	err := tm.WithinTx(ctx, transaction.EmptyOpts(), func(gotCtx context.Context, uow transaction.UnitOfWork) error {
 		callbackCalled = true
 		if gotCtx != ctx {
 			t.Fatalf("expected callback to receive transaction context")
 		}
-		if repos == nil {
-			t.Fatal("expected repository accessor, got nil")
+		if uow == nil {
+			t.Fatal("expected unit of work, got nil")
 		}
-		helloRepository := repos.HelloRepository()
+		helloRepository := uow.HelloRepository()
 		if helloRepository == nil {
 			t.Fatal("expected hello repository to be initialized")
 		}
@@ -131,16 +123,16 @@ func TestPgxUnitOfWork_WithinTx_WhenBeginSucceeds_PassesContextAndRepositoryAcce
 	}
 }
 
-func TestPgxUnitOfWork_WithinTx_WhenCallbackReturnsError_RollsBackAndReturnsCallbackError(t *testing.T) {
+func TestPgxTransactionManager_WithinTx_WhenCallbackReturnsError_RollsBackAndReturnsCallbackError(t *testing.T) {
 	pool := integration.SetupTestDB(t)
 	defer integration.CleanupTestDB(t, pool)
 
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{Pool: pool})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{Pool: pool})
 	entityID := fmt.Sprintf("uow-rollback-%d", time.Now().UnixNano())
 	callbackErr := errors.New("callback failed")
 
-	err := uow.WithinTx(t.Context(), func(ctx context.Context, repos transaction.RepositoryAccessor) error {
-		_, err := repos.HelloRepository().Save(ctx, &applicationModels.HelloData{Id: entityID, Name: "RolledBack", Age: 22})
+	err := tm.WithinTx(t.Context(), transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
+		_, err := uow.HelloRepository().Save(ctx, &applicationModels.HelloData{Id: entityID, Name: "RolledBack", Age: 22})
 		if err != nil {
 			return err
 		}
@@ -155,13 +147,14 @@ func TestPgxUnitOfWork_WithinTx_WhenCallbackReturnsError_RollsBackAndReturnsCall
 	}
 }
 
-func TestPgxUnitOfWork_Execute_WhenCallbackAndRollbackFail_ReturnsJoinedError(t *testing.T) {
+func TestPgxTransactionManager_Execute_WhenCallbackAndRollbackFail_ReturnsJoinedError(t *testing.T) {
 	callbackErr := errors.New("callback failed")
 	rollbackErr := errors.New("rollback failed")
 	tx := &fakeTx{rollbackFn: func(context.Context) error { return rollbackErr }}
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
+	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 
-	err := uow.execute(t.Context(), tx, fakeRepositoryAccessor{helloRepository: fakeHelloRepository{}}, func(context.Context, transaction.RepositoryAccessor) error {
+	err := tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
 		return callbackErr
 	})
 
@@ -176,12 +169,13 @@ func TestPgxUnitOfWork_Execute_WhenCallbackAndRollbackFail_ReturnsJoinedError(t 
 	}
 }
 
-func TestPgxUnitOfWork_Execute_WhenCommitFails_ReturnsCommitError(t *testing.T) {
+func TestPgxTransactionManager_Execute_WhenCommitFails_ReturnsCommitError(t *testing.T) {
 	commitErr := errors.New("commit failed")
 	tx := &fakeTx{commitFn: func(context.Context) error { return commitErr }}
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
+	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 
-	err := uow.execute(t.Context(), tx, fakeRepositoryAccessor{helloRepository: fakeHelloRepository{}}, func(context.Context, transaction.RepositoryAccessor) error {
+	err := tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
 		return nil
 	})
 
@@ -193,9 +187,10 @@ func TestPgxUnitOfWork_Execute_WhenCommitFails_ReturnsCommitError(t *testing.T) 
 	}
 }
 
-func TestPgxUnitOfWork_Execute_WhenCallbackPanics_RollsBackAndRePanicsOriginalValue(t *testing.T) {
+func TestPgxTransactionManager_Execute_WhenCallbackPanics_RollsBackAndRePanicsOriginalValue(t *testing.T) {
 	tx := &fakeTx{}
-	uow := NewPgxUnitOfWork(&PgxUnitOfWorkConfig{})
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
+	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 	expectedPanic := "boom"
 
 	var recovered any
@@ -204,7 +199,7 @@ func TestPgxUnitOfWork_Execute_WhenCallbackPanics_RollsBackAndRePanicsOriginalVa
 			recovered = recover()
 		}()
 
-		_ = uow.execute(t.Context(), tx, fakeRepositoryAccessor{helloRepository: fakeHelloRepository{}}, func(context.Context, transaction.RepositoryAccessor) error {
+		_ = tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
 			panic(expectedPanic)
 		})
 	}()
@@ -217,6 +212,49 @@ func TestPgxUnitOfWork_Execute_WhenCallbackPanics_RollsBackAndRePanicsOriginalVa
 	}
 	if tx.commitCalls != 0 {
 		t.Fatalf("expected no commit calls, got %d", tx.commitCalls)
+	}
+}
+
+func TestPgxTransactionManager_WithinTx_WhenParentProvided_CreatesSpanAndInvokesCallbackWithParentUnitOfWork(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	parent := transaction.NewMockUnitOfWork(ctrl)
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
+	ctx := context.WithValue(t.Context(), struct{}{}, "reuse")
+	callbackCalled := false
+
+	err := tm.WithinTx(ctx, transaction.TransactionOpts{Parent: parent}, func(gotCtx context.Context, uow transaction.UnitOfWork) error {
+		callbackCalled = true
+		if gotCtx != ctx {
+			t.Fatalf("expected callback to receive traced context")
+		}
+		if uow != parent {
+			t.Fatalf("expected parent unit of work, got %T", uow)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !callbackCalled {
+		t.Fatal("expected callback to be called")
+	}
+}
+
+func TestPgxTransactionManager_WithinTx_WhenParentProvided_DoesNotBeginCommitOrRollbackNewTransaction(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	parent := transaction.NewMockUnitOfWork(ctrl)
+	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
+	callbackCalled := false
+
+	err := tm.WithinTx(t.Context(), transaction.TransactionOpts{Parent: parent}, func(context.Context, transaction.UnitOfWork) error {
+		callbackCalled = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !callbackCalled {
+		t.Fatal("expected callback to be called")
 	}
 }
 

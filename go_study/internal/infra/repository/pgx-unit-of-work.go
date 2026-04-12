@@ -13,47 +13,51 @@ import (
 )
 
 type (
-	pgxRepositoryAccessor struct {
+	pgxUnitOfWork struct {
 		helloRepository applicationRepository.HelloRepository
 	}
 
-	PgxUnitOfWork struct {
-		config *PgxUnitOfWorkConfig
+	PgxTransactionManager struct {
+		config *PgxTransactionManagerConfig
 	}
 
-	PgxUnitOfWorkConfig struct {
+	PgxTransactionManagerConfig struct {
 		Pool *pgxpool.Pool
 	}
 )
 
-var _ transaction.UnitOfWork = (*PgxUnitOfWork)(nil)
-var _ transaction.RepositoryAccessor = (*pgxRepositoryAccessor)(nil)
+var _ transaction.TransactionManager = (*PgxTransactionManager)(nil)
+var _ transaction.UnitOfWork = (*pgxUnitOfWork)(nil)
 
-func NewPgxUnitOfWork(cfg *PgxUnitOfWorkConfig) *PgxUnitOfWork {
-	return &PgxUnitOfWork{config: cfg}
+func NewPgxTransactionManager(cfg *PgxTransactionManagerConfig) *PgxTransactionManager {
+	return &PgxTransactionManager{config: cfg}
 }
 
-func (uow *PgxUnitOfWork) WithinTx(ctx context.Context, fn transaction.TransactionCallback) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "WithinTx"))
+func (tm *PgxTransactionManager) WithinTx(ctx context.Context, opts transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxTransactionManager", "WithinTx"))
 	defer end()
 
-	tx, err := uow.config.Pool.Begin(ctx)
+	if opts.Parent != nil {
+		return fn(ctx, opts.Parent)
+	}
+
+	tx, err := tm.config.Pool.Begin(ctx)
 	if err != nil {
 		trace.InjectError(ctx, err)
 		return err
 	}
 
-	repos := uow.newRepositoryAccessor(tx)
-	return uow.execute(ctx, tx, repos, fn)
+	uow := tm.newUnitOfWork(tx)
+	return tm.execute(ctx, tx, uow, fn)
 }
 
-func (uow *PgxUnitOfWork) newRepositoryAccessor(tx pgx.Tx) transaction.RepositoryAccessor {
-	return &pgxRepositoryAccessor{
-		helloRepository: newHelloPgxRepository(uow.config.Pool, tx),
+func (tm *PgxTransactionManager) newUnitOfWork(tx pgx.Tx) transaction.UnitOfWork {
+	return &pgxUnitOfWork{
+		helloRepository: newHelloPgxRepository(tm.config.Pool, tx),
 	}
 }
 
-func (uow *PgxUnitOfWork) execute(ctx context.Context, tx pgx.Tx, repos transaction.RepositoryAccessor, fn transaction.TransactionCallback) error {
+func (tm *PgxTransactionManager) execute(ctx context.Context, tx pgx.Tx, uow transaction.UnitOfWork, fn transaction.TransactionCallback) error {
 	var callbackPanic any
 	var callbackErr error
 	func() {
@@ -63,16 +67,16 @@ func (uow *PgxUnitOfWork) execute(ctx context.Context, tx pgx.Tx, repos transact
 			}
 		}()
 
-		callbackErr = fn(ctx, repos)
+		callbackErr = fn(ctx, uow)
 	}()
 
 	if callbackPanic != nil {
-		uow.rollbackBestEffort(ctx, tx)
+		tm.rollbackBestEffort(ctx, tx)
 		panic(callbackPanic)
 	}
 
 	if callbackErr != nil {
-		rollbackErr := uow.rollback(ctx, tx)
+		rollbackErr := tm.rollback(ctx, tx)
 		if rollbackErr != nil {
 			joinedErr := combineCallbackAndRollbackErr(callbackErr, rollbackErr)
 			trace.InjectError(ctx, joinedErr)
@@ -81,7 +85,7 @@ func (uow *PgxUnitOfWork) execute(ctx context.Context, tx pgx.Tx, repos transact
 		return callbackErr
 	}
 
-	commitErr := uow.commit(ctx, tx)
+	commitErr := tm.commit(ctx, tx)
 	if commitErr != nil {
 		trace.InjectError(ctx, commitErr)
 		return commitErr
@@ -97,8 +101,8 @@ func combineCallbackAndRollbackErr(callbackErr, rollbackErr error) error {
 	return errors.Join(callbackErr, fmt.Errorf("rollback transaction: %w", rollbackErr))
 }
 
-func (uow *PgxUnitOfWork) commit(ctx context.Context, tx pgx.Tx) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "Commit"))
+func (tm *PgxTransactionManager) commit(ctx context.Context, tx pgx.Tx) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxTransactionManager", "Commit"))
 	defer end()
 
 	err := tx.Commit(ctx)
@@ -110,8 +114,8 @@ func (uow *PgxUnitOfWork) commit(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-func (uow *PgxUnitOfWork) rollback(ctx context.Context, tx pgx.Tx) error {
-	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxUnitOfWork", "Rollback"))
+func (tm *PgxTransactionManager) rollback(ctx context.Context, tx pgx.Tx) error {
+	ctx, end := trace.Trace(ctx, trace.NameConfig("PgxTransactionManager", "Rollback"))
 	defer end()
 
 	err := tx.Rollback(ctx)
@@ -123,19 +127,19 @@ func (uow *PgxUnitOfWork) rollback(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-func (uow *PgxUnitOfWork) rollbackBestEffort(ctx context.Context, tx pgx.Tx) {
+func (tm *PgxTransactionManager) rollbackBestEffort(ctx context.Context, tx pgx.Tx) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			trace.InjectError(ctx, fmt.Errorf("panic during rollback: %v", recovered))
 		}
 	}()
 
-	rollbackErr := uow.rollback(ctx, tx)
+	rollbackErr := tm.rollback(ctx, tx)
 	if rollbackErr != nil {
 		trace.InjectError(ctx, rollbackErr)
 	}
 }
 
-func (a *pgxRepositoryAccessor) HelloRepository() applicationRepository.HelloRepository {
-	return a.helloRepository
+func (uow *pgxUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
+	return uow.helloRepository
 }
