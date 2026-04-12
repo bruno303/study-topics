@@ -2,7 +2,9 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
@@ -10,6 +12,11 @@ import (
 	cfgconfig "github.com/bruno303/study-topics/go-study/config"
 	envconfig "github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	DatabaseDriverPGXPool = "pgxpool"
+	DatabaseDriverMemDB   = "memdb"
 )
 
 type Config struct {
@@ -35,6 +42,7 @@ type Config struct {
 		} `env:", prefix=AUTH_" yaml:"auth"`
 	} `env:", prefix=APPLICATION_" yaml:"app"`
 	Database struct {
+		Driver       string `env:"DATABASE_DRIVER" yaml:"driver"`
 		Host         string `env:"DATABASE_HOST" yaml:"host"`
 		User         string `env:"DATABASE_USER" yaml:"user"`
 		Password     string `env:"DATABASE_PASSWORD" yaml:"password"`
@@ -106,5 +114,15 @@ func LoadConfig() *Config {
 	}
 
 	log.Log().Debug(context.TODO(), "config with envs: %+v", cfg)
+
+	cfg.Database.Driver = strings.ToLower(strings.TrimSpace(cfg.Database.Driver))
+	if cfg.Database.Driver == "" {
+		cfg.Database.Driver = DatabaseDriverPGXPool
+	}
+
+	if cfg.Database.Driver != DatabaseDriverPGXPool && cfg.Database.Driver != DatabaseDriverMemDB {
+		panic(fmt.Sprintf("unsupported database driver %q, supported values: %s, %s", cfg.Database.Driver, DatabaseDriverPGXPool, DatabaseDriverMemDB))
+	}
+
 	return cfg
 }

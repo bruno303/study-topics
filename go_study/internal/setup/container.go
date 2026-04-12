@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
 	"github.com/bruno303/study-topics/go-study/internal/infra/kafka"
@@ -42,26 +43,31 @@ type MessageHandlersContainer struct {
 }
 
 type RepositoryContainer struct {
-	HelloRepository    repository.HelloRepository
-	TransactionManager repository.TransactionManager
+	TransactionManager transaction.TransactionManager
 }
 
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
-	helloService := hello.NewService(repoContainer.HelloRepository, repoContainer.TransactionManager)
+	helloService := hello.NewService(repoContainer.TransactionManager)
 
 	return ServiceContainer{
 		HelloService: tracedecorator.NewTraceableHelloService(helloService),
 	}
 }
 
-func newRepositoryContainer(pool *pgxpool.Pool) RepositoryContainer {
+func newRepositoryContainer(cfg *config.Config, pool *pgxpool.Pool) RepositoryContainer {
+	var transactionManager transaction.TransactionManager
+
+	switch cfg.Database.Driver {
+	case config.DatabaseDriverMemDB:
+		sharedMemDbStorage := repository.NewMemDbStorage()
+		transactionManager = repository.NewMemDbTransactionManager(sharedMemDbStorage)
+	default:
+		txConfig := &repository.PgxTransactionManagerConfig{Pool: pool}
+		transactionManager = repository.NewPgxTransactionManager(txConfig)
+	}
+
 	return RepositoryContainer{
-		HelloRepository: repository.NewHelloPgxRepository(pool),
-		TransactionManager: repository.NewTransactionManager(
-			&repository.TransactionConfig{
-				Pool: pool,
-			},
-		),
+		TransactionManager: transactionManager,
 	}
 }
 
@@ -105,9 +111,12 @@ func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContaine
 }
 
 func NewContainer(ctx context.Context, cfg *config.Config) *Container {
-	pool := database.Connect(cfg)
+	var pool *pgxpool.Pool
+	if cfg.Database.Driver == config.DatabaseDriverPGXPool {
+		pool = database.Connect(cfg)
+	}
 
-	repos := newRepositoryContainer(pool)
+	repos := newRepositoryContainer(cfg, pool)
 	services := newServiceContainer(repos)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)

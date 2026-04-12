@@ -1,0 +1,1 @@
+Before finishing a change: (1) run gofmt on changed files, (2) run targeted tests for changed packages, (3) run broader go test ./... for substantial changes, (4) run go vet ./... when relevant, (5) regenerate mocks via make mocks if interfaces changed, (6) verify architecture boundaries are preserved, (7) summarize risks/assumptions and impacted files.

@@ -2,23 +2,32 @@ package transaction
 
 import (
 	"context"
+
+	"github.com/bruno303/study-topics/go-study/internal/application/repository"
 )
 
 //go:generate go tool mockgen -source=transaction.go -destination=mocks.go -package transaction
 
 type (
-	Transaction        any
-	TransactionalFunc  func(ctx context.Context, tx Transaction) (any, error)
-	TransactionManager interface {
-		Execute(context.Context, Opts, TransactionalFunc) (any, error)
+	UnitOfWork interface {
+		HelloRepository() repository.HelloRepository
 	}
-	Opts struct {
-		Transaction Transaction
-		RequiresNew bool
+
+	TransactionCallback func(context.Context, UnitOfWork) error
+
+	TransactionManager interface {
+		WithinTx(context.Context, TransactionOpts, TransactionCallback) error
+	}
+
+	TransactionOpts struct {
+		Parent UnitOfWork
 	}
 )
 
-var EmptyOpts = Opts{
-	Transaction: nil,
-	RequiresNew: true,
+func EmptyOpts() TransactionOpts {
+	return TransactionOpts{}
+}
+
+func WithParent(parent UnitOfWork) TransactionOpts {
+	return TransactionOpts{Parent: parent}
 }

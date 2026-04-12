@@ -13,8 +13,47 @@ import (
 	context "context"
 	reflect "reflect"
 
+	repository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockUnitOfWork is a mock of UnitOfWork interface.
+type MockUnitOfWork struct {
+	ctrl     *gomock.Controller
+	recorder *MockUnitOfWorkMockRecorder
+	isgomock struct{}
+}
+
+// MockUnitOfWorkMockRecorder is the mock recorder for MockUnitOfWork.
+type MockUnitOfWorkMockRecorder struct {
+	mock *MockUnitOfWork
+}
+
+// NewMockUnitOfWork creates a new mock instance.
+func NewMockUnitOfWork(ctrl *gomock.Controller) *MockUnitOfWork {
+	mock := &MockUnitOfWork{ctrl: ctrl}
+	mock.recorder = &MockUnitOfWorkMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUnitOfWork) EXPECT() *MockUnitOfWorkMockRecorder {
+	return m.recorder
+}
+
+// HelloRepository mocks base method.
+func (m *MockUnitOfWork) HelloRepository() repository.HelloRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HelloRepository")
+	ret0, _ := ret[0].(repository.HelloRepository)
+	return ret0
+}
+
+// HelloRepository indicates an expected call of HelloRepository.
+func (mr *MockUnitOfWorkMockRecorder) HelloRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HelloRepository", reflect.TypeOf((*MockUnitOfWork)(nil).HelloRepository))
+}
 
 // MockTransactionManager is a mock of TransactionManager interface.
 type MockTransactionManager struct {
@@ -40,17 +79,16 @@ func (m *MockTransactionManager) EXPECT() *MockTransactionManagerMockRecorder {
 	return m.recorder
 }
 
-// Execute mocks base method.
-func (m *MockTransactionManager) Execute(arg0 context.Context, arg1 Opts, arg2 TransactionalFunc) (any, error) {
+// WithinTx mocks base method.
+func (m *MockTransactionManager) WithinTx(arg0 context.Context, arg1 TransactionOpts, arg2 TransactionCallback) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2)
-	ret0, _ := ret[0].(any)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "WithinTx", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// Execute indicates an expected call of Execute.
-func (mr *MockTransactionManagerMockRecorder) Execute(arg0, arg1, arg2 any) *gomock.Call {
+// WithinTx indicates an expected call of WithinTx.
+func (mr *MockTransactionManagerMockRecorder) WithinTx(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockTransactionManager)(nil).Execute), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*MockTransactionManager)(nil).WithinTx), arg0, arg1, arg2)
 }
