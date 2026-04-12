@@ -1,0 +1,70 @@
+name: Go Study CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'go_study/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'go_study/**'
+
+env:
+  APP_DIR: go_study
+  GO_VERSION: '1.25.4'
+
+jobs:
+  tests:
+    name: Go Study Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: ${{ env.APP_DIR }}/go.sum
+
+      - name: Download Dependencies
+        run: go mod download
+
+      - name: Verify Dependencies
+        run: go mod verify
+
+      - name: Start Infra Dependencies
+        run: make docker-up-infra
+
+      - name: Wait for Infra Readiness
+        run: |
+          for i in {1..24}; do
+            if docker compose exec -T postgres pg_isready -U postgres -d hello >/dev/null 2>&1; then
+              if docker compose exec -T kafka kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+
+          echo "Infra did not become ready in time"
+          docker compose ps
+          docker compose logs --tail=200
+          exit 1
+
+      - name: Run Tests
+        env:
+          CONFIG_FILE: test.yaml
+        run: make test
+
+      - name: Stop Infra Dependencies
+        if: always()
+        run: make docker-down
