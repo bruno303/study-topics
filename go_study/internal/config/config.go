@@ -30,7 +30,8 @@ type Config struct {
 			} `env:", prefix=API_" yaml:"api"`
 		} `env:", prefix=HELLO_" yaml:"hello"`
 		Monitoring struct {
-			TraceUrl string `env:"TRACE_URL" yaml:"trace-url"`
+			TraceEnabled bool   `env:"TRACE_ENABLED" yaml:"trace-enabled"`
+			TraceUrl     string `env:"TRACE_URL" yaml:"trace-url"`
 		} `env:", prefix=MONITORING_" yaml:"monitoring"`
 		Log struct {
 			Level  string `env:"LOG_LEVEL" yaml:"level"`

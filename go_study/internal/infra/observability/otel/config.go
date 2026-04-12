@@ -30,6 +30,10 @@ func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(contex
 		err = errors.Join(inErr, shutdown(ctx))
 	}
 
+	if !cfg.Application.Monitoring.TraceEnabled {
+		return shutdown, nil
+	}
+
 	// Set up propagator.
 	otel.SetTextMapPropagator(newPropagator())
 

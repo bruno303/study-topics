@@ -13,6 +13,27 @@ func TestLoadConfig_WhenDatabaseDriverEnvIsBlank_DefaultsToPgxPool(t *testing.T)
 	}
 }
 
+func TestLoadConfig_WhenTraceEnabledIsNotOverridden_DefaultsToFalse(t *testing.T) {
+	t.Setenv("CONFIG_FILE", "test.yaml")
+
+	cfg := LoadConfig()
+
+	if cfg.Application.Monitoring.TraceEnabled {
+		t.Fatal("expected trace to be disabled by default")
+	}
+}
+
+func TestLoadConfig_WhenTraceEnabledEnvIsSet_OverridesYaml(t *testing.T) {
+	t.Setenv("CONFIG_FILE", "test.yaml")
+	t.Setenv("APPLICATION_MONITORING_TRACE_ENABLED", "true")
+
+	cfg := LoadConfig()
+
+	if !cfg.Application.Monitoring.TraceEnabled {
+		t.Fatal("expected trace to be enabled from env override")
+	}
+}
+
 func TestLoadConfig_WhenDatabaseDriverHasWhitespaceAndCase_NormalizesToMemDb(t *testing.T) {
 	t.Setenv("CONFIG_FILE", "test.yaml")
 	t.Setenv("DATABASE_DRIVER", "  MeMdB  ")

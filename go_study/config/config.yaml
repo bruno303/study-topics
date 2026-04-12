@@ -9,6 +9,7 @@ app:
     api:
       enabled: true
   monitoring:
+    trace-enabled: false
     trace-url: localhost:4317
   auth:
     enabled: true

@@ -70,7 +70,9 @@ func configureObservability(ctx context.Context, cfg *config.Config) func(contex
 			},
 		),
 	)
-	trace.SetTracer(otel.NewOtelTracerAdapter())
+	if cfg.Application.Monitoring.TraceEnabled {
+		trace.SetTracer(otel.NewOtelTracerAdapter())
+	}
 
 	otelShutdown, err := otel.SetupOTelSDK(ctx, cfg)
 	panicIfErr(err)

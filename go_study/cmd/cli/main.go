@@ -22,7 +22,9 @@ func main() {
 	defer shutdown(ctx)
 
 	configureLog(cfg)
-	trace.SetTracer(otel.NewOtelTracerAdapter())
+	if cfg.Application.Monitoring.TraceEnabled {
+		trace.SetTracer(otel.NewOtelTracerAdapter())
+	}
 
 	ctx, end := trace.Trace(ctx, trace.NameConfig("Main", "Execution"))
 	defer end()
