@@ -24,17 +24,23 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 		return Producer{}, err
 	}
 
-	stop := false
+	ctx, cancel := context.WithCancel(context.Background())
 	shutdown.CreateListener(func() {
 		log.Log().Info(context.Background(), "Stopping producer delivery report")
-		stop = true
+		cancel()
 	})
 
 	// Delivery report handler for produced messages
 	go func() {
 		for {
 			select {
-			case e := <-producer.Events():
+			case <-ctx.Done():
+				producer.Close()
+				return
+			case e, ok := <-producer.Events():
+				if !ok {
+					return
+				}
 				switch ev := e.(type) {
 				case *libkafka.Message:
 					if ev.TopicPartition.Error != nil {
@@ -42,11 +48,6 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 					} else {
 						log.Log().Info(context.Background(), "Delivered message to %v", ev.TopicPartition)
 					}
-				}
-			default:
-				if stop {
-					producer.Close()
-					return
 				}
 			}
 		}
@@ -59,18 +60,38 @@ func (p Producer) Close() {
 	p.producer.Close()
 }
 
-func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
+func (p Producer) Produce(ctx context.Context, msg string, topic string, key string, headers map[string]string) error {
 	ctx, end := trace.Trace(ctx, producerTrace("Produce"))
 	defer end()
 
+	var kafkaKey []byte
+	if key != "" {
+		kafkaKey = []byte(key)
+	}
+
 	kafkaMsg := &libkafka.Message{
 		TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
+		Key:            kafkaKey,
 		Value:          []byte(msg),
+		Headers:        toKafkaHeaders(headers),
 	}
 
 	kafkatrace.Inject(ctx, kafkaMsg)
 
 	return p.producer.Produce(kafkaMsg, nil)
+}
+
+func toKafkaHeaders(headers map[string]string) []libkafka.Header {
+	if len(headers) == 0 {
+		return nil
+	}
+
+	kafkaHeaders := make([]libkafka.Header, 0, len(headers))
+	for key, value := range headers {
+		kafkaHeaders = append(kafkaHeaders, libkafka.Header{Key: key, Value: []byte(value)})
+	}
+
+	return kafkaHeaders
 }
 
 func producerTrace(spanName string) *trace.TraceConfig {

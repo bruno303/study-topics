@@ -53,15 +53,15 @@ func (mr *MockProducerMockRecorder) Close() *gomock.Call {
 }
 
 // Produce mocks base method.
-func (m *MockProducer) Produce(ctx context.Context, msg, topic string) error {
+func (m *MockProducer) Produce(ctx context.Context, msg, topic, key string, headers map[string]string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Produce", ctx, msg, topic)
+	ret := m.ctrl.Call(m, "Produce", ctx, msg, topic, key, headers)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Produce indicates an expected call of Produce.
-func (mr *MockProducerMockRecorder) Produce(ctx, msg, topic any) *gomock.Call {
+func (mr *MockProducerMockRecorder) Produce(ctx, msg, topic, key, headers any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockProducer)(nil).Produce), ctx, msg, topic)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockProducer)(nil).Produce), ctx, msg, topic, key, headers)
 }

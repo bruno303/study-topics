@@ -110,6 +110,7 @@ func startKafkaConsumers(container *setup.Container) {
 
 func startProducer(container *setup.Container) {
 	container.Workers.HelloProducerWorker.Start()
+	container.Workers.OutboxSenderWorker.Start()
 }
 
 func panicIfErr(err error) {

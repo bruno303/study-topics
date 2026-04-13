@@ -58,3 +58,57 @@ func TestLoadConfig_WhenDatabaseDriverIsUnsupported_Panics(t *testing.T) {
 
 	_ = LoadConfig()
 }
+
+func TestLoadConfig_WhenOutboxSenderValuesAreMissing_DefaultsAreApplied(t *testing.T) {
+	t.Setenv("CONFIG_FILE", "test-outbox-missing.yaml")
+
+	cfg := LoadConfig()
+
+	if cfg.Workers.OutboxSender.IntervalMillis != defaultOutboxSenderPollIntervalMillis {
+		t.Fatalf("expected interval-millis default %d, got %d", defaultOutboxSenderPollIntervalMillis, cfg.Workers.OutboxSender.IntervalMillis)
+	}
+	if cfg.Workers.OutboxSender.BatchSize != defaultOutboxSenderBatchSize {
+		t.Fatalf("expected batch-size default %d, got %d", defaultOutboxSenderBatchSize, cfg.Workers.OutboxSender.BatchSize)
+	}
+	if cfg.Workers.OutboxSender.MaxAttempts != defaultOutboxSenderMaxAttempts {
+		t.Fatalf("expected max-attempts default %d, got %d", defaultOutboxSenderMaxAttempts, cfg.Workers.OutboxSender.MaxAttempts)
+	}
+	if cfg.Workers.OutboxSender.RetryIntervalMillis != defaultOutboxSenderRetryIntervalMillis {
+		t.Fatalf("expected retry-interval-millis default %d, got %d", defaultOutboxSenderRetryIntervalMillis, cfg.Workers.OutboxSender.RetryIntervalMillis)
+	}
+}
+
+func TestLoadConfig_WhenOutboxSenderValuesAreZeroOrNegative_DefaultsAreApplied(t *testing.T) {
+	testCases := []struct {
+		name   string
+		envVal string
+	}{
+		{name: "zero", envVal: "0"},
+		{name: "negative", envVal: "-1"},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Setenv("CONFIG_FILE", "test.yaml")
+			t.Setenv("WORKERS_OUTBOX_SENDER_INTERVAL_MILLIS", testCase.envVal)
+			t.Setenv("WORKERS_OUTBOX_SENDER_BATCH_SIZE", testCase.envVal)
+			t.Setenv("WORKERS_OUTBOX_SENDER_MAX_ATTEMPTS", testCase.envVal)
+			t.Setenv("WORKERS_OUTBOX_SENDER_RETRY_INTERVAL_MILLIS", testCase.envVal)
+
+			cfg := LoadConfig()
+
+			if cfg.Workers.OutboxSender.IntervalMillis != defaultOutboxSenderPollIntervalMillis {
+				t.Fatalf("expected interval-millis default %d, got %d", defaultOutboxSenderPollIntervalMillis, cfg.Workers.OutboxSender.IntervalMillis)
+			}
+			if cfg.Workers.OutboxSender.BatchSize != defaultOutboxSenderBatchSize {
+				t.Fatalf("expected batch-size default %d, got %d", defaultOutboxSenderBatchSize, cfg.Workers.OutboxSender.BatchSize)
+			}
+			if cfg.Workers.OutboxSender.MaxAttempts != defaultOutboxSenderMaxAttempts {
+				t.Fatalf("expected max-attempts default %d, got %d", defaultOutboxSenderMaxAttempts, cfg.Workers.OutboxSender.MaxAttempts)
+			}
+			if cfg.Workers.OutboxSender.RetryIntervalMillis != defaultOutboxSenderRetryIntervalMillis {
+				t.Fatalf("expected retry-interval-millis default %d, got %d", defaultOutboxSenderRetryIntervalMillis, cfg.Workers.OutboxSender.RetryIntervalMillis)
+			}
+		})
+	}
+}

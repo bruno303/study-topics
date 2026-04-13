@@ -3,10 +3,13 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/model"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -19,19 +22,19 @@ import (
 //go:generate go tool mockgen -source=hello-producer.go -destination=mocks.go -package worker
 
 type Producer interface {
-	Produce(ctx context.Context, msg string, topic string) error
+	Produce(ctx context.Context, msg string, topic string, key string, headers map[string]string) error
 	Close()
 }
 
 type HelloProducerWorker struct {
-	producer Producer
-	cfg      config.HelloProducerConfig
+	transactionManager transaction.TransactionManager
+	cfg                config.HelloProducerConfig
 }
 
-func NewHelloProducerWorker(producer Producer, cfg config.HelloProducerConfig) HelloProducerWorker {
+func NewHelloProducerWorker(transactionManager transaction.TransactionManager, cfg config.HelloProducerConfig) HelloProducerWorker {
 	return HelloProducerWorker{
-		producer: producer,
-		cfg:      cfg,
+		transactionManager: transactionManager,
+		cfg:                cfg,
 	}
 }
 
@@ -45,28 +48,30 @@ func (w HelloProducerWorker) Start() {
 		log.Log().Info(context.Background(), "HelloProducerWorker disabled")
 		return
 	}
-	run := true
 	nextTick := time.NewTicker(time.Duration(w.cfg.IntervalMillis) * time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	shutdown.CreateListener(func() {
 		log.Log().Info(context.Background(), "Stopping producer")
-		nextTick.Stop()
-		run = false
+		cancel()
 	})
 
 	go func() {
+		defer nextTick.Stop()
 		msgCount := 0
-		for range nextTick.C {
-			if msgCount >= w.cfg.MaxMessages {
-				log.Log().Info(context.Background(), "Already sent the max quantity of messages: %d. Stopping...", w.cfg.MaxMessages)
-				nextTick.Stop()
-				run = false
-			}
-			if !run {
+		for {
+			select {
+			case <-ctx.Done():
 				return
+			case <-nextTick.C:
+				if msgCount >= w.cfg.MaxMessages {
+					log.Log().Info(ctx, "Already sent the max quantity of messages: %d. Stopping...", w.cfg.MaxMessages)
+					return
+				}
+
+				_ = w.produceMessage(ctx)
+				msgCount++
 			}
-			_ = w.produceMessage(context.Background())
-			msgCount++
 		}
 	}()
 
@@ -89,5 +94,23 @@ func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
 		trace.InjectError(ctx, err)
 		return err
 	}
-	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
+	err = w.transactionManager.WithinTx(ctx, transaction.EmptyOpts(), func(txCtx context.Context, uow transaction.UnitOfWork) error {
+		_, enqueueErr := uow.OutboxRepository().Enqueue(txCtx, &model.OutboxMessage{
+			Id:         uuid.NewString(),
+			Topic:      w.cfg.Topic,
+			MessageKey: msg.Id,
+			Payload:    bytes,
+		})
+		if enqueueErr != nil {
+			return fmt.Errorf("enqueue hello outbox message: %w", enqueueErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err
+	}
+
+	return nil
 }

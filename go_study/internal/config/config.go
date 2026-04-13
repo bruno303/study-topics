@@ -17,6 +17,11 @@ import (
 const (
 	DatabaseDriverPGXPool = "pgxpool"
 	DatabaseDriverMemDB   = "memdb"
+
+	defaultOutboxSenderPollIntervalMillis = 10000
+	defaultOutboxSenderBatchSize          = 10
+	defaultOutboxSenderMaxAttempts        = 5
+	defaultOutboxSenderRetryIntervalMillis = 5000
 )
 
 type Config struct {
@@ -53,6 +58,7 @@ type Config struct {
 	Kafka   KafkaConfig `yaml:"kafka"`
 	Workers struct {
 		HelloProducer HelloProducerConfig `yaml:"hello-producer"`
+		OutboxSender  OutboxSenderConfig  `yaml:"outbox-sender"`
 	} `yaml:"workers"`
 }
 
@@ -83,6 +89,14 @@ type HelloProducerConfig struct {
 	Topic          string `env:"WORKERS_HELLO_PRODUCER_TOPIC" yaml:"topic"`
 	Enabled        bool   `env:"WORKERS_HELLO_PRODUCER_ENABLED" yaml:"enabled"`
 	MaxMessages    int    `env:"WORKERS_HELLO_PRODUCER_MAX_MESSAGES" yaml:"max-messages"`
+}
+
+type OutboxSenderConfig struct {
+	IntervalMillis      int64 `env:"WORKERS_OUTBOX_SENDER_INTERVAL_MILLIS" yaml:"interval-millis"`
+	BatchSize           int   `env:"WORKERS_OUTBOX_SENDER_BATCH_SIZE" yaml:"batch-size"`
+	MaxAttempts         int   `env:"WORKERS_OUTBOX_SENDER_MAX_ATTEMPTS" yaml:"max-attempts"`
+	RetryIntervalMillis int64 `env:"WORKERS_OUTBOX_SENDER_RETRY_INTERVAL_MILLIS" yaml:"retry-interval-millis"`
+	Enabled             bool  `env:"WORKERS_OUTBOX_SENDER_ENABLED" yaml:"enabled"`
 }
 
 func LoadConfig() *Config {
@@ -123,6 +137,22 @@ func LoadConfig() *Config {
 
 	if cfg.Database.Driver != DatabaseDriverPGXPool && cfg.Database.Driver != DatabaseDriverMemDB {
 		panic(fmt.Sprintf("unsupported database driver %q, supported values: %s, %s", cfg.Database.Driver, DatabaseDriverPGXPool, DatabaseDriverMemDB))
+	}
+
+	if cfg.Workers.OutboxSender.IntervalMillis <= 0 {
+		cfg.Workers.OutboxSender.IntervalMillis = defaultOutboxSenderPollIntervalMillis
+	}
+
+	if cfg.Workers.OutboxSender.BatchSize <= 0 {
+		cfg.Workers.OutboxSender.BatchSize = defaultOutboxSenderBatchSize
+	}
+
+	if cfg.Workers.OutboxSender.MaxAttempts <= 0 {
+		cfg.Workers.OutboxSender.MaxAttempts = defaultOutboxSenderMaxAttempts
+	}
+
+	if cfg.Workers.OutboxSender.RetryIntervalMillis <= 0 {
+		cfg.Workers.OutboxSender.RetryIntervalMillis = defaultOutboxSenderRetryIntervalMillis
 	}
 
 	return cfg

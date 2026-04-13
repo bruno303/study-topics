@@ -14,7 +14,8 @@ import (
 
 type (
 	pgxUnitOfWork struct {
-		helloRepository applicationRepository.HelloRepository
+		helloRepository  applicationRepository.HelloRepository
+		outboxRepository applicationRepository.OutboxRepository
 	}
 
 	PgxTransactionManager struct {
@@ -53,7 +54,8 @@ func (tm *PgxTransactionManager) WithinTx(ctx context.Context, opts transaction.
 
 func (tm *PgxTransactionManager) newUnitOfWork(tx pgx.Tx) transaction.UnitOfWork {
 	return &pgxUnitOfWork{
-		helloRepository: newHelloPgxRepository(tm.config.Pool, tx),
+		helloRepository:  newHelloPgxRepository(tm.config.Pool, tx),
+		outboxRepository: newOutboxPgxRepository(tm.config.Pool, tx),
 	}
 }
 
@@ -142,4 +144,8 @@ func (tm *PgxTransactionManager) rollbackBestEffort(ctx context.Context, tx pgx.
 
 func (uow *pgxUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
 	return uow.helloRepository
+}
+
+func (uow *pgxUnitOfWork) OutboxRepository() applicationRepository.OutboxRepository {
+	return uow.outboxRepository
 }

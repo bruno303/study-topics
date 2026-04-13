@@ -26,6 +26,9 @@ func TestMemDbTransactionManager_WithinTx_UsesProvidedContextAndUnitOfWork(t *te
 		if uow.HelloRepository() == nil {
 			t.Fatal("expected hello repository to be initialized")
 		}
+		if uow.OutboxRepository() == nil {
+			t.Fatal("expected outbox repository to be initialized")
+		}
 		return nil
 	})
 	if err != nil {

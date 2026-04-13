@@ -41,3 +41,9 @@ workers:
     interval-millis: 5000
     max-messages: 5
     enabled: false
+  outbox-sender:
+    interval-millis: 10000
+    batch-size: 10
+    max-attempts: 5
+    retry-interval-millis: 5000
+    enabled: false

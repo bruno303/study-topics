@@ -107,6 +107,9 @@ func TestPgxTransactionManager_WithinTx_WhenBeginSucceeds_PassesContextAndUnitOf
 		if helloRepository == nil {
 			t.Fatal("expected hello repository to be initialized")
 		}
+		if uow.OutboxRepository() == nil {
+			t.Fatal("expected outbox repository to be initialized")
+		}
 
 		_, err := helloRepository.Save(gotCtx, &applicationModels.HelloData{Id: entityID, Name: "Committed", Age: 31})
 		return err
