@@ -162,7 +162,7 @@ func isPendingForClaim(message model.OutboxMessage, maxAttempts int, now time.Ti
 	if message.DeletedAt != nil || message.PublishedAt != nil {
 		return false
 	}
-	if maxAttempts > 0 && message.Attempt >= maxAttempts {
+	if message.Attempt >= maxAttempts {
 		return false
 	}
 

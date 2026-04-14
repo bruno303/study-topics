@@ -48,8 +48,7 @@ func (tm *PgxTransactionManager) WithinTx(ctx context.Context, opts transaction.
 		return err
 	}
 
-	uow := tm.newUnitOfWork(tx)
-	return tm.execute(ctx, tx, uow, fn)
+	return tm.execute(ctx, tx, fn)
 }
 
 func (tm *PgxTransactionManager) newUnitOfWork(tx pgx.Tx) transaction.UnitOfWork {
@@ -59,7 +58,7 @@ func (tm *PgxTransactionManager) newUnitOfWork(tx pgx.Tx) transaction.UnitOfWork
 	}
 }
 
-func (tm *PgxTransactionManager) execute(ctx context.Context, tx pgx.Tx, uow transaction.UnitOfWork, fn transaction.TransactionCallback) error {
+func (tm *PgxTransactionManager) execute(ctx context.Context, tx pgx.Tx, fn transaction.TransactionCallback) error {
 	var callbackPanic any
 	var callbackErr error
 	func() {
@@ -69,6 +68,7 @@ func (tm *PgxTransactionManager) execute(ctx context.Context, tx pgx.Tx, uow tra
 			}
 		}()
 
+		uow := tm.newUnitOfWork(tx)
 		callbackErr = fn(ctx, uow)
 	}()
 

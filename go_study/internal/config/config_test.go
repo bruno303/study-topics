@@ -59,8 +59,22 @@ func TestLoadConfig_WhenDatabaseDriverIsUnsupported_Panics(t *testing.T) {
 	_ = LoadConfig()
 }
 
-func TestLoadConfig_WhenOutboxSenderValuesAreMissing_DefaultsAreApplied(t *testing.T) {
+func TestLoadConfig_WhenOutboxSenderMaxAttemptsIsMissing_Panics(t *testing.T) {
 	t.Setenv("CONFIG_FILE", "test-outbox-missing.yaml")
+
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatal("expected panic for missing outbox sender max-attempts")
+		}
+	}()
+
+	_ = LoadConfig()
+}
+
+func TestLoadConfig_WhenOutboxSenderValuesAreMissingExceptMaxAttempts_DefaultsAreApplied(t *testing.T) {
+	t.Setenv("CONFIG_FILE", "test-outbox-missing.yaml")
+	t.Setenv("WORKERS_OUTBOX_SENDER_MAX_ATTEMPTS", "5")
 
 	cfg := LoadConfig()
 
@@ -70,15 +84,15 @@ func TestLoadConfig_WhenOutboxSenderValuesAreMissing_DefaultsAreApplied(t *testi
 	if cfg.Workers.OutboxSender.BatchSize != defaultOutboxSenderBatchSize {
 		t.Fatalf("expected batch-size default %d, got %d", defaultOutboxSenderBatchSize, cfg.Workers.OutboxSender.BatchSize)
 	}
-	if cfg.Workers.OutboxSender.MaxAttempts != defaultOutboxSenderMaxAttempts {
-		t.Fatalf("expected max-attempts default %d, got %d", defaultOutboxSenderMaxAttempts, cfg.Workers.OutboxSender.MaxAttempts)
+	if cfg.Workers.OutboxSender.MaxAttempts != 5 {
+		t.Fatalf("expected max-attempts override 5, got %d", cfg.Workers.OutboxSender.MaxAttempts)
 	}
 	if cfg.Workers.OutboxSender.RetryIntervalMillis != defaultOutboxSenderRetryIntervalMillis {
 		t.Fatalf("expected retry-interval-millis default %d, got %d", defaultOutboxSenderRetryIntervalMillis, cfg.Workers.OutboxSender.RetryIntervalMillis)
 	}
 }
 
-func TestLoadConfig_WhenOutboxSenderValuesAreZeroOrNegative_DefaultsAreApplied(t *testing.T) {
+func TestLoadConfig_WhenOutboxSenderMaxAttemptsIsZeroOrNegative_Panics(t *testing.T) {
 	testCases := []struct {
 		name   string
 		envVal string
@@ -90,25 +104,16 @@ func TestLoadConfig_WhenOutboxSenderValuesAreZeroOrNegative_DefaultsAreApplied(t
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Setenv("CONFIG_FILE", "test.yaml")
-			t.Setenv("WORKERS_OUTBOX_SENDER_INTERVAL_MILLIS", testCase.envVal)
-			t.Setenv("WORKERS_OUTBOX_SENDER_BATCH_SIZE", testCase.envVal)
 			t.Setenv("WORKERS_OUTBOX_SENDER_MAX_ATTEMPTS", testCase.envVal)
-			t.Setenv("WORKERS_OUTBOX_SENDER_RETRY_INTERVAL_MILLIS", testCase.envVal)
 
-			cfg := LoadConfig()
+			defer func() {
+				recovered := recover()
+				if recovered == nil {
+					t.Fatalf("expected panic for outbox sender max-attempts %s", testCase.envVal)
+				}
+			}()
 
-			if cfg.Workers.OutboxSender.IntervalMillis != defaultOutboxSenderPollIntervalMillis {
-				t.Fatalf("expected interval-millis default %d, got %d", defaultOutboxSenderPollIntervalMillis, cfg.Workers.OutboxSender.IntervalMillis)
-			}
-			if cfg.Workers.OutboxSender.BatchSize != defaultOutboxSenderBatchSize {
-				t.Fatalf("expected batch-size default %d, got %d", defaultOutboxSenderBatchSize, cfg.Workers.OutboxSender.BatchSize)
-			}
-			if cfg.Workers.OutboxSender.MaxAttempts != defaultOutboxSenderMaxAttempts {
-				t.Fatalf("expected max-attempts default %d, got %d", defaultOutboxSenderMaxAttempts, cfg.Workers.OutboxSender.MaxAttempts)
-			}
-			if cfg.Workers.OutboxSender.RetryIntervalMillis != defaultOutboxSenderRetryIntervalMillis {
-				t.Fatalf("expected retry-interval-millis default %d, got %d", defaultOutboxSenderRetryIntervalMillis, cfg.Workers.OutboxSender.RetryIntervalMillis)
-			}
+			_ = LoadConfig()
 		})
 	}
 }

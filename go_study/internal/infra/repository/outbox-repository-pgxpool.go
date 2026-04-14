@@ -116,7 +116,7 @@ func (r OutboxPgxRepository) ListPending(ctx context.Context, limit int, maxAtte
 					(STATUS IN ($1, $2) AND NEXT_ATTEMPT <= $3)
 					OR (STATUS = $6 AND UPDATED_AT <= $7)
 			  )
-			  AND ($4 <= 0 OR ATTEMPT < $4)
+			  AND ATTEMPT < $4
 			  AND PUBLISHED_AT IS NULL
 			  AND DELETED_AT IS NULL
 			ORDER BY CREATED_AT ASC

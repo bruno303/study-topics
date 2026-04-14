@@ -11,8 +11,18 @@ import (
 	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
+	"github.com/bruno303/study-topics/go-study/internal/infra/utils/shutdown"
 	"go.uber.org/mock/gomock"
 )
+
+func setupHelloProducerShutdownState(t *testing.T) {
+	t.Helper()
+
+	shutdown.ResetForTests()
+	t.Cleanup(func() {
+		shutdown.ResetForTests()
+	})
+}
 
 func TestProduceMessage_WhenTransactionAndEnqueueSucceed_ReturnsNil(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -100,6 +110,26 @@ func TestHelloProducerWorker_Start_WhenDisabled_DoesNotStartLifecycle(t *testing
 	})
 
 	subject.Start()
+}
+
+func TestHelloProducerWorker_Start_WhenShutdownAlreadyInProgress_DoesNotLaunchWorker(t *testing.T) {
+	setupHelloProducerShutdownState(t)
+
+	ctrl := gomock.NewController(t)
+	tm := transaction.NewMockTransactionManager(ctrl)
+
+	shutdown.Trigger()
+
+	subject := NewHelloProducerWorker(tm, config.HelloProducerConfig{
+		IntervalMillis: 1,
+		Enabled:        true,
+		MaxMessages:    1,
+		Topic:          "topic",
+	})
+
+	subject.Start()
+
+	shutdown.AwaitAll()
 }
 
 func TestProduceMessage_WhenContextCanceled_PropagatesContextToTransactionAndRepository(t *testing.T) {

@@ -18,9 +18,8 @@ const (
 	DatabaseDriverPGXPool = "pgxpool"
 	DatabaseDriverMemDB   = "memdb"
 
-	defaultOutboxSenderPollIntervalMillis = 10000
-	defaultOutboxSenderBatchSize          = 10
-	defaultOutboxSenderMaxAttempts        = 5
+	defaultOutboxSenderPollIntervalMillis  = 10000
+	defaultOutboxSenderBatchSize           = 10
 	defaultOutboxSenderRetryIntervalMillis = 5000
 )
 
@@ -148,7 +147,7 @@ func LoadConfig() *Config {
 	}
 
 	if cfg.Workers.OutboxSender.MaxAttempts <= 0 {
-		cfg.Workers.OutboxSender.MaxAttempts = defaultOutboxSenderMaxAttempts
+		panic(fmt.Sprintf("invalid workers.outbox-sender.max-attempts %d: must be > 0", cfg.Workers.OutboxSender.MaxAttempts))
 	}
 
 	if cfg.Workers.OutboxSender.RetryIntervalMillis <= 0 {

@@ -44,38 +44,49 @@ type helloKafkaMsg struct {
 }
 
 func (w HelloProducerWorker) Start() {
+	ctx := context.Background()
 	if !w.cfg.Enabled {
 		log.Log().Info(context.Background(), "HelloProducerWorker disabled")
 		return
 	}
-	nextTick := time.NewTicker(time.Duration(w.cfg.IntervalMillis) * time.Millisecond)
-	ctx, cancel := context.WithCancel(context.Background())
 
-	shutdown.CreateListener(func() {
-		log.Log().Info(context.Background(), "Stopping producer")
+	workerCtx, cancel := context.WithCancel(ctx)
+	stopped := make(chan struct{})
+
+	registered := shutdown.CreateListener(func() {
+		log.Log().Info(context.Background(), "Stopping HelloProducerWorker")
 		cancel()
+		<-stopped
 	})
+	if !registered {
+		cancel()
+		log.Log().Info(ctx, "HelloProducerWorker start skipped during shutdown")
+		return
+	}
+
+	nextTick := time.NewTicker(time.Duration(w.cfg.IntervalMillis) * time.Millisecond)
 
 	go func() {
 		defer nextTick.Stop()
+		defer close(stopped)
 		msgCount := 0
 		for {
 			select {
-			case <-ctx.Done():
+			case <-workerCtx.Done():
 				return
 			case <-nextTick.C:
 				if msgCount >= w.cfg.MaxMessages {
-					log.Log().Info(ctx, "Already sent the max quantity of messages: %d. Stopping...", w.cfg.MaxMessages)
+					log.Log().Info(workerCtx, "Already sent the max quantity of messages: %d. Stopping...", w.cfg.MaxMessages)
 					return
 				}
 
-				_ = w.produceMessage(ctx)
+				_ = w.produceMessage(workerCtx)
 				msgCount++
 			}
 		}
 	}()
 
-	log.Log().Info(context.Background(), "HelloProducerWorker started")
+	log.Log().Info(ctx, "HelloProducerWorker started")
 }
 
 func (w HelloProducerWorker) produceMessage(ctx context.Context) error {

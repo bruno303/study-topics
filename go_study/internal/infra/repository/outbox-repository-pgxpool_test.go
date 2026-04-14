@@ -212,6 +212,50 @@ func TestOutboxPgxRepository_ListPending_WhenProcessingIsStale_ReclaimsOnlyStale
 	}
 }
 
+func TestOutboxPgxRepository_ListPending_WhenMaxAttemptsIsZeroOrNegative_ReturnsNoMessages(t *testing.T) {
+	testCases := []struct {
+		name        string
+		maxAttempts int
+	}{
+		{name: "zero", maxAttempts: 0},
+		{name: "negative", maxAttempts: -1},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			pool := integration.SetupTestDB(t)
+			defer integration.CleanupTestDB(t, pool)
+
+			repo := NewOutboxPgxRepository(pool)
+			now := time.Now().UTC()
+			id := fmt.Sprintf("max-attempts-check-%s-%d", testCase.name, now.UnixNano())
+
+			_, err := repo.Enqueue(context.Background(), &model.OutboxMessage{
+				Id:          id,
+				Topic:       "topic",
+				MessageKey:  "key",
+				Payload:     []byte(`{"event":"max-attempts-check"}`),
+				Status:      model.OutboxStatusPending,
+				Attempt:     0,
+				NextAttempt: now,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			})
+			if err != nil {
+				t.Fatalf("failed to seed outbox message: %v", err)
+			}
+
+			claimed, listErr := repo.ListPending(context.Background(), 10, testCase.maxAttempts, now)
+			if listErr != nil {
+				t.Fatalf("expected list pending without error, got %v", listErr)
+			}
+			if len(claimed) != 0 {
+				t.Fatalf("expected no claimed messages for max-attempts %d, got %d", testCase.maxAttempts, len(claimed))
+			}
+		})
+	}
+}
+
 func TestOutboxPgxRepository_MarkAsError_WhenNextAttemptProvided_SetsRetryableStatus(t *testing.T) {
 	pool := integration.SetupTestDB(t)
 	defer integration.CleanupTestDB(t, pool)

@@ -46,7 +46,7 @@ func TestOutboxSenderWorker_ProcessTick_WhenClaimAndPublishSucceed_MarksAsPublis
 	}
 
 	uowClaim.EXPECT().OutboxRepository().Return(outboxClaim)
-	outboxClaim.EXPECT().ListPending(gomock.Any(), 10, 0, gomock.Any()).Return([]model.OutboxMessage{message}, nil)
+	outboxClaim.EXPECT().ListPending(gomock.Any(), 10, 3, gomock.Any()).Return([]model.OutboxMessage{message}, nil)
 	uowPublish.EXPECT().OutboxRepository().Return(outboxPublish)
 	outboxPublish.EXPECT().MarkAsPublished(gomock.Any(), "outbox-1", gomock.Any()).Return(nil)
 	producer.EXPECT().Produce(gomock.Any(), string(message.Payload), message.Topic, message.MessageKey, message.Headers).Return(nil)
@@ -60,7 +60,7 @@ func TestOutboxSenderWorker_ProcessTick_WhenClaimAndPublishSucceed_MarksAsPublis
 		return fn(ctx, uowPublish)
 	})
 
-	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{BatchSize: 10})
+	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{BatchSize: 10, MaxAttempts: 3})
 
 	err := subject.processTick(context.Background())
 	if err != nil {
@@ -141,7 +141,7 @@ func TestOutboxSenderWorker_ProcessTick_WhenClaimFails_ReturnsWrappedError(t *te
 	tm := transaction.NewMockTransactionManager(ctrl)
 	tm.EXPECT().WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).Return(errors.New("claim failed"))
 
-	subject := NewOutboxSenderWorker(tm, nil, config.OutboxSenderConfig{BatchSize: 10})
+	subject := NewOutboxSenderWorker(tm, nil, config.OutboxSenderConfig{BatchSize: 10, MaxAttempts: 3})
 
 	err := subject.processTick(context.Background())
 	if err == nil {
@@ -187,7 +187,7 @@ func TestOutboxSenderWorker_ProcessTick_WhenContextCanceled_PropagatesContextToD
 	}
 
 	uowClaim.EXPECT().OutboxRepository().Return(outboxClaim)
-	outboxClaim.EXPECT().ListPending(gomock.Any(), 10, 0, gomock.Any()).DoAndReturn(func(ctx context.Context, _ int, _ int, _ time.Time) ([]model.OutboxMessage, error) {
+	outboxClaim.EXPECT().ListPending(gomock.Any(), 10, 3, gomock.Any()).DoAndReturn(func(ctx context.Context, _ int, _ int, _ time.Time) ([]model.OutboxMessage, error) {
 		if !errors.Is(ctx.Err(), context.Canceled) {
 			t.Fatalf("expected canceled context, got %v", ctx.Err())
 		}
@@ -221,7 +221,7 @@ func TestOutboxSenderWorker_ProcessTick_WhenContextCanceled_PropagatesContextToD
 		return fn(ctx, uowPublish)
 	})
 
-	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{BatchSize: 10})
+	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{BatchSize: 10, MaxAttempts: 3})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -250,7 +250,7 @@ func TestOutboxSenderWorker_Start_WhenShutdownTriggered_WaitsForWorkerLoopExit(t
 	var returnedOnce sync.Once
 
 	uowClaim.EXPECT().OutboxRepository().Return(outboxClaim).AnyTimes()
-	outboxClaim.EXPECT().ListPending(gomock.Any(), 1, 0, gomock.Any()).DoAndReturn(func(ctx context.Context, _ int, _ int, _ time.Time) ([]model.OutboxMessage, error) {
+	outboxClaim.EXPECT().ListPending(gomock.Any(), 1, 3, gomock.Any()).DoAndReturn(func(ctx context.Context, _ int, _ int, _ time.Time) ([]model.OutboxMessage, error) {
 		startedOnce.Do(func() {
 			close(started)
 		})
@@ -271,6 +271,7 @@ func TestOutboxSenderWorker_Start_WhenShutdownTriggered_WaitsForWorkerLoopExit(t
 	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{
 		IntervalMillis: 100,
 		BatchSize:      1,
+		MaxAttempts:    3,
 		Enabled:        true,
 	})
 
@@ -329,6 +330,7 @@ func TestOutboxSenderWorker_Start_WhenShutdownAlreadyInProgress_DoesNotLaunchWor
 	subject := NewOutboxSenderWorker(tm, producer, config.OutboxSenderConfig{
 		IntervalMillis: 1,
 		BatchSize:      1,
+		MaxAttempts:    3,
 		Enabled:        true,
 	})
 

@@ -155,9 +155,8 @@ func TestPgxTransactionManager_Execute_WhenCallbackAndRollbackFail_ReturnsJoined
 	rollbackErr := errors.New("rollback failed")
 	tx := &fakeTx{rollbackFn: func(context.Context) error { return rollbackErr }}
 	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
-	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 
-	err := tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
+	err := tm.execute(t.Context(), tx, func(context.Context, transaction.UnitOfWork) error {
 		return callbackErr
 	})
 
@@ -176,9 +175,8 @@ func TestPgxTransactionManager_Execute_WhenCommitFails_ReturnsCommitError(t *tes
 	commitErr := errors.New("commit failed")
 	tx := &fakeTx{commitFn: func(context.Context) error { return commitErr }}
 	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
-	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 
-	err := tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
+	err := tm.execute(t.Context(), tx, func(context.Context, transaction.UnitOfWork) error {
 		return nil
 	})
 
@@ -193,7 +191,6 @@ func TestPgxTransactionManager_Execute_WhenCommitFails_ReturnsCommitError(t *tes
 func TestPgxTransactionManager_Execute_WhenCallbackPanics_RollsBackAndRePanicsOriginalValue(t *testing.T) {
 	tx := &fakeTx{}
 	tm := NewPgxTransactionManager(&PgxTransactionManagerConfig{})
-	uow := &pgxUnitOfWork{helloRepository: fakeHelloRepository{}}
 	expectedPanic := "boom"
 
 	var recovered any
@@ -202,7 +199,7 @@ func TestPgxTransactionManager_Execute_WhenCallbackPanics_RollsBackAndRePanicsOr
 			recovered = recover()
 		}()
 
-		_ = tm.execute(t.Context(), tx, uow, func(context.Context, transaction.UnitOfWork) error {
+		_ = tm.execute(t.Context(), tx, func(context.Context, transaction.UnitOfWork) error {
 			panic(expectedPanic)
 		})
 	}()
