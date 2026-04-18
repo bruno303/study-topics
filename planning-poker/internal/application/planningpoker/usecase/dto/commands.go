@@ -11,6 +11,7 @@ import (
 type (
 	RoomState struct {
 		Type               string        `json:"type"`
+		RoomID             string        `json:"roomId"`
 		CurrentStory       string        `json:"currentStory"`
 		Reveal             bool          `json:"reveal"`
 		Result             *float32      `json:"result,omitempty"`
@@ -35,6 +36,7 @@ type (
 func NewRoomStateCommand(room *entity.Room) RoomState {
 	return RoomState{
 		Type:               "room-state",
+		RoomID:             room.ID,
 		CurrentStory:       room.CurrentStory,
 		Reveal:             room.Reveal,
 		Participants:       MapToParticipants(room.Clients.Values()),

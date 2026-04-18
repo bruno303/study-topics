@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"planning-poker/internal/infra/bus"
-	"planning-poker/test/integration"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"planning-poker/internal/infra/bus"
+	"planning-poker/test/integration"
 )
 
 func TestWebSocketConnection(t *testing.T) {
@@ -109,6 +110,81 @@ func TestWebSocketConnection(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestWebSocketJoinConnection(t *testing.T) {
+	ts := integration.NewTestServer(t)
+	defer ts.Close()
+
+	conn1 := connectJoinWebSocket(t, ts)
+	defer closeAndWait(conn1)
+
+	msg1 := receiveMessage(t, conn1, 2*time.Second)
+	if msg1["type"] != "update-client-id" {
+		t.Fatalf("expected first message type 'update-client-id', got '%v'", msg1["type"])
+	}
+	clientID1, ok := msg1["clientId"].(string)
+	if !ok || clientID1 == "" {
+		t.Fatal("clientId not found in update-client-id message")
+	}
+
+	msg2 := receiveMessage(t, conn1, 2*time.Second)
+	if msg2["type"] != "room-state" {
+		t.Fatalf("expected second message type 'room-state', got '%v'", msg2["type"])
+	}
+	roomID, ok := msg2["roomId"].(string)
+	if !ok || roomID == "" {
+		t.Fatal("roomId not found in room-state message")
+	}
+	participants1 := msg2["participants"].([]any)
+	if len(participants1) != 1 {
+		t.Fatalf("expected 1 participant in auto-created room, got %d", len(participants1))
+	}
+	firstParticipant := participants1[0].(map[string]any)
+	if firstParticipant["id"] != clientID1 {
+		t.Fatalf("expected first participant id '%s', got '%v'", clientID1, firstParticipant["id"])
+	}
+	if firstParticipant["isOwner"] != true {
+		t.Fatal("expected first auto-created room participant to be owner")
+	}
+
+	conn2 := connectWebSocket(t, ts, roomID)
+	defer closeAndWait(conn2)
+
+	msg3 := receiveMessage(t, conn2, 2*time.Second)
+	if msg3["type"] != "update-client-id" {
+		t.Fatalf("expected first message type 'update-client-id', got '%v'", msg3["type"])
+	}
+	clientID2, ok := msg3["clientId"].(string)
+	if !ok || clientID2 == "" {
+		t.Fatal("clientId not found in update-client-id message")
+	}
+
+	msg4 := receiveMessage(t, conn2, 2*time.Second)
+	if msg4["type"] != "room-state" {
+		t.Fatalf("expected second message type 'room-state', got '%v'", msg4["type"])
+	}
+	if msg4["roomId"] != roomID {
+		t.Fatalf("expected roomId '%s', got '%v'", roomID, msg4["roomId"])
+	}
+	participants2 := msg4["participants"].([]any)
+	if len(participants2) != 2 {
+		t.Fatalf("expected 2 participants after second join, got %d", len(participants2))
+	}
+	seenClient1 := false
+	seenClient2 := false
+	for _, p := range participants2 {
+		participant := p.(map[string]any)
+		switch participant["id"] {
+		case clientID1:
+			seenClient1 = true
+		case clientID2:
+			seenClient2 = true
+		}
+	}
+	if !seenClient1 || !seenClient2 {
+		t.Fatalf("expected both auto-created room participants to be present, got %#v", participants2)
+	}
 }
 
 func TestWebSocketUpdateName(t *testing.T) {
@@ -812,6 +888,27 @@ func getClientID(t *testing.T, conn *websocket.Conn) string {
 	if msg2["type"] != "room-state" {
 		t.Fatalf("expected second message type 'room-state', got '%v'", msg2["type"])
 	}
+	if roomID, ok := msg2["roomId"].(string); !ok || roomID == "" {
+		t.Fatal("roomId not found in room-state message")
+	}
 
 	return clientID
+}
+
+func connectJoinWebSocket(t *testing.T, ts *integration.TestServer) *websocket.Conn {
+	t.Helper()
+
+	wsURL := strings.Replace(ts.Server.URL, "http://", "ws://", 1)
+	wsURL = fmt.Sprintf("%s/planning/join", wsURL)
+
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+	}
+
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect to websocket join endpoint: %v", err)
+	}
+
+	return conn
 }

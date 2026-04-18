@@ -94,6 +94,7 @@ func newAPIContainer(cfg *config.Config, infra *InfraContainer, app *Application
 	return &APIContainer{
 		APIs: []http.API{
 			http.NewWebsocketAPI(app.Usecases, infra.WebsocketBusFactory),
+			http.NewWebsocketJoinAPI(app.Usecases, infra.WebsocketBusFactory),
 			http.NewGetRoomAPI(infra.Hub),
 			http.NewCreateRoomAPI(app.Usecases.CreateRoom),
 			http.NewHealthcheckAPI(healthCheckers...),

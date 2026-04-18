@@ -32,6 +32,7 @@ func TestNewRoomStateCommand(t *testing.T) {
 	got := NewRoomStateCommand(room)
 	want := RoomState{
 		Type:         "room-state",
+		RoomID:       "room1",
 		CurrentStory: "Story 1",
 		Reveal:       true,
 		Participants: []Participant{
