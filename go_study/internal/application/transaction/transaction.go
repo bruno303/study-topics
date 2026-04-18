@@ -11,6 +11,7 @@ import (
 type (
 	UnitOfWork interface {
 		HelloRepository() repository.HelloRepository
+		OutboxRepository() repository.OutboxRepository
 	}
 
 	TransactionCallback func(context.Context, UnitOfWork) error

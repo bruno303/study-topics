@@ -35,7 +35,8 @@ type KafkaContainer struct {
 }
 
 type WorkerContainer struct {
-	HelloProducerWorker worker.HelloProducerWorker
+	HelloProducerWorker    worker.HelloProducerWorker
+	OutboxDispatcherWorker worker.OutboxDispatcherWorker
 }
 
 type MessageHandlersContainer struct {
@@ -100,13 +101,19 @@ func newMessageHandlersContainer(services ServiceContainer) MessageHandlersConta
 	}
 }
 
-func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContainer {
+func newWorkerContainer(repoContainer RepositoryContainer, kafka KafkaContainer, cfg *config.Config) WorkerContainer {
 	helloProducerWorker := worker.NewHelloProducerWorker(
-		kafka.Producer,
+		repoContainer.TransactionManager,
 		cfg.Workers.HelloProducer,
 	)
+	outboxDispatcherWorker := worker.NewOutboxDispatcherWorker(
+		repoContainer.TransactionManager,
+		kafka.Producer,
+		cfg.Workers.OutboxDispatcher,
+	)
 	return WorkerContainer{
-		HelloProducerWorker: helloProducerWorker,
+		HelloProducerWorker:    helloProducerWorker,
+		OutboxDispatcherWorker: outboxDispatcherWorker,
 	}
 }
 
@@ -120,7 +127,7 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	services := newServiceContainer(repos)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)
-	worker := newWorkerContainer(kafka, cfg)
+	worker := newWorkerContainer(repos, kafka, cfg)
 
 	return &Container{
 		Config:          cfg,

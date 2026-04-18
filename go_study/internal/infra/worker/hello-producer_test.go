@@ -6,21 +6,29 @@ import (
 	"testing"
 	"time"
 
+	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"go.uber.org/mock/gomock"
 )
 
 func TestProduce(t *testing.T) {
-	producer := NewMockProducer(gomock.NewController(t))
+	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
+	uow := transaction.NewMockUnitOfWork(ctrl)
+	outboxRepo := applicationRepository.NewMockOutboxRepository(ctrl)
 
-	producer.
+	transactionManager.
 		EXPECT().
-		Produce(gomock.Any(), gomock.Any(), gomock.Eq("topic")).
-		DoAndReturn(func(ctx context.Context, msg string, topic string) error {
-			return nil
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(ctx, uow)
 		}).Times(1)
 
-	subject := NewHelloProducerWorker(producer, config.HelloProducerConfig{
+	uow.EXPECT().OutboxRepository().Return(outboxRepo).Times(1)
+	outboxRepo.EXPECT().Enqueue(gomock.Any(), gomock.AssignableToTypeOf(applicationRepository.OutboxMessage{})).Return(nil).Times(1)
+
+	subject := NewHelloProducerWorker(transactionManager, config.HelloProducerConfig{
 		IntervalMillis: time.Hour.Milliseconds(),
 		Topic:          "topic",
 		Enabled:        true,
@@ -32,16 +40,23 @@ func TestProduce(t *testing.T) {
 }
 
 func TestProduceWithError(t *testing.T) {
-	producer := NewMockProducer(gomock.NewController(t))
+	ctrl := gomock.NewController(t)
+	transactionManager := transaction.NewMockTransactionManager(ctrl)
+	uow := transaction.NewMockUnitOfWork(ctrl)
+	outboxRepo := applicationRepository.NewMockOutboxRepository(ctrl)
+	expectedErr := errors.New("error")
 
-	producer.
+	transactionManager.
 		EXPECT().
-		Produce(gomock.Any(), gomock.Any(), gomock.Eq("topic")).
-		DoAndReturn(func(ctx context.Context, msg string, topic string) error {
-			return errors.New("error")
+		WithinTx(gomock.Any(), transaction.EmptyOpts(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ transaction.TransactionOpts, fn transaction.TransactionCallback) error {
+			return fn(ctx, uow)
 		}).Times(1)
 
-	subject := NewHelloProducerWorker(producer, config.HelloProducerConfig{
+	uow.EXPECT().OutboxRepository().Return(outboxRepo).Times(1)
+	outboxRepo.EXPECT().Enqueue(gomock.Any(), gomock.AssignableToTypeOf(applicationRepository.OutboxMessage{})).Return(expectedErr).Times(1)
+
+	subject := NewHelloProducerWorker(transactionManager, config.HelloProducerConfig{
 		IntervalMillis: time.Hour.Milliseconds(),
 		Topic:          "topic",
 		Enabled:        true,
@@ -49,7 +64,7 @@ func TestProduceWithError(t *testing.T) {
 
 	err := subject.produceMessage(context.Background())
 
-	if err == nil || err.Error() != "error" {
+	if !errors.Is(err, expectedErr) {
 		t.Errorf("Error 'error' was expected")
 	}
 }

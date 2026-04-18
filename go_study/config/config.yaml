@@ -40,3 +40,9 @@ workers:
     interval-millis: 5000
     max-messages: 5
     enabled: true
+  outbox-dispatcher:
+    enabled: true
+    poll-interval-millis: 5000
+    batch-size: 10
+    max-attempts: 5
+    publish-timeout: 10s

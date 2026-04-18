@@ -55,6 +55,20 @@ func (mr *MockUnitOfWorkMockRecorder) HelloRepository() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HelloRepository", reflect.TypeOf((*MockUnitOfWork)(nil).HelloRepository))
 }
 
+// OutboxRepository mocks base method.
+func (m *MockUnitOfWork) OutboxRepository() repository.OutboxRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OutboxRepository")
+	ret0, _ := ret[0].(repository.OutboxRepository)
+	return ret0
+}
+
+// OutboxRepository indicates an expected call of OutboxRepository.
+func (mr *MockUnitOfWorkMockRecorder) OutboxRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OutboxRepository", reflect.TypeOf((*MockUnitOfWork)(nil).OutboxRepository))
+}
+
 // MockTransactionManager is a mock of TransactionManager interface.
 type MockTransactionManager struct {
 	ctrl     *gomock.Controller

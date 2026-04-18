@@ -51,7 +51,8 @@ type Config struct {
 	} `yaml:"database"`
 	Kafka   KafkaConfig `yaml:"kafka"`
 	Workers struct {
-		HelloProducer HelloProducerConfig `yaml:"hello-producer"`
+		HelloProducer    HelloProducerConfig    `yaml:"hello-producer"`
+		OutboxDispatcher OutboxDispatcherConfig `yaml:"outbox-dispatcher"`
 	} `yaml:"workers"`
 }
 
@@ -82,6 +83,14 @@ type HelloProducerConfig struct {
 	Topic          string `env:"WORKERS_HELLO_PRODUCER_TOPIC" yaml:"topic"`
 	Enabled        bool   `env:"WORKERS_HELLO_PRODUCER_ENABLED" yaml:"enabled"`
 	MaxMessages    int    `env:"WORKERS_HELLO_PRODUCER_MAX_MESSAGES" yaml:"max-messages"`
+}
+
+type OutboxDispatcherConfig struct {
+	Enabled            bool          `env:"WORKERS_OUTBOX_DISPATCHER_ENABLED" yaml:"enabled"`
+	PollIntervalMillis int64         `env:"WORKERS_OUTBOX_DISPATCHER_POLL_INTERVAL_MILLIS" yaml:"poll-interval-millis"`
+	BatchSize          int           `env:"WORKERS_OUTBOX_DISPATCHER_BATCH_SIZE" yaml:"batch-size"`
+	MaxAttempts        int           `env:"WORKERS_OUTBOX_DISPATCHER_MAX_ATTEMPTS" yaml:"max-attempts"`
+	PublishTimeout     time.Duration `env:"WORKERS_OUTBOX_DISPATCHER_PUBLISH_TIMEOUT" yaml:"publish-timeout"`
 }
 
 func LoadConfig() *Config {

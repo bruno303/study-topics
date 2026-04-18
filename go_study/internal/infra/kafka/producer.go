@@ -70,7 +70,29 @@ func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
 
 	kafkatrace.Inject(ctx, kafkaMsg)
 
-	return p.producer.Produce(kafkaMsg, nil)
+	deliveryChan := make(chan libkafka.Event, 1)
+	err := p.producer.Produce(kafkaMsg, deliveryChan)
+	if err != nil {
+		trace.InjectError(ctx, err)
+		return err
+	}
+
+	select {
+	case event := <-deliveryChan:
+		message, ok := event.(*libkafka.Message)
+		if !ok {
+			return nil
+		}
+		if message.TopicPartition.Error != nil {
+			trace.InjectError(ctx, message.TopicPartition.Error)
+			return message.TopicPartition.Error
+		}
+		return nil
+	case <-ctx.Done():
+		err := ctx.Err()
+		trace.InjectError(ctx, err)
+		return err
+	}
 }
 
 func producerTrace(spanName string) *trace.TraceConfig {

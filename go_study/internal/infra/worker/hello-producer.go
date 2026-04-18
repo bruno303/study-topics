@@ -3,10 +3,13 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
 
+	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -18,20 +21,15 @@ import (
 
 //go:generate go tool mockgen -source=hello-producer.go -destination=mocks.go -package worker
 
-type Producer interface {
-	Produce(ctx context.Context, msg string, topic string) error
-	Close()
-}
-
 type HelloProducerWorker struct {
-	producer Producer
-	cfg      config.HelloProducerConfig
+	transactionManager transaction.TransactionManager
+	cfg                config.HelloProducerConfig
 }
 
-func NewHelloProducerWorker(producer Producer, cfg config.HelloProducerConfig) HelloProducerWorker {
+func NewHelloProducerWorker(transactionManager transaction.TransactionManager, cfg config.HelloProducerConfig) HelloProducerWorker {
 	return HelloProducerWorker{
-		producer: producer,
-		cfg:      cfg,
+		transactionManager: transactionManager,
+		cfg:                cfg,
 	}
 }
 
@@ -89,5 +87,18 @@ func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
 		trace.InjectError(ctx, err)
 		return err
 	}
-	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
+
+	outboxMsg := applicationRepository.OutboxMessage{
+		ID:      uuid.NewString(),
+		Topic:   w.cfg.Topic,
+		Payload: string(bytes),
+		Status:  applicationRepository.OutboxStatusPending,
+	}
+
+	return w.transactionManager.WithinTx(ctx, transaction.EmptyOpts(), func(txCtx context.Context, uow transaction.UnitOfWork) error {
+		if err := uow.OutboxRepository().Enqueue(txCtx, outboxMsg); err != nil {
+			return fmt.Errorf("enqueue hello message in outbox: %w", err)
+		}
+		return nil
+	})
 }
