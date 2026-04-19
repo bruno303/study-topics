@@ -1,152 +1,182 @@
 # AGENTS.md
 
-Operational guide for agents working in this repository.
+Operational guide for development agents working in this repository.
 
 ## Project Overview
 
-- Go learning/practice project focused on context propagation, dependency injection, repository pattern, transactions, Kafka, HTTP APIs, CLI execution, and observability.
-- Main executable entrypoints:
-  - `cmd/api/main.go`
-  - `cmd/cli/main.go`
-- Core wiring happens in `internal/setup/container.go` and the app bootstrap in `cmd/api/main.go`.
+- This repository is a Go learning/practice service that combines HTTP API, Kafka producer/consumer flows, transactional persistence, and observability.
+- There are two entrypoints:
+  - `cmd/api/main.go` starts HTTP server, Kafka consumers, producer worker, config/log/trace bootstrap, and graceful shutdown listeners.
+  - `cmd/cli/main.go` runs a small CLI flow for local logging/tracing experiments.
+- Runtime dependency wiring is centralized in `internal/setup/container.go`.
+- Main domain example is `hello`: HTTP and Kafka paths both call `internal/application/hello/service.go`.
 
 ## Stack Summary
 
-- Language: Go.
+- Language: Go (`go.mod` declares `go 1.25.4`).
 - Module: `github.com/bruno303/study-topics/go-study`.
-- Declared Go version: `go 1.25.4` in `go.mod`.
-- Main libraries in use:
-  - `pgx/v5` and `pgxpool` for PostgreSQL access.
-  - `confluent-kafka-go/v2` for Kafka.
-  - OpenTelemetry SDK plus `otelhttp` for tracing.
-  - `slog` adapter for logging.
-  - `go-envconfig` and `yaml.v3` for configuration loading.
-  - `go.uber.org/mock` for generated mocks.
+- Core libraries (from `go.mod` and code usage):
+  - PostgreSQL: `github.com/jackc/pgx/v5` (`pgxpool`, transactions, query tracer hooks).
+  - Migrations: `github.com/pressly/goose/v3` with embedded SQL files.
+  - Kafka: `github.com/confluentinc/confluent-kafka-go/v2`.
+  - Tracing: OpenTelemetry SDK + OTLP gRPC exporter + `otelhttp`.
+  - Logging: standard `log/slog` through a custom adapter.
+  - Config: embedded YAML + env override via `github.com/sethvargo/go-envconfig`.
+  - Testing/mocks: stdlib `testing`, `go.uber.org/mock`, `sqlmock`.
+- Dev tooling:
+  - Live reload: `air` via `.air.toml`.
+  - Mock generation: `go generate` with `mockgen` directives.
 
 ## Architecture
 
-- `cmd/*` bootstraps config, logging, tracing, dependency injection, workers, Kafka consumers, and the HTTP server.
-- `internal/application` contains use cases and app-level interfaces.
-  - `internal/application/hello` is the main service layer example.
-  - `internal/application/repository` defines repository contracts.
-  - `internal/application/transaction` defines `UnitOfWork` and transaction orchestration contracts.
-- `internal/infra` contains adapters and runtime integrations.
-  - HTTP API and middleware live under `internal/infra/api`.
-  - Kafka producer/consumer code lives under `internal/infra/kafka`.
-  - PostgreSQL and in-memory repository implementations live under `internal/infra/repository`.
-  - OpenTelemetry, slog, correlation-id, and shutdown helpers live under `internal/infra/observability` and `internal/infra/utils`.
-  - Workers live under `internal/infra/worker` and write to an outbox before publishing.
-- `internal/crosscutting` exposes logging and tracing abstractions used across layers.
-- `internal/setup` wires concrete infra implementations into services, handlers, Kafka, and workers.
-- Data flow is: transport layer -> application service -> transaction manager -> repository implementation -> external systems.
+- Layering used in code:
+  - `internal/application`: business/use-case interfaces and services.
+  - `internal/infra`: transport/integration implementations (HTTP, Kafka, DB, observability, workers).
+  - `internal/crosscutting/observability`: logging/tracing abstractions shared across layers.
+  - `internal/setup`: composition root and dependency graph.
+- Key flow patterns:
+  - HTTP: `internal/infra/api/hello` -> middleware chain -> `hello.HelloService`.
+  - Kafka consume: `internal/infra/kafka/consumer` -> kafka middleware chain -> message handler -> `hello.HelloService`.
+  - Kafka produce: `internal/infra/worker/hello-producer` -> `internal/infra/kafka/producer`.
+  - Persistence: `hello.HelloService` uses `transaction.TransactionManager` and `UnitOfWork` to access repositories.
+- Data backends:
+  - `pgxpool` driver path: real PostgreSQL transaction manager + repository.
+  - `memdb` driver path: in-memory repository + transaction manager (for fast/local behavior).
+- Migration behavior:
+  - `internal/setup/container.go` runs migrations before connecting when DB driver is `pgxpool`.
+  - Migrations are embedded SQL under `internal/infra/database/migrations` and executed with Goose advisory lock.
 
 ## Important Folders and Files
 
-- `cmd/api/main.go`: API bootstrap, observability setup, consumer/worker startup, graceful shutdown.
-- `cmd/cli/main.go`: CLI bootstrap and logging/tracing setup for local execution.
-- `internal/config/config.go`: embedded YAML config loading plus environment overrides and driver selection.
-- `internal/setup/container.go`: dependency graph composition.
-- `internal/application/hello/service.go`: main use-case implementation and transactional behavior example.
-- `internal/application/transaction/transaction.go`: transaction/unit-of-work contract.
-- `internal/application/repository/*.go`: repository interfaces.
-- `internal/infra/api/hello/api.go`: HTTP route registration and middleware chaining.
-- `internal/infra/api/middleware/*`: auth, correlation-id, and request logging middleware.
-- `internal/infra/repository/*`: pgx and memdb implementations for hello and outbox data.
-- `internal/infra/kafka/*`: producer, consumer, consumer middleware, and message handlers.
-- `internal/infra/worker/*`: hello producer worker and outbox sender worker.
-- `internal/infra/observability/*`: slog adapter, OTEL setup, trace decorator, correlation-id utilities.
+- `cmd/api/main.go`: API process bootstrap, OTel/log setup, consumers/worker startup, graceful shutdown.
+- `cmd/cli/main.go`: CLI bootstrap and logging/tracing sample execution.
+- `internal/setup/container.go`: dependency injection and runtime composition.
+- `internal/config/config.go`: embedded config loading + env overrides + DB driver normalization.
 - `config/config.yaml`: default runtime config.
-- `config/test.yaml`: test config used by DB/integration-style tests.
-- `config/embed.go`: embeds the config directory into the binary.
-- `docker-compose.yml`: local Postgres/Kafka/Zookeeper/Kafka UI stack.
-- `docker-compose.api.yml`: API container wiring for compose-based local runs.
-- `docker/postgres/init.sql`: initial Postgres schema.
-- `docker/kafka/init.sh`: topic bootstrap script.
-- `tests/integration/main.go`: integration test bootstrap helpers.
-- `Makefile`: primary task runner for setup, run, test, and codegen.
-- `README.MD`: project notes and feature checklist.
+- `config/test.yaml`: test config (same shape, worker disabled).
+- `internal/application/hello/service.go`: core use case logic.
+- `internal/application/transaction/transaction.go`: unit-of-work/transaction contracts.
+- `internal/application/repository/hello.go`: repository contract.
+- `internal/infra/api/hello/api.go`: route registration and middleware chain for `/hello`.
+- `internal/infra/api/middleware/*`: auth, correlation id, request logging.
+- `internal/infra/kafka/*`: producer, consumer group, consumer chain, handlers, trace carrier.
+- `internal/infra/repository/*`: pgx and memdb repository/transaction manager implementations.
+- `internal/infra/database/migrations.go`: embedded Goose runner with advisory lock.
+- `internal/infra/database/migrations/*.sql`: schema migration files.
+- `internal/infra/observability/*`: slog adapter, OTel setup, trace decorators, correlation id helpers.
+- `internal/infra/worker/hello-producer.go`: periodic Kafka producer worker.
+- `tests/integration/main.go`: DB setup/cleanup helpers for tests that need PostgreSQL.
+- `docker-compose.yml`: local infra (Postgres, Zookeeper, Kafka, init-kafka, Kafka UI).
+- `docker-compose.api.yml`: app container compose overlay and env wiring.
+- `docker/kafka/init.sh`: creates Kafka topic `go-study.hello`.
+- `Makefile`: canonical local development/test tasks.
+- `requests.http`: example authenticated requests for `/hello`.
 
 ## Development Commands
 
-- Initialize local env file: `make init`
-- Download deps and tidy: `make download`
-- Vendor deps: `make vendor`
-- Run CLI: `make run-cli`
-- Run API: `make run-api`
-- Debug-build API: `make debug-api`
-- Run API with live reload: `make run-api-live`
-- Start infra stack: `make docker-up-infra`
-- Stop infra stack: `make docker-down`
-- Start infra plus API compose stack: `make docker-up-app`
-- Run full test suite: `make test`
-- Watch tests: `make test-watch`
-- Regenerate mocks: `make mocks` or `go generate -v ./...`
-- Baseline quality checks: `gofmt -w <changed-files>`, `go vet ./...`, `go test ./...`
+Use `Makefile` commands first.
+
+- `make init`: recreate `.env` from `.env.example`.
+- `make download`: `go mod download` + `go mod tidy`.
+- `make vendor`: vendor dependencies + tidy.
+- `make run-api`: run API entrypoint.
+- `make run-cli`: run CLI entrypoint.
+- `make run-api-live`: run API with `air` live reload.
+- `make debug-api`: debug build and run API binary (`./tmp/api`).
+- `make docker-up-infra`: start Postgres/Kafka infra.
+- `make docker-down`: stop compose services.
+- `make docker-up-app`: start infra then run API compose stack.
+- `make test`: run full test suite (`go test -v -timeout 30s -count=1 ./...`).
+- `make test-watch`: rerun tests on file changes using `nodemon`.
+- `make mocks`: regenerate mocks (`go generate -v ./...`).
+
+Useful direct commands when needed:
+
+- `go test ./path/to/pkg -run TestName`: focused test iteration.
+- `gofmt -w <files>` and `go vet ./...`: baseline hygiene checks.
 
 ## Code Conventions
 
-- Keep changes small and aligned with the existing layering.
-- Keep application/business logic out of infra code unless a boundary explicitly requires it.
-- Use `context.Context` as the first parameter for request-scoped operations.
-- Prefer early returns and wrap errors when that adds useful context.
-- Use `panic` only for bootstrap or unrecoverable wiring failures, which is the current pattern in `cmd/*` and setup code.
-- Keep interfaces minimal and close to their consumers.
-- Follow the existing naming style: exported `PascalCase`, unexported `camelCase`, constructors as `NewX`.
-- Use standard Go import grouping and let `gofmt` handle formatting.
-- Preserve the repo’s existing compile-time interface assertions where they already exist.
-- Regenerate mocks when interfaces with `//go:generate` change.
+- Follow existing layering: application logic in `internal/application`; transport/integration in `internal/infra`.
+- Keep `context.Context` as first parameter for request-scoped or IO operations.
+- Use small interfaces near consumers (existing pattern in `application/*` packages).
+- Keep constructor naming style `NewX`; prefer compile-time interface assertions where already used.
+- Panic is currently used in bootstrap/wiring paths (`cmd/*`, `setup`); avoid introducing panic in routine business flow.
+- Keep formatting/import order gofmt-compatible.
+- When editing interface files with `//go:generate`, regenerate mocks.
 
 ## Observability
 
-- Logging abstraction: `internal/crosscutting/observability/log`.
-- Trace abstraction: `internal/crosscutting/observability/trace`.
-- Concrete logger: `internal/infra/observability/slog`.
-- Concrete tracer setup: `internal/infra/observability/otel`.
-- HTTP requests are wrapped with `otelhttp` in `cmd/api/main.go` and route-tagged in `internal/infra/api/hello/api.go`.
-- Kafka consumers use tracing/logging middleware in `internal/infra/kafka/middleware`.
-- PostgreSQL query tracing is implemented in `internal/infra/database/pgxpool.go`.
-- Log enrichment adds trace IDs and correlation IDs when available.
-- Tracing helpers commonly used in the codebase: `trace.Trace`, `trace.InjectError`, `trace.InjectAttributes`, and `tracer.EndTrace` via the tracer interface.
+- Abstractions:
+  - Logger interface: `internal/crosscutting/observability/log`.
+  - Tracer interface: `internal/crosscutting/observability/trace`.
+- Concrete implementations:
+  - Logger: `internal/infra/observability/slog`.
+  - Tracer + OTel setup: `internal/infra/observability/otel`.
+- OTel exporter behavior:
+  - Uses OTLP gRPC exporter (`otlptracegrpc.WithEndpoint(cfg.Application.Monitoring.TraceUrl)`), insecure transport.
+  - Global propagator is TraceContext + Baggage.
+- HTTP tracing:
+  - Router wrapped by `otelhttp.NewHandler` in `cmd/api/main.go`.
+  - Route tags applied by `otelhttp.WithRouteTag` in `internal/infra/api/hello/api.go`.
+- Kafka tracing:
+  - Producer injects trace context into Kafka headers (`internal/infra/kafka/kafka-trace`).
+  - Consumer middleware extracts trace context and continues spans.
+- DB tracing:
+  - Custom pgx tracer in `internal/infra/database/pgxpool.go` records SQL/args and errors as span attributes/events.
+- Log enrichment:
+  - Log adapters append `traceId`, `spanId`, and `correlationId` when present.
 
 ## Infrastructure and External Resources
 
-- Local Postgres is defined in `docker-compose.yml` as `postgres:14.11` with default credentials `postgres/postgres` and database `hello`.
-- Local Kafka stack uses Zookeeper, Kafka, topic bootstrap script, and Kafka UI.
-- Kafka UI is exposed on port `9001` in `docker-compose.yml`.
-- The default SQL schema is created by `docker/postgres/init.sql`.
-- The API compose file wires `DATABASE_HOST`, `DATABASE_PORT`, `KAFKA_HOST`, `KAFKA_CONSUMER_GO_STUDY_HOST`, and `APPLICATION_MONITORING_TRACE_URL`.
-- Config loading is embedded from `config/*` and overridden by environment variables.
-- `CONFIG_FILE` selects the embedded YAML file, and tests use `CONFIG_FILE=test.yaml`.
-- `.env.example` only contains `APPLICATION_LOG_LEVEL` and `APPLICATION_LOG_FORMAT`.
-- The HTTP example file `requests.http` assumes the default auth secret from config and the API running on `localhost:8080`.
+- Docker Compose infra (`docker-compose.yml`):
+  - Postgres `postgres:14.11`, DB `hello`, user/password `postgres`.
+  - Zookeeper + Kafka + topic initializer + Kafka UI (`localhost:9001`).
+- API container (`docker-compose.api.yml`): passes DB and Kafka hosts plus trace URL env var.
+- Auth behavior:
+  - API key-style check in `internal/infra/api/middleware/authentication-middleware.go` expects `Authorization: Bearer <secret>`.
+  - Default secret currently stored in `config/config.yaml` and reused by `requests.http`.
+- Config model:
+  - YAML files are embedded (`config/embed.go`) and loaded by `CONFIG_FILE` selector.
+  - Env vars override YAML (`envconfig` with overwrite enabled).
+- Migrations:
+  - Managed in-app with embedded Goose migrations, not by external migration CLI in Makefile.
 
 ## Testing Strategy
 
-- Unit tests are table-driven where useful and use `gomock`-generated mocks for isolation.
-- Package-level tests exist for config loading, service behavior, API handlers, Kafka handlers, workers, and setup wiring.
-- Database-backed tests exist for repository behavior and rely on a live Postgres instance.
-- Integration helpers live in `tests/integration/main.go` and create the `HELLO_DATA` and `OUTBOX_DATA` tables directly for tests.
-- Before DB-dependent tests, start local infra with `make docker-up-infra`.
-- Primary verification command is `make test`, which runs `go test -v -timeout 30s -count=1 ./...`.
-- For focused iteration, run package-specific `go test` commands instead of the full suite.
+- Test command:
+  - `make test` runs `go test` on all packages.
+- Unit tests:
+  - Service, API handler, Kafka handler/middleware paths, worker, setup, config, utility packages.
+  - Mocks generated via `mockgen` are used in application tests.
+- DB-backed tests:
+  - Repository and transaction-manager tests use `tests/integration.SetupTestDB` and need a live Postgres.
+  - Helpers run migrations before tests and cleanup by deleting `HELLO_DATA` rows.
+- Migration tests:
+  - `internal/infra/database/migrations_test.go` uses `sqlmock` to verify lock/unlock and Goose invocation behavior.
+- Practical execution order for DB-related work:
+  - `make docker-up-infra` first, then run targeted `go test` packages, then broader `make test`.
 
 ## Agent Working Rules
 
-- Inspect `Makefile` before inventing new commands.
-- Prefer existing repository patterns over new abstractions.
-- Preserve the current layering and dependency direction.
-- Do not revert or overwrite user changes outside the task scope.
-- Do not add secrets to code, docs, logs, or commit messages.
-- Keep ASCII unless the file already requires Unicode.
-- Run targeted tests for changed packages; expand to broader checks when the change is larger.
-- Update or regenerate mocks when interface changes require it.
-- If a needed detail is unclear, confirm it instead of guessing.
+- Start by reading `Makefile`, `config/*.yaml`, and touched package tests before changing behavior.
+- Preserve architecture direction: avoid moving application rules into infra packages.
+- Prefer minimal deltas in the existing pattern (chain middleware, transaction manager, setup container).
+- Do not invent commands or dependencies when repository commands/patterns already exist.
+- Do not commit secrets or rotate existing sample secrets unless task explicitly requires it.
+- Run targeted tests for changed packages; run full suite for cross-cutting changes.
+- If changing config keys or env tags, verify both YAML and env override behavior.
+- If behavior depends on external services (Postgres/Kafka/OTel collector), state what was/was not validated locally.
 
 ## Known Gaps or Unknowns
 
-- No CI/workflow files were found in this repository (`.github` is absent), so CI behavior is unknown.
-- No migration tool or migrations directory was found; schema setup appears to rely on SQL bootstrap files and test-time table creation.
-- The Dockerfile uses `golang:1.22.3`, which does not match the `go 1.25.4` declaration in `go.mod`; needs confirmation.
-- `docker-compose.api.yml` points OTEL to `http://zipkin:9411/api/v2/spans`, but the compose file only has Zipkin commented out and the OTEL code uses OTLP gRPC; needs confirmation.
-- README checklist still marks metrics, Loki export, DLT, retry, authentication, and some integration-test work as incomplete.
-- `config/config.go` contains an `AsyncCommit` env tag with a tab in the tag value (`ASYNC_COMMIT\t`); this should be treated carefully if the field stops behaving as expected.
+- CI is unknown: no `.github/workflows` or other CI config was found.
+- Go version mismatch needs confirmation:
+  - `go.mod` declares `1.25.4`.
+  - `Dockerfile` uses `golang:1.22.3` for build and runtime stages.
+- Trace endpoint mismatch needs confirmation:
+  - Code exports OTLP gRPC to `APPLICATION_MONITORING_TRACE_URL` (default `localhost:4317`).
+  - `docker-compose.api.yml` sets `APPLICATION_MONITORING_TRACE_URL=http://zipkin:9411/api/v2/spans`.
+  - Zipkin service is commented out in `docker-compose.yml`.
+- `internal/application/outbox` directory exists but currently has no implementation files; intent is Unknown.
+- `internal/config/config.go` has a suspicious env tag with embedded tab on `AsyncCommit` (`env:"ASYNC_COMMIT\t"`); verify before relying on env override for this field.

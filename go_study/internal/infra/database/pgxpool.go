@@ -19,9 +19,9 @@ import (
 func Connect(config *config.Config) *pgxpool.Pool {
 	ctx := context.Background()
 	cfg := config.Database
-	connectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DatabaseName)
+	dsn := connectionString(config)
 
-	pgxCfg, err := pgxpool.ParseConfig(connectionString)
+	pgxCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		log.Log().Error(ctx, "Unable to parse connection string", err)
 		os.Exit(1)
@@ -44,6 +44,11 @@ func Connect(config *config.Config) *pgxpool.Pool {
 	})
 
 	return pool
+}
+
+func connectionString(config *config.Config) string {
+	cfg := config.Database
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DatabaseName)
 }
 
 type pgxTracer struct{}

@@ -10,6 +10,7 @@ Project to learn and practice go concepts.
 - [x] Configuration with environment variables
 - [x] Use .env file
 - [x] Repository pattern with multiple implementations (in memory and postgres)
+- [x] Embedded goose migrations with automatic startup execution
 - [x] Postgres transaction using propagation through context
 - [x] Kafka producer and consumer
 - [x] Tracing with opentelemetry and zipkin
@@ -37,3 +38,6 @@ Project to learn and practice go concepts.
 - [x] Live reload for development
 - [x] Mocks
 - [x] Unit of work pattern
+
+Database schema is managed by embedded goose migrations in `internal/infra/database/migrations`.
+Application startup and integration tests run them automatically, so the Docker Postgres service no longer seeds schema.

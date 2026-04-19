@@ -46,6 +46,11 @@ type RepositoryContainer struct {
 	TransactionManager transaction.TransactionManager
 }
 
+var (
+	runDatabaseMigrations = database.RunMigrations
+	connectDatabase       = database.Connect
+)
+
 func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 	helloService := hello.NewService(repoContainer.TransactionManager)
 
@@ -111,10 +116,7 @@ func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContaine
 }
 
 func NewContainer(ctx context.Context, cfg *config.Config) *Container {
-	var pool *pgxpool.Pool
-	if cfg.Database.Driver == config.DatabaseDriverPGXPool {
-		pool = database.Connect(cfg)
-	}
+	pool := newDatabasePool(ctx, cfg)
 
 	repos := newRepositoryContainer(cfg, pool)
 	services := newServiceContainer(repos)
@@ -130,4 +132,16 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 		Workers:         worker,
 		Repository:      repos,
 	}
+}
+
+func newDatabasePool(ctx context.Context, cfg *config.Config) *pgxpool.Pool {
+	if cfg.Database.Driver != config.DatabaseDriverPGXPool {
+		return nil
+	}
+
+	if err := runDatabaseMigrations(ctx, cfg); err != nil {
+		panic(err)
+	}
+
+	return connectDatabase(cfg)
 }
