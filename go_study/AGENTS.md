@@ -103,7 +103,10 @@ Useful direct commands when needed:
 - Keep constructor naming style `NewX`; prefer compile-time interface assertions where already used.
 - Panic is currently used in bootstrap/wiring paths (`cmd/*`, `setup`); avoid introducing panic in routine business flow.
 - Keep formatting/import order gofmt-compatible.
-- When editing interface files with `//go:generate`, regenerate mocks.
+- Centralize mock generation per package in a `generate.go` file; do not spread `//go:generate` mock commands across multiple files.
+- Keep `generate.go` responsible for generating mocks for all required interfaces in that package.
+- In package-level mock generation, prefer package-local `mockgen` form with `.` (for example: `mockgen -destination=mocks.go -package <pkg> . InterfaceA,InterfaceB`).
+- Keep generated mocks consolidated in a single package-level `mocks.go` file.
 
 ## Observability
 
