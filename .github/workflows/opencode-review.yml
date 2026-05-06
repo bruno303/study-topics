@@ -27,7 +27,7 @@ jobs:
 
       - uses: anomalyco/opencode/github@latest
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           model: ${{ vars.CODE_REVIEW_MODEL }}
           prompt: |
