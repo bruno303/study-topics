@@ -181,11 +181,6 @@ export default function PlanningPoker() {
     }, delay);
   };
 
-  const resetConnectionState = () => {
-    connected.current = false;
-    socket.current = null;
-  };
-
   const cleanupSocket = () => {
     deliberateDisconnect.current = true;
     cancelReconnect();
@@ -247,9 +242,9 @@ export default function PlanningPoker() {
       if (socket.current === ws) {
         socket.current = null;
         connected.current = false;
+        connectedRoomIdRef.current = null
       }
       if (!deliberateDisconnect.current) {
-        pushError('Disconnected. Reconnecting...');
         scheduleReconnect(roomCode, userName);
       }
     };
