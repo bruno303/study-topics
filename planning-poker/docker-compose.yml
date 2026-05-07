@@ -8,6 +8,7 @@ services:
       - planning-poker
     profiles:
       - app
+      - local
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

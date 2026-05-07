@@ -3,6 +3,7 @@ BACKEND_URL=http://localhost:8080
 WEBSOCKET_URL=ws://localhost:8080
 DOCKER_COMPOSE=docker compose
 COMPOSE_APP_PROFILE=app
+COMPOSE_LOCAL_PROFILE=local
 COMPOSE_E2E_PROFILE=e2e
 E2E_READY_MAX_RETRIES ?= 60
 HOST_UID=$(shell id -u)
@@ -85,10 +86,18 @@ clean:
 
 .PHONY: infra-up
 infra-up:
-	$(DOCKER_COMPOSE) --profile $(COMPOSE_APP_PROFILE) up -d
+	$(DOCKER_COMPOSE) --profile $(COMPOSE_LOCAL_PROFILE) up -d
 
 .PHONY: infra-down
 infra-down:
+	$(DOCKER_COMPOSE) --profile $(COMPOSE_LOCAL_PROFILE) down
+
+.PHONY: app-compose-up
+app-compose-up:
+	$(DOCKER_COMPOSE) --profile $(COMPOSE_APP_PROFILE) up -d
+
+.PHONY: app-compose-down
+app-compose-down:
 	$(DOCKER_COMPOSE) --profile $(COMPOSE_APP_PROFILE) down
 
 .PHONY: e2e-compose-up
