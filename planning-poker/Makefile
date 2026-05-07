@@ -94,7 +94,7 @@ infra-down:
 
 .PHONY: app-compose-up
 app-compose-up:
-	$(DOCKER_COMPOSE) --profile $(COMPOSE_APP_PROFILE) up -d
+	$(DOCKER_COMPOSE) --profile $(COMPOSE_APP_PROFILE) up -d --build
 
 .PHONY: app-compose-down
 app-compose-down:
