@@ -201,7 +201,9 @@ export default function PlanningPoker() {
     deliberateDisconnect.current = false;
     const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/planning/${roomCode}/ws`);
     socket.current = ws;
-    (window as any).__ws = ws;
+    if (process.env.NODE_ENV !== 'production') {
+      (window as any).__ws = ws;
+    }
     connected.current = true;
     connectedRoomIdRef.current = roomCode;
 
