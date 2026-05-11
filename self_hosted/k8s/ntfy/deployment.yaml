@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: production
+  labels:
+    app: ntfy
+spec:
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      containers:
+      - name: ntfy
+        image: binwiederhier/ntfy
+        args: ["serve"]
+        env:
+        - name: NTFY_BASE_URL
+          value: "https://ntfy.bsoapp.net"
+        - name: NTFY_BEHIND_PROXY
+          value: "true"
+        - name: NTFY_AUTH_FILE
+          value: "/var/lib/ntfy/auth.db"
+        - name: NTFY_AUTH_DEFAULT_ACCESS
+          value: "deny-all"
+        - name: NTFY_ENABLE_LOGIN
+          value: "true"
+        - name: NTFY_REQUIRE_LOGIN
+          value: "true"
+        - name: NTFY_AUTH_USERS
+          valueFrom:
+            secretKeyRef:
+              name: ntfy
+              key: NTFY_AUTH_USERS
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: "/etc/ntfy"
+          readOnly: true
+        - name: ntfy-auth
+          mountPath: "/var/lib/ntfy"
+      volumes:
+        - name: config
+          configMap:
+            name: ntfy
+        - name: ntfy-auth
+          persistentVolumeClaim:
+            claimName: ntfy-auth-pvc
