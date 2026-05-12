@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-//go:embed swagger
+//go:embed swagger/swagger.yaml swagger/swagger.json
 var swaggerFS embed.FS
 
 type SwaggerAPI struct{}
@@ -32,13 +32,22 @@ func (s SwaggerAPI) Handle() http.Handler {
 		switch rest {
 		case "", "/":
 			serveSwaggerUI(w, r)
-		case "openapi.yaml":
-			data, err := swaggerFS.ReadFile("swagger/openapi.yaml")
+		case "swagger.yaml":
+			data, err := swaggerFS.ReadFile("swagger/swagger.yaml")
 			if err != nil {
 				http.Error(w, "Failed to load OpenAPI spec", http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/x-yaml")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(data)
+		case "swagger.json":
+			data, err := swaggerFS.ReadFile("swagger/swagger.json")
+			if err != nil {
+				http.Error(w, "Failed to load OpenAPI spec", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(data)
 		default:
@@ -60,7 +69,7 @@ func serveSwaggerUI(w http.ResponseWriter, r *http.Request) {
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
         SwaggerUIBundle({
-            url: "/swagger/openapi.yaml",
+            url: "/swagger/swagger.yaml",
             dom_id: "#swagger-ui",
         });
     </script>
