@@ -228,6 +228,7 @@ export default function PlanningPoker() {
           deliberateDisconnect.current = true;
           cancelReconnect();
           pushError('You have been kicked from the room');
+          router.push('/');
 
         } else {
           throw new Error('Invalid message from websocket');
