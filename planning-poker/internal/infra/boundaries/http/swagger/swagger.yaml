@@ -17,22 +17,22 @@ definitions:
     type: object
   http.GetAllRoomsStateClient:
     properties:
-      ID:
+      id:
         type: string
-      IsOwner:
+      is_owner:
         type: boolean
-      IsSpectator:
+      is_spectator:
         type: boolean
-      Name:
+      name:
         type: string
     type: object
   http.GetAllRoomsStateResponse:
     properties:
-      Clients:
+      clients:
         items:
           $ref: '#/definitions/http.GetAllRoomsStateClient'
         type: array
-      ID:
+      id:
         type: string
     type: object
   http.GetRoomResponse:

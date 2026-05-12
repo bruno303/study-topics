@@ -11,14 +11,14 @@ import (
 
 type (
 	GetAllRoomsStateResponse struct {
-		ID      string                   `json:"ID"`
-		Clients []GetAllRoomsStateClient `json:"Clients"`
+		ID      string                   `json:"id"`
+		Clients []GetAllRoomsStateClient `json:"clients"`
 	}
 	GetAllRoomsStateClient struct {
-		ID          string `json:"ID"`
-		Name        string `json:"Name"`
-		IsSpectator bool   `json:"IsSpectator"`
-		IsOwner     bool   `json:"IsOwner"`
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		IsSpectator bool   `json:"is_spectator"`
+		IsOwner     bool   `json:"is_owner"`
 	}
 	GetAllRoomsStateAPI struct {
 		hub                 domain.AdminHub

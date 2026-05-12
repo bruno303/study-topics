@@ -311,16 +311,16 @@
         "http.GetAllRoomsStateClient": {
             "type": "object",
             "properties": {
-                "ID": {
+                "id": {
                     "type": "string"
                 },
-                "IsOwner": {
+                "is_owner": {
                     "type": "boolean"
                 },
-                "IsSpectator": {
+                "is_spectator": {
                     "type": "boolean"
                 },
-                "Name": {
+                "name": {
                     "type": "string"
                 }
             }
@@ -328,13 +328,13 @@
         "http.GetAllRoomsStateResponse": {
             "type": "object",
             "properties": {
-                "Clients": {
+                "clients": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/http.GetAllRoomsStateClient"
                     }
                 },
-                "ID": {
+                "id": {
                     "type": "string"
                 }
             }
