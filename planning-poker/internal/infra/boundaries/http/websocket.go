@@ -71,22 +71,26 @@ func (api *WebsocketAPI) Handle() http.Handler {
 			return
 		}
 
-		createClientOutput, err := api.usecases.CreateClient.Execute(r.Context())
-		if err != nil {
-			api.logger.Error(r.Context(), "Error creating client", err)
-			SendJsonErrorMsg(w, http.StatusInternalServerError, "Error creating client")
-			return
+		clientID := r.URL.Query().Get("clientId")
+		if clientID == "" {
+			createClientOutput, err := api.usecases.CreateClient.Execute(r.Context())
+			if err != nil {
+				api.logger.Error(r.Context(), "Error creating client", err)
+				SendJsonErrorMsg(w, http.StatusInternalServerError, "Error creating client")
+				return
+			}
+			clientID = createClientOutput.ClientID
 		}
 
 		wsBus := api.busFactory.NewBus(bus.WebSocketBusFactoryInput{
-			ClientID: createClientOutput.ClientID,
+			ClientID: clientID,
 			RoomID:   roomID,
 			Socket:   ws,
 		})
 
 		output, err := api.usecases.JoinRoom.Execute(r.Context(), usecase.JoinRoomCommand{
 			RoomID:   roomID,
-			SenderID: createClientOutput.ClientID,
+			SenderID: clientID,
 			Bus:      wsBus,
 		})
 		if err != nil {
