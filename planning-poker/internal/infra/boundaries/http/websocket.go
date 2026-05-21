@@ -7,8 +7,6 @@ import (
 	"planning-poker/internal/application/planningpoker/usecase"
 	"planning-poker/internal/infra/bus"
 
-	"time"
-
 	"github.com/bruno303/go-toolkit/pkg/log"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -76,7 +74,7 @@ func (api *WebsocketAPI) Handle() http.Handler {
 			createClientOutput, err := api.usecases.CreateClient.Execute(r.Context())
 			if err != nil {
 				api.logger.Error(r.Context(), "Error creating client", err)
-				SendJsonErrorMsg(w, http.StatusInternalServerError, "Error creating client")
+				SendErrorWebsocket(ws, "Error creating client")
 				return
 			}
 			clientID = createClientOutput.ClientID
@@ -95,9 +93,7 @@ func (api *WebsocketAPI) Handle() http.Handler {
 		})
 		if err != nil {
 			api.logger.Error(r.Context(), fmt.Sprintf("Error joining room %s", roomID), err)
-			closeMsg := websocket.FormatCloseMessage(websocket.CloseInternalServerErr, fmt.Sprintf("Error joining room %s", roomID))
-			_ = ws.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(time.Second))
-			_ = ws.Close()
+			SendErrorWebsocket(ws, fmt.Sprintf("Error joining room %s", roomID))
 			return
 		}
 

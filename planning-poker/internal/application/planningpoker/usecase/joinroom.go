@@ -131,7 +131,9 @@ func (uc JoinRoomUseCase) reconnectClient(ctx context.Context, cmd JoinRoomComma
 
 	if oldBus, ok := uc.hub.GetBus(cmd.SenderID); ok {
 		oldBus.Detach()
-		_ = oldBus.Close()
+		if err := oldBus.Close(); err != nil {
+			uc.logger.Debug(ctx, "closing old bus for client %s: %v", cmd.SenderID, err)
+		}
 	}
 
 	uc.hub.AddBus(ctx, cmd.SenderID, cmd.Bus)

@@ -63,7 +63,7 @@ type (
 		closeOnce   sync.Once
 		writeMu     sync.Mutex // Protects writes to conn (required by gorilla/websocket)
 		done        chan struct{}
-		skipCleanup bool
+		skipCleanup atomic.Bool
 	}
 
 	WebSocketConfig struct {
@@ -120,7 +120,7 @@ func (c *WebsocketBus) RoomID() string {
 }
 
 func (c *WebsocketBus) Detach() {
-	c.skipCleanup = true
+	c.skipCleanup.Store(true)
 }
 
 func (c *WebsocketBus) Close() error {
@@ -128,7 +128,7 @@ func (c *WebsocketBus) Close() error {
 	c.closeOnce.Do(func() {
 		c.closed.Store(true)
 		close(c.done)
-		if !c.skipCleanup {
+		if !c.skipCleanup.Load() {
 			err = c.leaveRoom(context.Background())
 		}
 		err2 := c.conn.Close()
