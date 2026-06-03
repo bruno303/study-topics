@@ -1,0 +1,18 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:java25
+    container_name: mc-purpur
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    volumes:
+      - ${VOLUMES_DIR}/data:/data
+      - ${VOLUMES_DIR}/plugins:/plugins
+    environment:
+      - TZ=UTC
+      - EULA=TRUE
+      - TYPE=PURPUR
+      - MEMORY=2G
+      - LEVEL=Poguelandia
+      - ONLINE_MODE=FALSE
+      - OPS=Brunoozzy,sucrilhos303,xlFox
