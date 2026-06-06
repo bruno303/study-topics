@@ -49,6 +49,7 @@ spec:
               port: {{ .Values.frontend.probes.liveness.httpGet.port }}
             initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
           {{- end }}
           {{- if .Values.frontend.probes.readiness.enabled }}
           readinessProbe:
@@ -57,6 +58,7 @@ spec:
               port: {{ .Values.frontend.probes.readiness.httpGet.port }}
             initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold }}
           {{- end }}
           {{- end }}
           resources:

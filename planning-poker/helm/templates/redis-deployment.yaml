@@ -25,6 +25,24 @@ spec:
           ports:
             - containerPort: {{ .Values.redis.port }}
               name: redis
+          {{- if or .Values.redis.probes.liveness.enabled .Values.redis.probes.readiness.enabled }}
+          {{- if .Values.redis.probes.liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.redis.probes.liveness.tcpSocket.port }}
+            initialDelaySeconds: {{ .Values.redis.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.redis.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.redis.probes.readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.redis.probes.readiness.tcpSocket.port }}
+            initialDelaySeconds: {{ .Values.redis.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.redis.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.redis.probes.readiness.failureThreshold }}
+          {{- end }}
+          {{- end }}
           resources:
             {{- toYaml .Values.redis.resources | nindent 12 }}
           {{- with .Values.redis.nodeSelector }}

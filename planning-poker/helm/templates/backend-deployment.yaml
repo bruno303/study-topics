@@ -49,29 +49,10 @@ spec:
               name: metrics
             {{- end }}
           env:
-            # Hardcoded env vars (set by the chart, cannot be overridden via values directly)
-            - name: LOG_LEVEL
-              value: DEBUG
-            - name: TRACE_ENABLED
-              value: "true"
-            - name: TRACE_OTLP_ENDPOINT
-              value: tempo.monitoring.svc.cluster.local:4317
-            - name: API_TRACING_ENABLED
-              value: "true"
-            - name: REDIS_PORT
-              value: "6379"
-            - name: REDIS_DB
-              value: "0"
-            - name: REDIS_PASSWORD
-              value: ""
-            - name: REDIS_HOST
-              value: {{ include "planning-poker.fullname" . }}-redis
-            # Env vars from values.yaml backend.env (customizable per environment)
             {{- range .Values.backend.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
-            # ADMIN_API_KEY from secret if provided
             {{- if .Values.backend.secrets.adminApiKey }}
             - name: ADMIN_API_KEY
               valueFrom:
@@ -79,7 +60,6 @@ spec:
                   name: {{ include "planning-poker.fullname" . }}-backend
                   key: ADMIN_API_KEY
             {{- end }}
-            # Extra env vars (escape hatch for deploy projects)
             {{- range .Values.backend.extraEnv }}
             - name: {{ .name }}
               value: {{ .value | quote }}
@@ -92,6 +72,7 @@ spec:
               port: {{ .Values.backend.probes.liveness.httpGet.port }}
             initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
           {{- end }}
           {{- if .Values.backend.probes.readiness.enabled }}
           readinessProbe:
@@ -100,6 +81,7 @@ spec:
               port: {{ .Values.backend.probes.readiness.httpGet.port }}
             initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
           {{- end }}
           {{- end }}
           resources:

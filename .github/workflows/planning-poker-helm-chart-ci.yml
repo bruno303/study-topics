@@ -55,13 +55,16 @@ jobs:
           echo "✅ Versions match: $TAG_VERSION"
 
       - name: Package chart
-        run: helm package ${{ env.CHART_DIR }} -d /tmp/chart
+        id: package
+        run: |
+          helm package ${{ env.CHART_DIR }} -d /tmp/chart
+          echo "chart_package=$(ls /tmp/chart/*.tgz)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         run: echo "${{ github.token }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push chart to GHCR
-        run: helm push /tmp/chart/planning-poker-chart-*.tgz ${{ env.GHCR_REPO }}
+        run: helm push "${{ steps.package.outputs.chart_package }}" ${{ env.GHCR_REPO }}
 
       - name: Summary
         run: |
