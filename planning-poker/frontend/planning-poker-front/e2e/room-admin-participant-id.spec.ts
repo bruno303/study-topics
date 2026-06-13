@@ -25,6 +25,16 @@ const randomUUIDPolyfillScript = () => {
   }
 };
 
+const clipboardWritePolyfillScript = () => {
+  // Override clipboard.writeText to always succeed in test environments
+  // where the Clipboard API may be unavailable (non-HTTPS, Docker).
+  // Real HTTPS users always get the real clipboard API.
+  const orig = navigator.clipboard?.writeText;
+  if (orig) {
+    navigator.clipboard.writeText = () => Promise.resolve();
+  }
+};
+
 const participantsPanel = (page: Page) =>
   page
     .getByRole('heading', { name: 'Participants' })
@@ -70,6 +80,8 @@ test('shows participant ID badge to owner and allows copy on click', async ({ br
 
   await ownerContext.addInitScript(randomUUIDPolyfillScript);
   await guestContext.addInitScript(randomUUIDPolyfillScript);
+  await ownerContext.addInitScript(clipboardWritePolyfillScript);
+  await guestContext.addInitScript(clipboardWritePolyfillScript);
 
   const ownerPage = await ownerContext.newPage();
   const guestPage = await guestContext.newPage();
