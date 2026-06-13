@@ -15,10 +15,11 @@ export default function ParticipantIdBadge({ participantId, onCopied }: Particip
   const handleClick = async () => {
     try {
       await navigator.clipboard.writeText(participantId);
-    } catch {
-      // Clipboard API unavailable (non-HTTPS, Docker E2E, etc.)
+      onCopied();
+    } catch (err) {
+      // Clipboard API unavailable (non-HTTPS, Docker E2E, etc.) — fall back gracefully
+      console.debug('Clipboard API unavailable', err);
     }
-    onCopied();
   };
 
   return (

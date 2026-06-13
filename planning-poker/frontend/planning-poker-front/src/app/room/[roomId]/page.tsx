@@ -277,10 +277,10 @@ export default function PlanningPoker() {
   };
 
   const getCurrentUser = () => {
-    return participants.filter((p: any) => p.id == clientId)[0];
+    return participants.find((p) => p.id === clientId);
   }
 
-  const isAdmin = (): Boolean => {
+  const isAdmin = (): boolean => {
     return getCurrentUser()?.isOwner ?? false
   }
 
@@ -302,6 +302,8 @@ export default function PlanningPoker() {
 
   const votedCount = participants.filter(p => !p.isSpectator && p.hasVoted).length;
   const totalVoters = participants.filter(p => !p.isSpectator).length;
+
+  const amIAdmin = isAdmin();
 
   if (!isAuthorized) {
     return <LoadingSpinner />;
@@ -326,7 +328,7 @@ export default function PlanningPoker() {
 
             <div style={styles.storyCard}>
               <h2 style={styles.storyTitle}>Current Story</h2>
-              {isAdmin() ? (
+              {amIAdmin ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
                   {isEditingStory ? (
                     <>
@@ -431,7 +433,7 @@ export default function PlanningPoker() {
               </div>
 
               {/* Action Buttons */}
-              {isAdmin() && (
+              {amIAdmin && (
                 <div style={styles.buttonsContainer}>
                   <button
                     onClick={handleRevealVotes}
@@ -488,7 +490,7 @@ export default function PlanningPoker() {
                       <div>
                         <div style={styles.participantName}>
                           {participant.name}
-                          {isAdmin() && (
+                          {amIAdmin && (
                             <ParticipantIdBadge
                               participantId={participant.id}
                               onCopied={() => pushSuccess('Participant ID copied!')}
@@ -509,7 +511,7 @@ export default function PlanningPoker() {
                           </div>
                         )}
 
-                        {isAdmin() && (
+                        {amIAdmin && (
                           <div style={styles.adminControls}>
                             <button
                               onClick={() => handleToggleSpectator(participant.id)}
