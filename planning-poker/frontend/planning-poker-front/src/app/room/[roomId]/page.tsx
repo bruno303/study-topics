@@ -17,6 +17,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Header from './page.header';
 import LoadingSpinner from '@/components/loadingSpinner/loadingSpinner';
+import ParticipantIdBadge from '@/components/participantIdBadge/participantIdBadge';
 import gridStyles from './page.module.css';
 import { styles } from './page.styles';
 
@@ -485,7 +486,15 @@ export default function PlanningPoker() {
                   >
                     <div style={styles.participantContent}>
                       <div>
-                        <div style={styles.participantName}>{participant.name}</div>
+                        <div style={styles.participantName}>
+                          {participant.name}
+                          {isAdmin() && (
+                            <ParticipantIdBadge
+                              participantId={participant.id}
+                              onCopied={() => pushSuccess('Participant ID copied!')}
+                            />
+                          )}
+                        </div>
                         <div style={styles.participantStatus}>
                           {participant.isSpectator ? 'Spectator' : participant.hasVoted ? 'Voted' : 'Waiting...'}
                         </div>
