@@ -4,12 +4,15 @@ package entity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
+
+var ErrLastOwner = errors.New("cannot remove the last owner")
 
 type (
 	ClientCollection interface {
@@ -165,6 +168,33 @@ func (r *Room) ToggleOwner(ctx context.Context, clientID string, targetClientID 
 		if first, ok := owners.First(); ok && first.ID == targetClientID && first.IsOwner {
 			// Prevent removing the last owner
 			return nil
+		}
+	}
+
+	if targetClient, ok := r.FindClient(targetClientID); ok {
+		targetClient.IsOwner = !targetClient.IsOwner
+	} else {
+		return fmt.Errorf("target client %s not found in room %s", targetClientID, r.ID)
+	}
+
+	return nil
+}
+
+// AdminToggleOwner toggles a client's owner status without checking
+// that the caller is an owner. Authorization is handled at the HTTP
+// middleware layer for admin endpoints.
+// Returns ErrLastOwner if attempting to revoke the last remaining owner.
+func (r *Room) AdminToggleOwner(ctx context.Context, targetClientID string) error {
+	owners := r.Clients.Filter(func(client *Client) bool {
+		return client.IsOwner
+	})
+
+	ownerCount := owners.Count()
+
+	// Prevent removing the last owner
+	if ownerCount == 1 {
+		if first, ok := owners.First(); ok && first.ID == targetClientID && first.IsOwner {
+			return ErrLastOwner
 		}
 	}
 
