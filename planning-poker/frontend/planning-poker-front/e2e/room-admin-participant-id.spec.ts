@@ -105,14 +105,12 @@ test('shows participant ID badge to owner and allows copy on click', async ({ br
     expect(tooltipText).toMatch(uuidPattern);
 
     // Click to copy and verify toast confirmation
-    // Override clipboard.writeText in test environment (non-HTTPS Docker)
+    // Override navigator.clipboard in test environment (non-HTTPS Docker)
     // so the success toast path is exercised.
     await ownerPage.evaluate(() => {
-      Object.defineProperty(navigator.clipboard, 'writeText', {
-        value: () => Promise.resolve(),
-        writable: true,
-        configurable: true,
-      });
+      const fakeClipboard = { writeText: () => Promise.resolve() };
+      // @ts-expect-error - replacing clipboard for test
+      navigator.clipboard = fakeClipboard;
     });
     await badgeButton.first().click();
 
