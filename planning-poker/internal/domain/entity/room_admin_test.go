@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"planning-poker/internal/domain/domainerror"
 	"planning-poker/internal/domain/entity"
 	"planning-poker/internal/infra/boundaries/hub/clientcollection"
 )
@@ -68,7 +69,7 @@ func TestRoom_AdminToggleOwner(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected ErrLastOwner, got nil")
 				}
-				if !errors.Is(err, entity.ErrLastOwner) {
+				if !errors.Is(err, domainerror.ErrLastOwner) {
 					t.Errorf("expected ErrLastOwner, got %v", err)
 				}
 				return
