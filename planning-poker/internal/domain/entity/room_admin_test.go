@@ -3,7 +3,6 @@ package entity_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"planning-poker/internal/domain/domainerror"
@@ -13,11 +12,12 @@ import (
 
 func TestRoom_AdminToggleOwner(t *testing.T) {
 	tests := []struct {
-		name           string
-		setup          func(room *entity.Room) string // returns targetClientID
-		wantIsOwner    bool
-		wantErr        error
+		name             string
+		setup            func(room *entity.Room) string // returns targetClientID
+		wantIsOwner      bool
+		wantErr          error
 		wantErrLastOwner bool
+		wantErrSentinel  error
 	}{
 		{
 			name: "grant owner to non-owner",
@@ -54,7 +54,7 @@ func TestRoom_AdminToggleOwner(t *testing.T) {
 			setup: func(room *entity.Room) string {
 				return "nonexistent"
 			},
-			wantErr: fmt.Errorf("target client nonexistent not found in room room1"),
+			wantErrSentinel: domainerror.ErrClientNotFound,
 		},
 	}
 
@@ -71,6 +71,15 @@ func TestRoom_AdminToggleOwner(t *testing.T) {
 				}
 				if !errors.Is(err, domainerror.ErrLastOwner) {
 					t.Errorf("expected ErrLastOwner, got %v", err)
+				}
+				return
+			}
+			if tt.wantErrSentinel != nil {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.Is(err, tt.wantErrSentinel) {
+					t.Errorf("expected sentinel %v, got %v", tt.wantErrSentinel, err)
 				}
 				return
 			}
