@@ -198,7 +198,7 @@ func (r *Room) AdminToggleOwner(ctx context.Context, targetClientID string) erro
 	if targetClient, ok := r.FindClient(targetClientID); ok {
 		targetClient.IsOwner = !targetClient.IsOwner
 	} else {
-		return fmt.Errorf("target client %s not found in room %s", targetClientID, r.ID)
+		return fmt.Errorf("target client %s not found in room %s: %w", targetClientID, r.ID, domainerror.ErrClientNotFound)
 	}
 
 	return nil
