@@ -6,7 +6,6 @@ import (
 	"planning-poker/internal/application/lock"
 	"planning-poker/internal/application/planningpoker/usecase/dto"
 	"planning-poker/internal/domain"
-	"planning-poker/internal/domain/entity"
 
 	"github.com/bruno303/go-toolkit/pkg/log"
 )
@@ -41,11 +40,6 @@ func (uc *adminToggleOwnerUseCase) Execute(ctx context.Context, cmd AdminToggleO
 		if err != nil {
 			uc.logger.Error(ctx, "Error loading room", err)
 			return fmt.Errorf("load room: %w", err)
-		}
-
-		if room.Clients.Filter(func(c *entity.Client) bool { return c.ID == cmd.TargetClientID }).Count() == 0 {
-			uc.logger.Warn(ctx, "Client %s not found in room %s", cmd.TargetClientID, cmd.RoomID)
-			return fmt.Errorf("client %s not found: %w", cmd.TargetClientID, domain.ErrClientNotFound)
 		}
 
 		if err := room.AdminToggleOwner(ctx, cmd.TargetClientID); err != nil {
