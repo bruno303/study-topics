@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello/models"
+	"github.com/bruno303/study-topics/go-study/internal/application/outbox"
 	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -60,4 +61,8 @@ func (tm *MemDbTransactionManager) newUnitOfWork() transaction.UnitOfWork {
 
 func (uow *memDbUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
 	return uow.helloRepository
+}
+
+func (uow *memDbUnitOfWork) OutboxRepository() outbox.OutboxRepository {
+	return nil
 }

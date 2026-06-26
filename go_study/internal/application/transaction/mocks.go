@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	outbox "github.com/bruno303/study-topics/go-study/internal/application/outbox"
 	repository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -53,6 +54,20 @@ func (m *MockUnitOfWork) HelloRepository() repository.HelloRepository {
 func (mr *MockUnitOfWorkMockRecorder) HelloRepository() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HelloRepository", reflect.TypeOf((*MockUnitOfWork)(nil).HelloRepository))
+}
+
+// OutboxRepository mocks base method.
+func (m *MockUnitOfWork) OutboxRepository() outbox.OutboxRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OutboxRepository")
+	ret0, _ := ret[0].(outbox.OutboxRepository)
+	return ret0
+}
+
+// OutboxRepository indicates an expected call of OutboxRepository.
+func (mr *MockUnitOfWorkMockRecorder) OutboxRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OutboxRepository", reflect.TypeOf((*MockUnitOfWork)(nil).OutboxRepository))
 }
 
 // MockTransactionManager is a mock of TransactionManager interface.
