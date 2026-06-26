@@ -42,9 +42,9 @@ func (kc KafkaCarrier) Get(key string) string {
 }
 
 func (kc KafkaCarrier) Set(key string, value string) {
-	for _, v := range kc.msg.Headers {
-		if v.Key == key {
-			v.Value = []byte(value)
+	for i := range kc.msg.Headers {
+		if kc.msg.Headers[i].Key == key {
+			kc.msg.Headers[i].Value = []byte(value)
 			return
 		}
 	}
