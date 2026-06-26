@@ -52,6 +52,7 @@ type Config struct {
 	Kafka   KafkaConfig `yaml:"kafka"`
 	Workers struct {
 		HelloProducer HelloProducerConfig `yaml:"hello-producer"`
+		OutboxRelay   OutboxRelayConfig   `yaml:"outbox-relay"`
 	} `yaml:"workers"`
 }
 
@@ -82,6 +83,13 @@ type HelloProducerConfig struct {
 	Topic          string `env:"WORKERS_HELLO_PRODUCER_TOPIC" yaml:"topic"`
 	Enabled        bool   `env:"WORKERS_HELLO_PRODUCER_ENABLED" yaml:"enabled"`
 	MaxMessages    int    `env:"WORKERS_HELLO_PRODUCER_MAX_MESSAGES" yaml:"max-messages"`
+}
+
+type OutboxRelayConfig struct {
+	Enabled        bool  `env:"WORKERS_OUTBOX_RELAY_ENABLED"            yaml:"enabled"`
+	PollIntervalMs int64 `env:"WORKERS_OUTBOX_RELAY_POLL_INTERVAL_MS"   yaml:"poll-interval-ms"`
+	BatchSize      int   `env:"WORKERS_OUTBOX_RELAY_BATCH_SIZE"         yaml:"batch-size"`
+	MaxAttempts    int   `env:"WORKERS_OUTBOX_RELAY_MAX_ATTEMPTS"       yaml:"max-attempts"`
 }
 
 func LoadConfig() *Config {

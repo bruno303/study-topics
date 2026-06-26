@@ -37,6 +37,9 @@ func NewProducer(bootstrapServer string) (Producer, error) {
 			case e := <-producer.Events():
 				switch ev := e.(type) {
 				case *libkafka.Message:
+					if isSyncMessage(ev) {
+						continue
+					}
 					if ev.TopicPartition.Error != nil {
 						log.Log().Info(context.Background(), "Delivery failed: %v", ev.TopicPartition)
 					} else {
@@ -71,6 +74,49 @@ func (p Producer) Produce(ctx context.Context, msg string, topic string) error {
 	kafkatrace.Inject(ctx, kafkaMsg)
 
 	return p.producer.Produce(kafkaMsg, nil)
+}
+
+func (p Producer) ProduceSync(ctx context.Context, msg string, topic string, headers map[string]string) error {
+	ctx, end := trace.Trace(ctx, producerTrace("ProduceSync"))
+	defer end()
+
+	kafkaMsg := &libkafka.Message{
+		TopicPartition: libkafka.TopicPartition{Topic: &topic, Partition: libkafka.PartitionAny},
+		Value:          []byte(msg),
+		Opaque:         "sync",
+	}
+
+	for k, v := range headers {
+		kafkaMsg.Headers = append(kafkaMsg.Headers, libkafka.Header{Key: k, Value: []byte(v)})
+	}
+
+	kafkatrace.Inject(ctx, kafkaMsg)
+
+	deliveryChan := make(chan libkafka.Event, 1)
+
+	if err := p.producer.Produce(kafkaMsg, deliveryChan); err != nil {
+		return err
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case e := <-deliveryChan:
+		switch ev := e.(type) {
+		case *libkafka.Message:
+			if ev.TopicPartition.Error != nil {
+				return ev.TopicPartition.Error
+			}
+			return nil
+		default:
+			return nil
+		}
+	}
+}
+
+func isSyncMessage(msg *libkafka.Message) bool {
+	opaque, ok := msg.Opaque.(string)
+	return ok && opaque == "sync"
 }
 
 func producerTrace(spanName string) *trace.TraceConfig {

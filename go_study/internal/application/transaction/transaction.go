@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/outbox"
 	"github.com/bruno303/study-topics/go-study/internal/application/repository"
 )
 
@@ -11,6 +12,7 @@ import (
 type (
 	UnitOfWork interface {
 		HelloRepository() repository.HelloRepository
+		OutboxRepository() outbox.OutboxRepository
 	}
 
 	TransactionCallback func(context.Context, UnitOfWork) error

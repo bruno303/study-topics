@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/outbox"
 	applicationRepository "github.com/bruno303/study-topics/go-study/internal/application/repository"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -15,6 +16,7 @@ import (
 type (
 	pgxUnitOfWork struct {
 		helloRepository applicationRepository.HelloRepository
+		outboxRepository *OutboxRepository
 	}
 
 	PgxTransactionManager struct {
@@ -53,7 +55,8 @@ func (tm *PgxTransactionManager) WithinTx(ctx context.Context, opts transaction.
 
 func (tm *PgxTransactionManager) newUnitOfWork(tx pgx.Tx) transaction.UnitOfWork {
 	return &pgxUnitOfWork{
-		helloRepository: newHelloPgxRepository(tm.config.Pool, tx),
+		helloRepository:  newHelloPgxRepository(tm.config.Pool, tx),
+		outboxRepository: newOutboxPgxRepository(tm.config.Pool, tx),
 	}
 }
 
@@ -142,4 +145,8 @@ func (tm *PgxTransactionManager) rollbackBestEffort(ctx context.Context, tx pgx.
 
 func (uow *pgxUnitOfWork) HelloRepository() applicationRepository.HelloRepository {
 	return uow.helloRepository
+}
+
+func (uow *pgxUnitOfWork) OutboxRepository() outbox.OutboxRepository {
+	return uow.outboxRepository
 }

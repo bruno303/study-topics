@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bruno303/study-topics/go-study/internal/application/outbox"
+	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/log"
 	"github.com/bruno303/study-topics/go-study/internal/crosscutting/observability/trace"
@@ -18,20 +20,19 @@ import (
 
 //go:generate go tool mockgen -source=hello-producer.go -destination=mocks.go -package worker
 
-type Producer interface {
-	Produce(ctx context.Context, msg string, topic string) error
-	Close()
+type TransactionManager interface {
+	WithinTx(context.Context, transaction.TransactionOpts, transaction.TransactionCallback) error
 }
 
 type HelloProducerWorker struct {
-	producer Producer
-	cfg      config.HelloProducerConfig
+	txManager TransactionManager
+	cfg       config.HelloProducerConfig
 }
 
-func NewHelloProducerWorker(producer Producer, cfg config.HelloProducerConfig) HelloProducerWorker {
+func NewHelloProducerWorker(txManager TransactionManager, cfg config.HelloProducerConfig) HelloProducerWorker {
 	return HelloProducerWorker{
-		producer: producer,
-		cfg:      cfg,
+		txManager: txManager,
+		cfg:       cfg,
 	}
 }
 
@@ -89,5 +90,19 @@ func (w HelloProducerWorker) produceMessage(ctx context.Context) error {
 		trace.InjectError(ctx, err)
 		return err
 	}
-	return w.producer.Produce(ctx, string(bytes), w.cfg.Topic)
+
+	outboxMsg := &outbox.OutboxMessage{
+		ID:             uuid.NewString(),
+		Payload:        string(bytes),
+		Topic:          w.cfg.Topic,
+		Headers:        "{}",
+		Status:         outbox.StatusPending,
+		AttemptCounter: 0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	return w.txManager.WithinTx(ctx, transaction.EmptyOpts(), func(ctx context.Context, uow transaction.UnitOfWork) error {
+		return uow.OutboxRepository().Insert(ctx, outboxMsg)
+	})
 }

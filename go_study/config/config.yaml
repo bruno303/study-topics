@@ -40,3 +40,8 @@ workers:
     interval-millis: 5000
     max-messages: 5
     enabled: true
+  outbox-relay:
+    enabled: true
+    poll-interval-ms: 5000
+    batch-size: 100
+    max-attempts: 3
