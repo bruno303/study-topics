@@ -12,11 +12,13 @@ import (
 )
 
 type memDbStorage struct {
-	hello *database.MemDbRepository[models.HelloData]
+	hello  *database.MemDbRepository[models.HelloData]
+	outbox *OutboxMemDbRepository
 }
 
 type memDbUnitOfWork struct {
-	helloRepository applicationRepository.HelloRepository
+	helloRepository  applicationRepository.HelloRepository
+	outboxRepository outbox.OutboxRepository
 }
 
 type MemDbTransactionManager struct {
@@ -27,7 +29,10 @@ var _ transaction.TransactionManager = (*MemDbTransactionManager)(nil)
 var _ transaction.UnitOfWork = (*memDbUnitOfWork)(nil)
 
 func newMemDbStorage() *memDbStorage {
-	return &memDbStorage{hello: database.NewMemDbRepository[models.HelloData]()}
+	return &memDbStorage{
+		hello:  database.NewMemDbRepository[models.HelloData](),
+		outbox: NewOutboxMemDbRepository(),
+	}
 }
 
 func NewMemDbStorage() *memDbStorage {
@@ -55,7 +60,8 @@ func (tm *MemDbTransactionManager) WithinTx(ctx context.Context, opts transactio
 
 func (tm *MemDbTransactionManager) newUnitOfWork() transaction.UnitOfWork {
 	return &memDbUnitOfWork{
-		helloRepository: NewHelloMemDbRepository(tm.storage.hello),
+		helloRepository:  NewHelloMemDbRepository(tm.storage.hello),
+		outboxRepository: tm.storage.outbox,
 	}
 }
 
@@ -64,5 +70,5 @@ func (uow *memDbUnitOfWork) HelloRepository() applicationRepository.HelloReposit
 }
 
 func (uow *memDbUnitOfWork) OutboxRepository() outbox.OutboxRepository {
-	return nil
+	return uow.outboxRepository
 }

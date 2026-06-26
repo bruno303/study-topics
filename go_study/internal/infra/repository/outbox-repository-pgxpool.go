@@ -20,12 +20,12 @@ type OutboxRepository struct {
 
 const outboxTraceName = "OutboxRepository"
 
-func NewOutboxPgxRepository(pool *pgxpool.Pool) OutboxRepository {
+func NewOutboxPgxRepository(pool *pgxpool.Pool) *OutboxRepository {
 	return newOutboxPgxRepository(pool, nil)
 }
 
-func newOutboxPgxRepository(pool *pgxpool.Pool, tx pgx.Tx) OutboxRepository {
-	return OutboxRepository{
+func newOutboxPgxRepository(pool *pgxpool.Pool, tx pgx.Tx) *OutboxRepository {
+	return &OutboxRepository{
 		pool: pool,
 		tx:   tx,
 	}
