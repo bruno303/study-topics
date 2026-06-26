@@ -1,5 +1,7 @@
 package outbox
 
+//go:generate go tool mockgen -source=repository.go -destination=mocks.go -package outbox
+
 import (
 	"context"
 )

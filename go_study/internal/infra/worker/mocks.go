@@ -13,55 +13,44 @@ import (
 	context "context"
 	reflect "reflect"
 
+	transaction "github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockProducer is a mock of Producer interface.
-type MockProducer struct {
+// MockTransactionManager is a mock of TransactionManager interface.
+type MockTransactionManager struct {
 	ctrl     *gomock.Controller
-	recorder *MockProducerMockRecorder
+	recorder *MockTransactionManagerMockRecorder
 	isgomock struct{}
 }
 
-// MockProducerMockRecorder is the mock recorder for MockProducer.
-type MockProducerMockRecorder struct {
-	mock *MockProducer
+// MockTransactionManagerMockRecorder is the mock recorder for MockTransactionManager.
+type MockTransactionManagerMockRecorder struct {
+	mock *MockTransactionManager
 }
 
-// NewMockProducer creates a new mock instance.
-func NewMockProducer(ctrl *gomock.Controller) *MockProducer {
-	mock := &MockProducer{ctrl: ctrl}
-	mock.recorder = &MockProducerMockRecorder{mock}
+// NewMockTransactionManager creates a new mock instance.
+func NewMockTransactionManager(ctrl *gomock.Controller) *MockTransactionManager {
+	mock := &MockTransactionManager{ctrl: ctrl}
+	mock.recorder = &MockTransactionManagerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockProducer) EXPECT() *MockProducerMockRecorder {
+func (m *MockTransactionManager) EXPECT() *MockTransactionManagerMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
-func (m *MockProducer) Close() {
+// WithinTx mocks base method.
+func (m *MockTransactionManager) WithinTx(arg0 context.Context, arg1 transaction.TransactionOpts, arg2 transaction.TransactionCallback) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Close")
-}
-
-// Close indicates an expected call of Close.
-func (mr *MockProducerMockRecorder) Close() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockProducer)(nil).Close))
-}
-
-// Produce mocks base method.
-func (m *MockProducer) Produce(ctx context.Context, msg, topic string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Produce", ctx, msg, topic)
+	ret := m.ctrl.Call(m, "WithinTx", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Produce indicates an expected call of Produce.
-func (mr *MockProducerMockRecorder) Produce(ctx, msg, topic any) *gomock.Call {
+// WithinTx indicates an expected call of WithinTx.
+func (mr *MockTransactionManagerMockRecorder) WithinTx(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockProducer)(nil).Produce), ctx, msg, topic)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*MockTransactionManager)(nil).WithinTx), arg0, arg1, arg2)
 }

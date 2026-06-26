@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bruno303/study-topics/go-study/internal/application/hello"
+	"github.com/bruno303/study-topics/go-study/internal/application/outbox"
 	"github.com/bruno303/study-topics/go-study/internal/application/transaction"
 	"github.com/bruno303/study-topics/go-study/internal/config"
 	"github.com/bruno303/study-topics/go-study/internal/infra/database"
@@ -44,6 +45,7 @@ type MessageHandlersContainer struct {
 
 type RepositoryContainer struct {
 	TransactionManager transaction.TransactionManager
+	OutboxRepository   outbox.OutboxRepository
 }
 
 var (
@@ -60,19 +62,25 @@ func newServiceContainer(repoContainer RepositoryContainer) ServiceContainer {
 }
 
 func newRepositoryContainer(cfg *config.Config, pool *pgxpool.Pool) RepositoryContainer {
-	var transactionManager transaction.TransactionManager
+	var (
+		transactionManager transaction.TransactionManager
+		outboxRepository   outbox.OutboxRepository
+	)
 
 	switch cfg.Database.Driver {
 	case config.DatabaseDriverMemDB:
 		sharedMemDbStorage := repository.NewMemDbStorage()
 		transactionManager = repository.NewMemDbTransactionManager(sharedMemDbStorage)
+		outboxRepository = repository.NewOutboxMemDbRepository()
 	default:
 		txConfig := &repository.PgxTransactionManagerConfig{Pool: pool}
 		transactionManager = repository.NewPgxTransactionManager(txConfig)
+		outboxRepository = repository.NewOutboxPgxRepository(pool)
 	}
 
 	return RepositoryContainer{
 		TransactionManager: transactionManager,
+		OutboxRepository:   outboxRepository,
 	}
 }
 
@@ -105,9 +113,9 @@ func newMessageHandlersContainer(services ServiceContainer) MessageHandlersConta
 	}
 }
 
-func newWorkerContainer(kafka KafkaContainer, cfg *config.Config) WorkerContainer {
+func newWorkerContainer(repos RepositoryContainer, cfg *config.Config) WorkerContainer {
 	helloProducerWorker := worker.NewHelloProducerWorker(
-		kafka.Producer,
+		repos.TransactionManager,
 		cfg.Workers.HelloProducer,
 	)
 	return WorkerContainer{
@@ -122,7 +130,7 @@ func NewContainer(ctx context.Context, cfg *config.Config) *Container {
 	services := newServiceContainer(repos)
 	messageHandlers := newMessageHandlersContainer(services)
 	kafka := newKafkaContainer(cfg, messageHandlers)
-	worker := newWorkerContainer(kafka, cfg)
+	worker := newWorkerContainer(repos, cfg)
 
 	return &Container{
 		Config:          cfg,
