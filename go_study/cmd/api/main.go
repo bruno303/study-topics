@@ -35,7 +35,7 @@ func initialize(ctx context.Context) {
 	container := setup.NewContainer(ctx, cfg)
 
 	startKafkaConsumers(container)
-	startProducer(container)
+	startWorkers(container)
 	startApi(ctx, cfg, container)
 
 	log.Log().Info(ctx, "Application started")
@@ -106,8 +106,9 @@ func startKafkaConsumers(container *setup.Container) {
 	}
 }
 
-func startProducer(container *setup.Container) {
+func startWorkers(container *setup.Container) {
 	container.Workers.HelloProducerWorker.Start()
+	container.Workers.OutboxRelayWorker.Start()
 }
 
 func panicIfErr(err error) {
