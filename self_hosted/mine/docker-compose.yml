@@ -9,6 +9,7 @@ services:
       - ${VOLUMES_DIR}/data:/data
       - ${VOLUMES_DIR}/plugins:/plugins
     environment:
+      - VERSION=26.2
       - TZ=UTC
       - EULA=TRUE
       - TYPE=PURPUR
