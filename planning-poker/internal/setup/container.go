@@ -143,6 +143,10 @@ func newUsecases(hub domain.Hub, lockManager lock.LockManager, metric metric.Pla
 	joinRoomUseCase := usecase.NewJoinRoomUseCase(hub, lockManager, metric)
 	createClientUseCase := usecase.NewCreateClientUseCase(hub, metric)
 	createRoomUseCase := usecase.NewCreateRoomUseCase(hub, metric)
+	toggleBacklogModeUseCase := usecase.NewToggleBacklogModeUseCase(hub, lockManager)
+	addStoryUseCase := usecase.NewAddStoryUseCase(hub, lockManager)
+	removeStoryUseCase := usecase.NewRemoveStoryUseCase(hub, lockManager)
+	advanceStoryUseCase := usecase.NewAdvanceStoryUseCase(hub, lockManager)
 
 	return usecase.UseCasesFacade{
 		UpdateName:      usecasedecorators.NewTraceableUseCase(updateNameUseCase, "UpdateNameUseCase", "UpdateName"),
@@ -157,7 +161,11 @@ func newUsecases(hub domain.Hub, lockManager lock.LockManager, metric metric.Pla
 		LeaveRoom:       usecasedecorators.NewTraceableUseCase(leaveRoomUseCase, "LeaveRoomUseCase", "LeaveRoom"),
 		JoinRoom:        usecasedecorators.NewTraceableUseCaseR(joinRoomUseCase, "JoinRoomUseCase", "JoinRoom"),
 		CreateClient:    usecasedecorators.NewTraceableUseCaseO(createClientUseCase, "CreateClientUseCase", "CreateClient"),
-		CreateRoom:      usecasedecorators.NewTraceableUseCaseO(createRoomUseCase, "CreateRoomUseCase", "CreateRoom"),
+		CreateRoom:        usecasedecorators.NewTraceableUseCaseO(createRoomUseCase, "CreateRoomUseCase", "CreateRoom"),
+		ToggleBacklogMode: usecasedecorators.NewTraceableUseCase(toggleBacklogModeUseCase, "ToggleBacklogModeUseCase", "ToggleBacklogMode"),
+		AddStory:          usecasedecorators.NewTraceableUseCase(addStoryUseCase, "AddStoryUseCase", "AddStory"),
+		RemoveStory:       usecasedecorators.NewTraceableUseCase(removeStoryUseCase, "RemoveStoryUseCase", "RemoveStory"),
+		AdvanceStory:      usecasedecorators.NewTraceableUseCase(advanceStoryUseCase, "AdvanceStoryUseCase", "AdvanceStory"),
 	}
 }
 

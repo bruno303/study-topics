@@ -40,6 +40,9 @@ func TestNewRoomStateCommand(t *testing.T) {
 		},
 		Result:             lo.ToPtr(float32(5)),
 		MostAppearingVotes: []int{1, 2},
+		BacklogMode:        false,
+		Stories:            []Story{},
+		CurrentStoryIndex:  0,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("NewRoomStateCommand() = %+v, want %+v", got, want)
