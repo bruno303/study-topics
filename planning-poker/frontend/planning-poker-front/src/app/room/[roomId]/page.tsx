@@ -67,6 +67,7 @@ export default function PlanningPoker() {
   const [stories, setStories] = useState<Story[]>([]);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [newStoryInput, setNewStoryInput] = useState('');
+  const [showDisableBacklogConfirm, setShowDisableBacklogConfirm] = useState(false);
   const deliberateDisconnect = useRef(false);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -401,7 +402,7 @@ export default function PlanningPoker() {
                           </span>
                         )}
                       </label>
-                      {currentStory && (
+                      {((backlogMode && currentStory) || !backlogMode) && (
                         <button
                           style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                           onClick={() => setIsEditingStory(!isEditingStory)}
@@ -650,7 +651,7 @@ export default function PlanningPoker() {
                 {amIAdmin && (
                   <button
                     style={{ ...styles.button, ...styles.dangerButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                    onClick={handleToggleBacklogMode}
+                    onClick={() => setShowDisableBacklogConfirm(true)}
                   >
                     Disable Backlog
                   </button>
@@ -726,6 +727,54 @@ export default function PlanningPoker() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Disable Backlog Confirmation Dialog */}
+          {showDisableBacklogConfirm && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '0.5rem',
+                padding: '2rem',
+                maxWidth: '400px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+              }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1f2937' }}>
+                  Disable Backlog Mode
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1.5rem' }}>
+                  This will remove the story backlog and keep only the current story. Are you sure?
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button
+                    style={{ ...styles.button, background: '#e5e7eb', color: '#374151' }}
+                    onClick={() => setShowDisableBacklogConfirm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    style={{ ...styles.button, ...styles.dangerButton }}
+                    onClick={() => {
+                      setShowDisableBacklogConfirm(false);
+                      handleToggleBacklogMode();
+                    }}
+                  >
+                    Disable
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
