@@ -396,6 +396,12 @@ func mapUsecases(usecases usecase.UseCasesFacade, clientID, roomID string) map[s
 				SenderID: clientID,
 			})
 		},
+		"prev-story": func(ctx context.Context, msg WebSocketMessage) error {
+			return usecases.PrevStory.Execute(ctx, usecase.PrevStoryCommand{
+				RoomID:   roomID,
+				SenderID: clientID,
+			})
+		},
 	}
 }
 

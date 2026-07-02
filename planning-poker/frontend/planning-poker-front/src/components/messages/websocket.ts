@@ -13,7 +13,8 @@ export type WebSocketMessageType =
   | 'toggle-backlog-mode'
   | 'add-story'
   | 'remove-story'
-  | 'advance-story';
+  | 'advance-story'
+  | 'prev-story';
 
 export interface WebSocketMessage<T = any> {
   type: WebSocketMessageType;

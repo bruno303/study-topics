@@ -19,5 +19,6 @@ type (
 		AddStory          UseCase[AddStoryCommand]
 		RemoveStory       UseCase[RemoveStoryCommand]
 		AdvanceStory      UseCase[AdvanceStoryCommand]
+		PrevStory         UseCase[PrevStoryCommand]
 	}
 )

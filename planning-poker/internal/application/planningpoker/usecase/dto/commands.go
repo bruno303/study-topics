@@ -49,7 +49,7 @@ type (
 func NewRoomStateCommand(room *entity.Room) RoomState {
 	return RoomState{
 		Type:               "room-state",
-		CurrentStory:       room.CurrentStory,
+		CurrentStory:       room.EffectiveCurrentStory(),
 		Reveal:             room.Reveal,
 		Participants:       MapToParticipants(room.Clients.Values()),
 		Result:             room.Result,

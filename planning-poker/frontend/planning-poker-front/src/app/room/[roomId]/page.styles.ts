@@ -337,6 +337,7 @@ export const styles = {
     borderRadius: '0.5rem',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
     padding: '1.5rem',
+    marginTop: '2rem',
     marginBottom: '1rem'
   },
   backlogHeader: {

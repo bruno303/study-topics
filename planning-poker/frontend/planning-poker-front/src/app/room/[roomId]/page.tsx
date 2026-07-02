@@ -2,6 +2,7 @@
 
 
 import FocusableComponent from '@/components/focusableInput/focusableInput';
+import LoadingSpinner from '@/components/loadingSpinner/loadingSpinner';
 import {
   AddStoryPayload,
   RemoveStoryPayload,
@@ -13,14 +14,13 @@ import {
   VotePayload,
   WebSocketMessage
 } from '@/components/messages/websocket';
+import ParticipantIdBadge from '@/components/participantIdBadge/participantIdBadge';
 import { useRoom } from '@/context/room/roomContext';
 import { useToast } from '@/context/toast/toastContext';
 import { Eye, EyeOff, List, Plus, Repeat, RotateCcw, Shield, Trash2, Users, X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Header from './page.header';
-import LoadingSpinner from '@/components/loadingSpinner/loadingSpinner';
-import ParticipantIdBadge from '@/components/participantIdBadge/participantIdBadge';
 import gridStyles from './page.module.css';
 import { styles } from './page.styles';
 
@@ -195,6 +195,11 @@ export default function PlanningPoker() {
   const handleAdvanceStory = () => {
     const payload: any = null;
     sendMessage<any>({ type: 'advance-story', payload });
+  };
+
+  const handlePrevStory = () => {
+    const payload: any = null;
+    sendMessage<any>({ type: 'prev-story', payload });
   };
 
   const cancelReconnect = () => {
@@ -396,12 +401,14 @@ export default function PlanningPoker() {
                           </span>
                         )}
                       </label>
-                      <button
-                        style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                        onClick={() => setIsEditingStory(!isEditingStory)}
-                      >
-                        Edit
-                      </button>
+                      {currentStory && (
+                        <button
+                          style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                          onClick={() => setIsEditingStory(!isEditingStory)}
+                        >
+                          Edit
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -410,105 +417,6 @@ export default function PlanningPoker() {
               )}
             </div>
           </div>
-
-          {/* Backlog Panel - shown when backlog mode is on */}
-          {backlogMode && (
-            <div style={styles.backlogPanel}>
-              <div style={styles.backlogHeader}>
-                <h2 style={styles.sectionTitle}>Story Backlog</h2>
-                {amIAdmin && (
-                  <button
-                    style={{ ...styles.button, ...styles.dangerButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                    onClick={handleToggleBacklogMode}
-                  >
-                    Disable Backlog
-                  </button>
-                )}
-              </div>
-
-              {/* Story list */}
-              {stories.length > 0 && (
-                <div style={styles.backlogList}>
-                  {stories.map((story, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        ...styles.backlogStory,
-                        ...(index === currentStoryIndex ? styles.backlogStoryCurrent : {}),
-                        ...(story.voted ? styles.backlogStoryVoted : index < currentStoryIndex ? styles.backlogStoryVoted : styles.backlogStoryPending),
-                      }}
-                    >
-                      <div style={styles.backlogStoryLeft}>
-                        <span style={styles.backlogStoryIndex}>{index + 1}.</span>
-                        <span style={{
-                          ...styles.backlogStoryName,
-                          ...(story.voted ? {textDecoration: 'line-through', opacity: 0.7} : {}),
-                        }}>
-                          {story.name}
-                        </span>
-                        {/* Status indicator */}
-                        {index === currentStoryIndex && !story.voted && (
-                          <span style={styles.backlogStoryTag}>Current</span>
-                        )}
-                        {story.voted && story.result != null && (
-                          <span style={styles.backlogStoryTagVoted}>
-                            Avg: {story.result.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                      <div style={styles.backlogStoryRight}>
-                        {/* Remove button - only for pending stories */}
-                        {amIAdmin && !story.voted && index !== currentStoryIndex && (
-                          <button
-                            style={{ ...styles.button, ...styles.dangerSmallButton }}
-                            onClick={() => handleRemoveStory(index)}
-                            title="Remove story"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add story input - admin only */}
-              {amIAdmin && (
-                <div style={styles.backlogAddForm}>
-                  <input
-                    type="text"
-                    value={newStoryInput}
-                    onChange={e => setNewStoryInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleAddStory();
-                    }}
-                    placeholder="Enter story name..."
-                    style={styles.backlogInput}
-                  />
-                  <button
-                    style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                    onClick={handleAddStory}
-                  >
-                    <Plus size={16} />
-                    Add
-                  </button>
-                </div>
-              )}
-
-              {/* Next Story - admin only */}
-              {amIAdmin && (
-                <div style={styles.backlogActions}>
-                  <button
-                    style={{ ...styles.button, ...styles.successButton }}
-                    onClick={handleAdvanceStory}
-                  >
-                    Next Story
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className={gridStyles.grid}>
             {/* Main Voting Area */}
@@ -582,6 +490,28 @@ export default function PlanningPoker() {
                     >
                       <List size={20} />
                       Enable Backlog
+                    </button>
+                  )}
+                  {backlogMode && currentStoryIndex > 0 && (
+                    <button
+                      onClick={handlePrevStory}
+                      style={{ ...styles.button, ...styles.primaryButton }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563eb'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3b82f6'}
+                    >
+                      <List size={20} />
+                      Previous Story
+                    </button>
+                  )}
+                  {backlogMode && stories.length > 0 && currentStoryIndex < stories.length - 1 && (
+                    <button
+                      onClick={handleAdvanceStory}
+                      style={{ ...styles.button, ...styles.primaryButton }}
+                      onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563eb'}
+                      onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3b82f6'}
+                    >
+                      <List size={20} />
+                      Next Story
                     </button>
                   )}
                   <button
@@ -711,6 +641,93 @@ export default function PlanningPoker() {
               )}
             </div>
           </div>
+
+          {/* Backlog Panel - shown when backlog mode is on */}
+          {backlogMode && (
+            <div style={styles.backlogPanel}>
+              <div style={styles.backlogHeader}>
+                <h2 style={styles.sectionTitle}>Story Backlog</h2>
+                {amIAdmin && (
+                  <button
+                    style={{ ...styles.button, ...styles.dangerButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                    onClick={handleToggleBacklogMode}
+                  >
+                    Disable Backlog
+                  </button>
+                )}
+              </div>
+
+              {/* Story list */}
+              {stories.length > 0 && (
+                <div style={styles.backlogList}>
+                  {stories.map((story, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        ...styles.backlogStory,
+                        ...(index === currentStoryIndex ? styles.backlogStoryCurrent : {}),
+                        ...(story.voted ? styles.backlogStoryVoted : index < currentStoryIndex ? styles.backlogStoryVoted : styles.backlogStoryPending),
+                      }}
+                    >
+                      <div style={styles.backlogStoryLeft}>
+                        <span style={styles.backlogStoryIndex}>{index + 1}.</span>
+                        <span style={{
+                          ...styles.backlogStoryName,
+                          ...(story.voted ? { textDecoration: 'line-through', opacity: 0.7 } : {}),
+                        }}>
+                          {story.name}
+                        </span>
+                        {/* Status indicator */}
+                        {index === currentStoryIndex && !story.voted && (
+                          <span style={styles.backlogStoryTag}>Current</span>
+                        )}
+                        {story.voted && story.result != null && (
+                          <span style={styles.backlogStoryTagVoted}>
+                            Avg: {story.result.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={styles.backlogStoryRight}>
+                        {/* Remove button - only for pending stories */}
+                        {amIAdmin && !story.voted && index !== currentStoryIndex && (
+                          <button
+                            style={{ ...styles.button, ...styles.dangerSmallButton }}
+                            onClick={() => handleRemoveStory(index)}
+                            title="Remove story"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add story input - admin only */}
+              {amIAdmin && (
+                <div style={styles.backlogAddForm}>
+                  <input
+                    type="text"
+                    value={newStoryInput}
+                    onChange={e => setNewStoryInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleAddStory();
+                    }}
+                    placeholder="Enter story name..."
+                    style={styles.backlogInput}
+                  />
+                  <button
+                    style={{ ...styles.button, ...styles.primaryButton, padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                    onClick={handleAddStory}
+                  >
+                    <Plus size={16} />
+                    Add
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Header>

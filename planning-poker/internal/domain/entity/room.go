@@ -48,6 +48,7 @@ func NewRoomWithID(id string, clients ClientCollection) *Room {
 		CurrentStory: "",
 		Reveal:       false,
 		Result:       nil,
+		BacklogMode:  true,
 	}
 }
 
@@ -197,6 +198,33 @@ func (r *Room) AdvanceToNextStory(ctx context.Context, clientID string) error {
 	}
 
 	return nil
+}
+
+func (r *Room) PrevStory(ctx context.Context, clientID string) error {
+	client, ok := r.FindClient(clientID)
+	if !ok {
+		return fmt.Errorf("client %s not found in room %s", clientID, r.ID)
+	}
+	if !client.IsOwner {
+		return fmt.Errorf("only the room owner can go to the previous story")
+	}
+
+	if r.CurrentStoryIndex > 0 {
+		r.CurrentStoryIndex--
+		r.reveal(false)
+		r.Clients.ForEach(func(c *Client) {
+			c.Vote(ctx, nil)
+		})
+	}
+
+	return nil
+}
+
+func (r *Room) EffectiveCurrentStory() string {
+	if r.BacklogMode && len(r.Stories) > 0 && r.CurrentStoryIndex < len(r.Stories) {
+		return r.Stories[r.CurrentStoryIndex].Name
+	}
+	return r.CurrentStory
 }
 
 func (r *Room) getCurrentStoryName() string {
