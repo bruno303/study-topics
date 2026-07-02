@@ -26,7 +26,7 @@ const config = {
   },
   
   // Backup folder path template
-  backupBasePath: '/media/bruno/KINGSTON/self-hosted-backups'
+  backupBasePath: '/media/bruno/KINGSTON/k3s-volumes-backups'
 };
 
 /**

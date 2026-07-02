@@ -56,10 +56,10 @@ fi
 logDebug "Copying backup to flash drive"
 cp "$ARCHIVE_SPLIT_PREFIX"* "$BACKUP_DEST_DIR"
 
-# Keep only the last backup on the flash drive
+# Keep only the last 14 backups on the flash drive
 logDebug "Cleaning up old backups on flash drive"
 cd "$BACKUP_DEST_DIR/.."
-ls -1dt */ | tail -n +2 | xargs -r rm -rf --
+ls -1dt */ | tail -n +15 | xargs -r rm -rf --
 
 # Keep only the last 3 backups on tmp folder
 logDebug "Cleaning up old backups on tmp folder"
