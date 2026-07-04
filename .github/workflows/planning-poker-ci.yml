@@ -39,6 +39,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -73,6 +75,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: ${{ env.APP_DIR }}
+
+      - name: SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v2
+        with:
+          scanMetadataReportFile: ${{ env.APP_DIR }}/.scannerwork/report-task.txt
 
   lint:
     runs-on: ubuntu-latest
