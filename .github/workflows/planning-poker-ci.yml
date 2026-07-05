@@ -80,6 +80,7 @@ jobs:
         uses: SonarSource/sonarqube-quality-gate-action@master
         with:
           pollingTimeoutSec: 600
+          scanMetadataReportFile: ${{ env.APP_DIR }}/.scannerwork/report-task.txt
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
