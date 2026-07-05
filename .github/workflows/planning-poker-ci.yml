@@ -77,9 +77,11 @@ jobs:
           projectBaseDir: ${{ env.APP_DIR }}
 
       - name: SonarQube Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@v2
+        uses: SonarSource/sonarqube-quality-gate-action@master
         with:
-          scanMetadataReportFile: ${{ env.APP_DIR }}/.scannerwork/report-task.txt
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   lint:
     runs-on: ubuntu-latest
