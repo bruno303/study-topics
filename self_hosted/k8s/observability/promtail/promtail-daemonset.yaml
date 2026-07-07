@@ -39,6 +39,10 @@ spec:
           # Mount the position file directory
           - name: positions
             mountPath: /var/log/positions
+          # Mount the Docker socket to read container logs
+          - name: docker-sock
+            mountPath: /var/run/docker.sock
+            readOnly: true
         env:
           - name: HOSTNAME
             valueFrom:
@@ -56,3 +60,6 @@ spec:
           hostPath:
             path: /var/log/positions
             type: DirectoryOrCreate
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
