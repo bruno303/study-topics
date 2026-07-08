@@ -20,14 +20,14 @@ spec:
         env: staging
     spec:
       containers:
-      - name: planning-poker-frontend
-        image:  bruno303/planning-poker-frontend:0.0.28-stg
-        ports:
-        - containerPort: 3000
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-          limits:
-            cpu: "200m"
-            memory: "256Mi"
+        - name: planning-poker-frontend
+          image: bruno303/planning-poker-frontend:0.0.29-stg
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
