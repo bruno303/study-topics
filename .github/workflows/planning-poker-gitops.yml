@@ -15,8 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: yq eval '.spec.template.spec.containers[0].image = "bruno303/planning-poker-backend:${{ env.BE_VER }}"' -i self_hosted/k8s/planning-poker/staging/backend/deployment.yaml
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.PLANNING_POKER_PAT }}
           branch: bump/staging/backend-${{ env.BE_VER }}
           title: "[staging] Backend ${{ env.BE_VER }}"
           body: "Bump staging backend to `${{ env.BE_VER }}`"
@@ -29,8 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: yq eval '.spec.template.spec.containers[0].image = "bruno303/planning-poker-frontend:${{ env.FE_VER }}-stg"' -i self_hosted/k8s/planning-poker/staging/frontend/deployment.yaml
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.PLANNING_POKER_PAT }}
           branch: bump/staging/frontend-${{ env.FE_VER }}-stg
           title: "[staging] Frontend ${{ env.FE_VER }}"
           body: "Bump staging frontend to `${{ env.FE_VER }}`"
@@ -43,8 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: yq eval '.spec.template.spec.containers[0].image = "bruno303/planning-poker-backend:${{ env.BE_VER }}"' -i self_hosted/k8s/planning-poker/production/backend/deployment.yaml
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.PLANNING_POKER_PAT }}
           branch: bump/production/backend-${{ env.BE_VER }}
           title: "[production] Backend ${{ env.BE_VER }}"
           body: "Bump production backend to `${{ env.BE_VER }}`"
@@ -57,8 +60,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: yq eval '.spec.template.spec.containers[0].image = "bruno303/planning-poker-frontend:${{ env.FE_VER }}"' -i self_hosted/k8s/planning-poker/production/frontend/deployment.yaml
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.PLANNING_POKER_PAT }}
           branch: bump/production/frontend-${{ env.FE_VER }}
           title: "[production] Frontend ${{ env.FE_VER }}"
           body: "Bump production frontend to `${{ env.FE_VER }}`"
