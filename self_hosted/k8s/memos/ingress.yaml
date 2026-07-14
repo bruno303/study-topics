@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: memos.internal.bsoapp.net
+  - host: memos.bsoapp.net
     http:
       paths:
       - path: /
