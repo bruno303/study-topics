@@ -24,11 +24,9 @@ spec:
           image: bruno303/planning-poker-frontend:0.0.32-stg
           env:
             - name: LOKI_URL
-              value: loki.monitoring.svc.cluster.local
+              value: http://loki.monitoring.svc.cluster.local
             - name: LOG_ENV
               value: staging
-            - name: NEXT_PUBLIC_LOG_LEVEL
-              value: info
           ports:
             - containerPort: 3000
           resources:
