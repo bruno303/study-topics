@@ -27,6 +27,8 @@ spec:
               value: http://loki.monitoring.svc.cluster.local
             - name: LOG_ENV
               value: staging
+            - name: NEXT_PUBLIC_APP_URL
+              value: https://planning-poker-staging.bsoapp.net
           ports:
             - containerPort: 3000
           resources:
