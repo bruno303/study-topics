@@ -22,6 +22,13 @@ spec:
       containers:
         - name: planning-poker-frontend
           image: bruno303/planning-poker-frontend:0.0.35
+          env:
+            - name: LOKI_URL
+              value: http://loki.monitoring.svc.cluster.local
+            - name: LOG_ENV
+              value: production
+            - name: NEXT_PUBLIC_APP_URL
+              value: https://planning-poker.bsoapp.net
           ports:
             - containerPort: 3000
           resources:
