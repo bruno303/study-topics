@@ -19,3 +19,6 @@ persistence:
   lookupVolumeName: true
 
 replicas: 1
+
+admin:
+  existingSecret: grafana-admin
