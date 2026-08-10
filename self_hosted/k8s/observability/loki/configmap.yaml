@@ -27,4 +27,22 @@ data:
     storage_config:
       filesystem:
         directory: /tmp/loki/chunks
+    limits_config:
+      allow_structured_metadata: true
+      # Map OTLP attributes (renamed to promtail-compatible names by the
+      # otel-collector-agent) to index labels for label parity with promtail
+      otlp_config:
+        resource_attributes:
+          ignore_defaults: true
+          attributes_config:
+            - action: index_label
+              attributes:
+                - namespace
+                - pod_name
+                - container_name
+                - pod_uid
+                - host
+                - app
+                - stream
+                - log_level
 

@@ -32,10 +32,6 @@ spec:
           # Mount the ConfigMap as the config file
           - name: config
             mountPath: /etc/promtail
-          # Mount the host's log directory
-          - name: logs
-            mountPath: /var/log/pods
-            readOnly: true
           # Mount the position file directory
           - name: positions
             mountPath: /var/log/positions
@@ -53,9 +49,6 @@ spec:
         - name: config
           configMap:
             name: promtail-config
-        - name: logs
-          hostPath:
-            path: /var/log/pods
         - name: positions
           hostPath:
             path: /var/log/positions
