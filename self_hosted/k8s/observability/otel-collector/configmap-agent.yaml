@@ -5,18 +5,13 @@ metadata:
   namespace: monitoring
 data:
   otel-collector.yaml: |
-    extensions:
-      file_storage:
-        directory: /var/lib/otel-collector/positions
-        create_directory: true
     receivers:
       filelog:
         include:
           - /var/log/pods/*/*/*.log
-        start_at: beginning
+        start_at: end
         include_file_path: true
         include_file_name: false
-        storage: file_storage
         operators:
           - type: router
             id: get-format
@@ -140,7 +135,6 @@ data:
         tls:
           insecure: true
     service:
-      extensions: [file_storage]
       pipelines:
         logs:
           receivers: [filelog]
