@@ -84,9 +84,11 @@ data:
           - type: move
             from: attributes.level
             to: resource["log_level"]
+            if: 'attributes.level != nil'
           - type: move
             from: attributes.message
             to: body
+            if: 'attributes.message != nil'
           - type: move
             from: attributes["log.iostream"]
             to: resource["stream"]
