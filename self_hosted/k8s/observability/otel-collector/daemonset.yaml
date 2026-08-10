@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector-agent
+  namespace: monitoring
+  labels:
+    app: otel-collector-agent
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector-agent
+  template:
+    metadata:
+      labels:
+        app: otel-collector-agent
+    spec:
+      serviceAccountName: otel-collector
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: otel-collector-agent
+          image: otel/opentelemetry-collector-contrib:0.158.0
+          args:
+            - --config=/etc/otel-collector/otel-collector.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: positions
+              mountPath: /var/lib/otel-collector/positions
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "512Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-agent
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: positions
+          hostPath:
+            path: /var/lib/otel-collector/positions
+            type: DirectoryOrCreate

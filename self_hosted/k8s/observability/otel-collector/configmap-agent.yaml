@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-agent
+  namespace: monitoring
+data:
+  otel-collector.yaml: |
+    extensions:
+      file_storage:
+        directory: /var/lib/otel-collector/positions
+        create_directory: true
+    receivers:
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        start_at: beginning
+        include_file_path: true
+        include_file_name: false
+        storage: file_storage
+        operators:
+          - type: router
+            id: get-format
+            routes:
+              - output: parser-docker
+                expr: 'body matches "^\\{"'
+              - output: parser-crio
+                expr: 'body matches "^[^ Z]+ "'
+              - output: parser-containerd
+                expr: 'body matches "^[^ Z]+Z"'
+          - type: regex_parser
+            id: parser-crio
+            regex: '^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract_metadata_from_filepath
+            timestamp:
+              parse_from: attributes.time
+              layout_type: gotime
+              layout: '2006-01-02T15:04:05.999999999Z07:00'
+          - type: regex_parser
+            id: parser-containerd
+            regex: '^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract_metadata_from_filepath
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          - type: json_parser
+            id: parser-docker
+            output: extract_metadata_from_filepath
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          - type: regex_parser
+            id: extract_metadata_from_filepath
+            regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]{36})\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$'
+            parse_from: attributes["log.file.path"]
+            cache:
+              size: 128
+          - type: move
+            from: attributes.log
+            to: body
+          - type: move
+            from: attributes.stream
+            to: attributes["log.iostream"]
+          - type: move
+            from: attributes.namespace
+            to: resource["k8s.namespace.name"]
+          - type: move
+            from: attributes.pod_name
+            to: resource["k8s.pod.name"]
+          - type: move
+            from: attributes.uid
+            to: resource["k8s.pod.uid"]
+          - type: move
+            from: attributes.container_name
+            to: resource["k8s.container.name"]
+          - type: move
+            from: attributes.restart_count
+            to: resource["k8s.container.restart_count"]
+          - type: json_parser
+            id: parse-app-json
+            if: 'body matches "^\\{"'
+            parse_from: body
+            parse_to: attributes
+            on_error: send
+          - type: move
+            from: attributes.level
+            to: resource["log_level"]
+          - type: move
+            from: attributes.message
+            to: body
+          - type: move
+            from: attributes["log.iostream"]
+            to: resource["stream"]
+    processors:
+      k8sattributes:
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+        extract:
+          labels:
+            - from: pod
+              key: app
+              tag_name: k8s.pod.labels.app
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.container.name
+            - k8s.pod.uid
+            - k8s.node.name
+      resource/loki-labels:
+        attributes:
+          - key: namespace
+            from_attribute: k8s.namespace.name
+            action: upsert
+          - key: pod_name
+            from_attribute: k8s.pod.name
+            action: upsert
+          - key: container_name
+            from_attribute: k8s.container.name
+            action: upsert
+          - key: pod_uid
+            from_attribute: k8s.pod.uid
+            action: upsert
+          - key: host
+            from_attribute: k8s.node.name
+            action: upsert
+          - key: app
+            from_attribute: k8s.pod.labels.app
+            action: upsert
+      memory_limiter:
+        check_interval: 5s
+        limit_mib: 256
+        spike_limit_mib: 64
+      batch:
+    exporters:
+      otlphttp/loki:
+        endpoint: http://loki.monitoring.svc.cluster.local:80/otlp
+        tls:
+          insecure: true
+    service:
+      extensions: [file_storage]
+      pipelines:
+        logs:
+          receivers: [filelog]
+          processors: [k8sattributes, resource/loki-labels, memory_limiter, batch]
+          exporters: [otlphttp/loki]
