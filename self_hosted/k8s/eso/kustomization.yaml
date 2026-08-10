@@ -12,8 +12,7 @@ resources:
   - secret-store-stg.yaml
   - ntfy-externalsecret.yaml
 # The secretstore/clustersecretstore CRDs are too large (>262KB) for client-side
-# apply (ArgoCD limitation for CRDs). They are bootstrapped once with
-# `kubectl apply --server-side -f crds/` - see README.md
+# apply, so ArgoCD applies them with Replace (no last-applied annotation).
 patches:
   - target:
       kind: CustomResourceDefinition
@@ -23,7 +22,8 @@ patches:
       kind: CustomResourceDefinition
       metadata:
         name: secretstores.external-secrets.io
-      $patch: delete
+        annotations:
+          argocd.argoproj.io/sync-options: Replace=true
   - target:
       kind: CustomResourceDefinition
       name: clustersecretstores.external-secrets.io
@@ -32,4 +32,5 @@ patches:
       kind: CustomResourceDefinition
       metadata:
         name: clustersecretstores.external-secrets.io
-      $patch: delete
+        annotations:
+          argocd.argoproj.io/sync-options: Replace=true
