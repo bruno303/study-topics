@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: planning-poker-backend
-          image: bruno303/planning-poker-backend:cb4e2692e5e51f1b5ea63dfb4d66d7ecbd453b43
+          image: bruno303/planning-poker-backend:0.0.61
           env:
             - name: API_TRACING_ENABLED
               value: "true"
