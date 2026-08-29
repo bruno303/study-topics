@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: planning-poker-frontend
-          image: bruno303/planning-poker-frontend:ba0b90ba9aeb5544d78cbdff33a6e2b68dfc570c
+          image: bruno303/planning-poker-frontend:0.0.42-stg
           env:
             - name: LOKI_URL
               value: http://loki.monitoring.svc.cluster.local
