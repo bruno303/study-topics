@@ -17,3 +17,8 @@
   }
   import cloudflare
 }
+
+orca.homelab.bsoapp.net {
+    reverse_proxy host.docker.internal:13000
+    import cloudflare
+}
