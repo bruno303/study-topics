@@ -1,0 +1,8 @@
+services:
+  hermes:
+    image: nousresearch/hermes-agent:main
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    volumes:
+      - ${VOLUMES_DIR}/data:/opt/data
