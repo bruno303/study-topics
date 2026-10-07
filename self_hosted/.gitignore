@@ -2,3 +2,4 @@
 data/
 *.code-workspace
 charts/
+.agents/

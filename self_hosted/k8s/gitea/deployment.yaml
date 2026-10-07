@@ -74,7 +74,7 @@ metadata:
   name: gitea
   namespace: production
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: gitea
