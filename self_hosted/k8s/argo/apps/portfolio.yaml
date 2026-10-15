@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bruno303/portfolio
+    targetRevision: main
+    path: helm/portfolio
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: portfolio
+  # `kubectl rollout restart` adds this annotation to the live pod template;
+  # without the ignore + RespectIgnoreDifferences, selfHeal prunes it and the
+  # rollout is reverted (argoproj/argo-cd#25836, fixed only in ArgoCD 3.5).
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
