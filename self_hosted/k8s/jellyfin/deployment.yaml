@@ -23,7 +23,8 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         supplementalGroups:
-          # Host group render (gid 992) owns /dev/dri/renderD*; verify with: getent group render
+          # Render nodes are owned by the host render group (gid 992) unless CDI injection
+          # rewrites ownership; kept as a fallback. Verify with: getent group render
           - 992
         seccompProfile:
           type: RuntimeDefault
@@ -68,10 +69,12 @@ spec:
               cpu: 100m
               memory: 256Mi
               ephemeral-storage: 1Gi
+              gpu.intel.com/i915: 1
             limits:
               cpu: "3"
               memory: 2Gi
               ephemeral-storage: 12Gi
+              gpu.intel.com/i915: 1
           startupProbe:
             httpGet:
               path: /health
@@ -101,8 +104,6 @@ spec:
             - name: series
               mountPath: /media/series
               readOnly: true
-            - name: dri
-              mountPath: /dev/dri
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -113,8 +114,4 @@ spec:
         - name: series
           hostPath:
             path: /media/bruno/KINGSTON/jellyfin/series
-            type: Directory
-        - name: dri
-          hostPath:
-            path: /dev/dri
             type: Directory
