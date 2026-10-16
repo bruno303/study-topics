@@ -22,6 +22,9 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          # Host group render (gid 992) owns /dev/dri/renderD*; verify with: getent group render
+          - 992
         seccompProfile:
           type: RuntimeDefault
       initContainers:
@@ -66,7 +69,7 @@ spec:
               memory: 256Mi
               ephemeral-storage: 1Gi
             limits:
-              cpu: "1"
+              cpu: "3"
               memory: 2Gi
               ephemeral-storage: 12Gi
           startupProbe:
@@ -98,6 +101,8 @@ spec:
             - name: series
               mountPath: /media/series
               readOnly: true
+            - name: dri
+              mountPath: /dev/dri
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -108,4 +113,8 @@ spec:
         - name: series
           hostPath:
             path: /media/bruno/KINGSTON/jellyfin/series
+            type: Directory
+        - name: dri
+          hostPath:
+            path: /dev/dri
             type: Directory
