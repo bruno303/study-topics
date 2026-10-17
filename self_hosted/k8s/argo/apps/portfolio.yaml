@@ -16,18 +16,9 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: portfolio
-  # `kubectl rollout restart` adds this annotation to the live pod template;
-  # without the ignore + RespectIgnoreDifferences, selfHeal prunes it and the
-  # rollout is reverted (argoproj/argo-cd#25836, fixed only in ArgoCD 3.5).
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - RespectIgnoreDifferences=true
