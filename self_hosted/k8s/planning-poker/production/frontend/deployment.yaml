@@ -7,7 +7,6 @@ metadata:
     app: planning-poker-frontend
     env: production
 spec:
-  replicas: 3
   revisionHistoryLimit: 2
   selector:
     matchLabels:

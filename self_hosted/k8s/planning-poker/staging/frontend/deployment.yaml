@@ -7,7 +7,6 @@ metadata:
     app: planning-poker-frontend
     env: staging
 spec:
-  replicas: 1
   revisionHistoryLimit: 0
   selector:
     matchLabels:
