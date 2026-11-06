@@ -1,2 +1,4 @@
 .worktrees/
 .hermes/
+ai-benchmarks/
+.agents/

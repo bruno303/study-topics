@@ -13,9 +13,16 @@ jobs:
       startsWith(github.event.comment.body, '/oc') ||
       contains(github.event.comment.body, ' /opencode') ||
       startsWith(github.event.comment.body, '/opencode')
-    uses: bruno303/github-actions/.github/workflows/opencode.yml@v0.0.2
+
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+
+    uses: bruno303/github-actions/.github/workflows/opencode.yml@v0.0.3
     with:
       repository: ${{ github.repository }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
-      deepseek_api_key: ${{ secrets.DEEPSEEK_API_KEY }}
+      api_key: ${{ secrets.OPENCODE_API_KEY }}
