@@ -13,7 +13,7 @@ The following services are currently deployed in this K3s cluster:
 - **Loki** - Log aggregation system
 - **Tempo** - Distributed tracing backend
 - **Prometheus** - Metrics collection and monitoring
-- **MCP servers** - Grafana and SonarQube MCP over streamable HTTP (`mcp-grafana.internal.bsoapp.net`, `mcp-sonarqube.internal.bsoapp.net`)
+- **MCP gateway** - agentgateway at `mcp.internal.bsoapp.net/mcp` federating the Grafana and SonarQube MCP servers (cluster-internal)
 - **Cloudflared** - Cloudflare Tunnel for secure external access
 - **Open-Telemetry Collector** - Centralized telemetry data collection and processing pipeline
 
