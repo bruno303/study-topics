@@ -11,6 +11,7 @@ resources:
   - secret-store-prd.yaml
   - secret-store-stg.yaml
   - ntfy-externalsecret.yaml
+  - mcp-externalsecret.yaml
 # The secretstore/clustersecretstore CRDs are too large (>262KB) for client-side
 # apply, so ArgoCD applies them with Replace (no last-applied annotation).
 patches:

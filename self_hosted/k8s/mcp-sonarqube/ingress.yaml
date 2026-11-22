@@ -1,0 +1,23 @@
+# No basic-auth middleware here: the server already requires a valid
+# `Authorization: Bearer <SonarQube token>` on every request, and basic auth
+# would collide on the same header.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-sonarqube-ingress
+  namespace: production
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: mcp-sonarqube.internal.bsoapp.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mcp-sonarqube
+            port:
+              number: 80
