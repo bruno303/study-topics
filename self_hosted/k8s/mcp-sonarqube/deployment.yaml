@@ -33,11 +33,6 @@ spec:
             secretKeyRef:
               name: mcp-sonarqube
               key: SONARQUBE_ORG
-        - name: SONARQUBE_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: mcp-sonarqube
-              key: SONARQUBE_TOKEN
         ports:
         - containerPort: 8080
           name: http
