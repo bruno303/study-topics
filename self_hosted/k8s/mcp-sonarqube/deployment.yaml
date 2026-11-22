@@ -19,14 +19,25 @@ spec:
       - name: mcp-sonarqube
         image: sonarsource/sonarqube-mcp:1.33.0.5260
         env:
-        # Streamable HTTP: each client sends its own SonarQube token as
-        # `Authorization: Bearer <token>`; no token/org is stored server-side.
+        # Streamable HTTP: requests must carry `Authorization: Bearer <token>`
+        # (injected by mcp-gateway). SONARQUBE_ORG is deprecated by Sonar in HTTP
+        # mode but still honored: it pins every request to this org.
         - name: SONARQUBE_TRANSPORT
           value: "http"
         - name: SONARQUBE_HTTP_HOST
           value: "0.0.0.0"
         - name: SONARQUBE_HTTP_PORT
           value: "8080"
+        - name: SONARQUBE_ORG
+          valueFrom:
+            secretKeyRef:
+              name: mcp-sonarqube
+              key: SONARQUBE_ORG
+        - name: SONARQUBE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mcp-sonarqube
+              key: SONARQUBE_TOKEN
         ports:
         - containerPort: 8080
           name: http

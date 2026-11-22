@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gateway
+  namespace: production
+  labels:
+    app: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+    spec:
+      containers:
+      - name: mcp-gateway
+        image: cr.agentgateway.dev/agentgateway:v1.7.0
+        args: ["-f", "/etc/agentgateway/config.yaml"]
+        env:
+        - name: SESSION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-gateway
+              key: SESSION_KEY
+        - name: SONARQUBE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mcp-gateway
+              key: SONARQUBE_TOKEN
+        ports:
+        - containerPort: 3000
+          name: http
+        readinessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "300m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/agentgateway/config.yaml
+          subPath: config.yaml
+        - name: auth
+          mountPath: /etc/agentgateway/auth
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: mcp-gateway-config
+      - name: auth
+        secret:
+          secretName: mcp-gateway
+          items:
+          - key: users
+            path: users
