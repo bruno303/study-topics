@@ -1,29 +1,22 @@
 config:
   # Admin API + UI (/ui). Exposed via mcp-gateway-admin ingress, VPN only.
   adminAddr: 0.0.0.0:15000
-gateways:
-  default:
-    port: 3000
-routes:
-- name: mcp
-  matches:
-  - path:
-      pathPrefix: /mcp
+# Top-level `mcp` section (what the admin UI treats as "MCP enabled"). Serves on
+# the implicit default gateway, port 3000; clients use /mcp.
+mcp:
+  prefixMode: always
   policies:
     basicAuth:
       mode: strict
       htpasswd:
         file: /etc/agentgateway/auth/users
-  backends:
-  - mcp:
-      prefixMode: always
-      targets:
-      - name: grafana
-        mcp:
-          host: http://mcp-grafana.production.svc.cluster.local/mcp
-      - name: sonarqube
-        mcp:
-          host: http://mcp-sonarqube.production.svc.cluster.local/mcp
-        policies:
-          backendAuth:
-            key: "$SONARQUBE_TOKEN"
+  targets:
+  - name: grafana
+    mcp:
+      host: http://mcp-grafana.production.svc.cluster.local/mcp
+  - name: sonarqube
+    mcp:
+      host: http://mcp-sonarqube.production.svc.cluster.local/mcp
+    policies:
+      backendAuth:
+        key: "$SONARQUBE_TOKEN"
