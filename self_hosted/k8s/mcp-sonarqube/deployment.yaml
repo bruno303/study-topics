@@ -33,10 +33,6 @@ spec:
             secretKeyRef:
               name: mcp-sonarqube
               key: SONARQUBE_ORG
-        # No startup SONARQUBE_TOKEN on purpose: it makes the server download
-        # analyzer plugins at boot, which OOMs the JVM at this memory limit and
-        # kills its HTTP client (every tool call then fails). The gateway injects
-        # the token per request instead.
         ports:
         - containerPort: 8080
           name: http
