@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-sonarqube
+  namespace: production
+spec:
+  type: ClusterIP
+  selector:
+    app: mcp-sonarqube
+  ports:
+    - port: 80
+      targetPort: 8080
