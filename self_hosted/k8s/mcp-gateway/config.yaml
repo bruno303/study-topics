@@ -1,3 +1,6 @@
+config:
+  # Admin API + UI (/ui). Exposed via mcp-gateway-admin ingress, VPN only.
+  adminAddr: 0.0.0.0:15000
 gateways:
   default:
     port: 3000

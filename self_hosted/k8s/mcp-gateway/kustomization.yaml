@@ -4,6 +4,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - service-admin.yaml
+  - ingress-admin.yaml
 configMapGenerator:
   - name: mcp-gateway-config
     namespace: production
