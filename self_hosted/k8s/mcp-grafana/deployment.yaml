@@ -18,7 +18,15 @@ spec:
       containers:
       - name: mcp-grafana
         image: grafana/mcp-grafana:2.3.0
-        args: ["-t", "streamable-http", "--address", "0.0.0.0:8000"]
+        args:
+        - "-t"
+        - "streamable-http"
+        - "--address"
+        - "0.0.0.0:8000"
+        # Host header allowlist: defaults to loopback only, so calls from
+        # mcp-gateway (Host: mcp-grafana.production.svc.cluster.local) get 403.
+        - "--allowed-hosts"
+        - "mcp-grafana.production.svc.cluster.local,mcp-grafana.production.svc,mcp-grafana.production,mcp-grafana"
         env:
         - name: GRAFANA_URL
           value: "http://grafana.monitoring.svc.cluster.local"
