@@ -1,0 +1,22 @@
+# Admin UI/API has no auth of its own (includes /config_dump and /quitquitquit);
+# reachable from the VPN only.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-gateway-admin-ingress
+  namespace: production
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: mcp-admin.internal.bsoapp.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mcp-gateway-admin
+            port:
+              number: 80
